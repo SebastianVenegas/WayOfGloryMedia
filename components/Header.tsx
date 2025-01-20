@@ -25,7 +25,7 @@ export default function Header() {
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center">
             <Link href="/" className="text-xl font-bold text-[#1E3A8A]">
-              SantiSounds
+              WayofGlory
             </Link>
           </div>
           <div className="hidden md:flex items-center space-x-8">

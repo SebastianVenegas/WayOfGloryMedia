@@ -15,9 +15,9 @@ const services = [
 ]
 
 const socialLinks = [
-  { name: 'Facebook', icon: Facebook, href: 'https://facebook.com/santisounds' },
-  { name: 'YouTube', icon: Youtube, href: 'https://youtube.com/santisounds' },
-  { name: 'Instagram', icon: Instagram, href: 'https://instagram.com/santisounds' }
+  { name: 'Facebook', icon: Facebook, href: 'https://facebook.com/wayofglory' },
+  { name: 'YouTube', icon: Youtube, href: 'https://youtube.com/wayofglory' },
+  { name: 'Instagram', icon: Instagram, href: 'https://instagram.com/wayofglory' }
 ]
 
 export default function Footer() {
@@ -37,7 +37,7 @@ export default function Footer() {
             <div className="flex items-center space-x-3 mb-8">
               <Music2 className="w-6 h-6 text-blue-400" />
               <h2 className="text-2xl font-bold bg-gradient-to-r from-white via-blue-100 to-blue-200 bg-clip-text text-transparent">
-                Santi Sounds
+                WayofGlory
               </h2>
             </div>
             <div className="flex items-center space-x-6 relative">
@@ -102,7 +102,7 @@ export default function Footer() {
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gray-800 to-transparent" />
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <p className="text-center text-sm text-gray-500">
-            © 2023 Santi Sounds. All rights reserved.
+            © 2024 WayofGlory. All rights reserved.
           </p>
         </div>
       </div>

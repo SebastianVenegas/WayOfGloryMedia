@@ -6,7 +6,7 @@ import Script from 'next/script'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Santi Sounds - Professional Church Audio Solutions',
+  title: 'WayofGlory - Professional Church Audio Solutions',
   description: 'Transform your worship experience with crystal-clear audio solutions.',
 }
 

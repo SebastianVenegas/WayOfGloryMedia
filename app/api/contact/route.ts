@@ -24,7 +24,7 @@ export async function POST(req: Request) {
     await transporter.verify()
 
     const mailOptions = {
-      from: `"Santi Sounds" <${process.env.GMAIL_USER}>`,
+      from: `"WayofGlory" <${process.env.GMAIL_USER}>`,
       to: process.env.GMAIL_USER,
       subject: `New Consultation Request from ${churchName}`,
       html: `

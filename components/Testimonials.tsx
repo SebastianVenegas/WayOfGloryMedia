@@ -2,7 +2,7 @@ import { Quote } from 'lucide-react'
 
 const testimonials = [
   {
-    quote: "Santi Sounds transformed our worship experience. The sound quality is exceptional, and their team's expertise made all the difference.",
+    quote: "WayofGlory transformed our worship experience. The sound quality is exceptional, and their team's expertise made all the difference.",
     author: "Pastor Michael Thompson",
     role: "Lead Pastor",
     church: "Grace Community Church",
