@@ -2,23 +2,29 @@ import { NextResponse } from 'next/server'
 import nodemailer from 'nodemailer'
 
 export async function POST(req: Request) {
+  if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+    console.error('Missing email configuration')
+    return NextResponse.json(
+      { error: "Server configuration error" },
+      { status: 500 }
+    )
+  }
+
   try {
     const { name, email, churchName, message } = await req.json()
 
-    // Create transporter with Gmail SMTP
     const transporter = nodemailer.createTransport({
-      host: 'smtp.gmail.com',
-      port: 465,
-      secure: true,
+      service: 'gmail',
       auth: {
         user: process.env.GMAIL_USER,
         pass: process.env.GMAIL_APP_PASSWORD
       }
     })
 
-    // Email content
+    await transporter.verify()
+
     const mailOptions = {
-      from: process.env.GMAIL_USER,
+      from: `"Santi Sounds" <${process.env.GMAIL_USER}>`,
       to: process.env.GMAIL_USER,
       subject: `New Consultation Request from ${churchName}`,
       html: `
@@ -31,17 +37,12 @@ export async function POST(req: Request) {
       `
     }
 
-    // Send email
     await transporter.sendMail(mailOptions)
-
-    return NextResponse.json(
-      { message: "Email sent successfully" },
-      { status: 200 }
-    )
+    return NextResponse.json({ message: "Email sent successfully" }, { status: 200 })
   } catch (error) {
     console.error('Error sending email:', error)
     return NextResponse.json(
-      { error: "Failed to send email" },
+      { error: "Failed to send email. Please try again later." },
       { status: 500 }
     )
   }
