@@ -11,15 +11,15 @@ export async function POST(req: Request) {
       port: 465,
       secure: true,
       auth: {
-        user: 'paulo@santisounds.com',
-        pass: 'scfmzhqvhqmhyfap'
+        user: process.env.GMAIL_USER,
+        pass: process.env.GMAIL_APP_PASSWORD
       }
     })
 
     // Email content
     const mailOptions = {
-      from: 'inquiries@thecelestestudios.com',
-      to: 'paulo@santisounds.com',
+      from: process.env.GMAIL_USER,
+      to: process.env.GMAIL_USER,
       subject: `New Consultation Request from ${churchName}`,
       html: `
         <h2>New Consultation Request</h2>

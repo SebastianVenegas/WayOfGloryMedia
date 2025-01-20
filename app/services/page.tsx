@@ -4,21 +4,17 @@ import { useState } from 'react'
 import { 
   Check, 
   ArrowRight, 
-  MessageCircle, 
   Headphones, 
   Video, 
   Settings, 
   HeadphonesIcon, 
   Wrench,
   Users,
-  Clock,
-  Radio,
   Plus,
   MessageSquare,
   Star,
   ChevronDown
 } from 'lucide-react'
-import Image from 'next/image'
 import Header from '../../components/Header'
 import Footer from '../../components/Footer'
 import QuoteSection from '../../components/QuoteSection'
