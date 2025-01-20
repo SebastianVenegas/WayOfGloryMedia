@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@next/env": "^15.1.5",
     "@radix-ui/react-slot": "^1.1.1",
     "@vercel/analytics": "^1.4.1",
     "@vercel/speed-insights": "^1.1.0",
@@ -16,7 +17,7 @@
     "clsx": "^2.1.1",
     "framer-motion": "^11.18.2",
     "lucide-react": "^0.473.0",
-    "next": "14.2.16",
+    "next": "^15.1.5",
     "nodemailer": "^6.9.16",
     "react": "^18",
     "react-dom": "^18",

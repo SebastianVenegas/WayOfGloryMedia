@@ -2,8 +2,15 @@ import { NextResponse } from 'next/server'
 import nodemailer from 'nodemailer'
 
 export async function POST(req: Request) {
-  if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
-    console.error('Missing email configuration')
+  // Check environment variables
+  const gmailUser = process.env.GMAIL_USER
+  const gmailPassword = process.env.GMAIL_APP_PASSWORD
+
+  if (!gmailUser || !gmailPassword) {
+    console.error('Missing email configuration:', { 
+      hasUser: !!gmailUser, 
+      hasPassword: !!gmailPassword 
+    })
     return NextResponse.json(
       { error: "Server configuration error" },
       { status: 500 }
@@ -13,19 +20,40 @@ export async function POST(req: Request) {
   try {
     const { name, email, churchName, message } = await req.json()
 
+    // Validate input
+    if (!name || !email || !churchName || !message) {
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 }
+      )
+    }
+
     const transporter = nodemailer.createTransport({
-      service: 'gmail',
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true, // use SSL
       auth: {
-        user: process.env.GMAIL_USER,
-        pass: process.env.GMAIL_APP_PASSWORD
+        user: gmailUser,
+        pass: gmailPassword
+      },
+      tls: {
+        rejectUnauthorized: false // for testing only, remove in production
       }
     })
 
-    await transporter.verify()
+    try {
+      await transporter.verify()
+    } catch (verifyError) {
+      console.error('Transporter verification failed:', verifyError)
+      return NextResponse.json(
+        { error: "Email service configuration error" },
+        { status: 500 }
+      )
+    }
 
     const mailOptions = {
-      from: `"WayofGlory" <${process.env.GMAIL_USER}>`,
-      to: process.env.GMAIL_USER,
+      from: `"WayofGlory Contact Form" <${gmailUser}>`,
+      to: gmailUser,
       subject: `New Consultation Request from ${churchName}`,
       html: `
         <h2>New Consultation Request</h2>
@@ -37,12 +65,24 @@ export async function POST(req: Request) {
       `
     }
 
-    await transporter.sendMail(mailOptions)
-    return NextResponse.json({ message: "Email sent successfully" }, { status: 200 })
+    try {
+      await transporter.sendMail(mailOptions)
+      return NextResponse.json({ message: "Email sent successfully" }, { status: 200 })
+    } catch (sendError: any) {
+      console.error('Error sending email:', {
+        error: sendError.message,
+        code: sendError.code,
+        command: sendError.command
+      })
+      return NextResponse.json(
+        { error: "Failed to send email. Please try again later." },
+        { status: 500 }
+      )
+    }
   } catch (error) {
-    console.error('Error sending email:', error)
+    console.error('General error:', error)
     return NextResponse.json(
-      { error: "Failed to send email. Please try again later." },
+      { error: "An unexpected error occurred" },
       { status: 500 }
     )
   }
