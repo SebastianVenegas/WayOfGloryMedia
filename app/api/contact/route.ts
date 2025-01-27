@@ -53,7 +53,7 @@ export async function POST(req: Request) {
 
     const mailOptions = {
       from: `"WayofGlory Contact Form" <${gmailUser}>`,
-      to: gmailUser,
+      to: "paulovenegas2004@gmail.com",
       subject: `New Consultation Request from ${churchName}`,
       html: `
         <h2>New Consultation Request</h2>

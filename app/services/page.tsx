@@ -20,20 +20,27 @@ import Footer from '../../components/Footer'
 import QuoteSection from '../../components/QuoteSection'
 import Image from 'next/image'
 import ScrollAnimation from '../../components/ui/scroll-animation'
+import { cn } from '../../lib/utils'
+import { LucideIcon } from 'lucide-react'
 
-const services = [
-  {
-    title: "Getting Started: Initial Assessment & Consultation",
-    description: "Comprehensive evaluation of your church's audio and streaming needs",
-    includes: [
-      "On-site or virtual evaluation of existing audio & streaming setup",
-      "Personalized recommendations for improvement & upgrades",
-      "Technical troubleshooting & optimization strategies",
-      "Discussion of church-specific needs & budget considerations"
-    ],
-    note: "Complimentary consultation for qualified projects",
-    icon: Headphones
-  },
+interface Service {
+  title: string
+  subtitle?: string
+  description: string
+  includes: string[]
+  upgrades?: string[]
+  note?: string
+  icon: LucideIcon
+  featured?: boolean
+  pricing?: {
+    initial: string
+    note: string
+    fullAssessment: string
+    fullAssessmentNote: string
+  }
+}
+
+const services: Service[] = [
   {
     title: "Professional Live Streaming Setup & Management",
     description: "Complete streaming solution for churches with existing equipment",
@@ -148,6 +155,7 @@ const maintenancePlans = [
   }
 ]
 
+// Preload hero images
 const heroImages = [
   '/images/hero1.jpg',
   '/images/hero2.jpg',
@@ -157,14 +165,32 @@ const heroImages = [
 export default function ServicesPage() {
   const [expandedCard, setExpandedCard] = useState<number | null>(null)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  const [imagesLoaded, setImagesLoaded] = useState(false)
+
+  // Preload images on mount
+  useEffect(() => {
+    const loadImage = (src: string): Promise<void> => {
+      return new Promise((resolve) => {
+        const img = new (window.Image || Image)() as HTMLImageElement
+        img.onload = () => resolve()
+        img.src = src
+      })
+    }
+
+    Promise.all(heroImages.map(loadImage))
+      .then(() => {
+        setImagesLoaded(true)
+      })
+  }, [])
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentImageIndex((prevIndex) => (prevIndex + 1) % heroImages.length)
-    }, 5000) // Change image every 5 seconds
-
-    return () => clearInterval(timer)
-  }, [])
+    if (imagesLoaded) {
+      const timer = setInterval(() => {
+        setCurrentImageIndex((prevIndex) => (prevIndex + 1) % heroImages.length)
+      }, 5000)
+      return () => clearInterval(timer)
+    }
+  }, [imagesLoaded])
   
   const scrollToQuote = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -191,22 +217,33 @@ export default function ServicesPage() {
         {/* Hero Section */}
         <section className="relative bg-[#0A1A3B] py-32 mb-24 overflow-hidden">
           {/* Hero Images */}
-          {heroImages.map((image, index) => (
+          {heroImages.map((src, index) => (
             <div
-              key={image}
-              className="absolute inset-0 transition-opacity duration-1000"
+              key={src}
+              className={cn(
+                "absolute inset-0 transition-opacity duration-1000",
+                index === 0 ? "opacity-100" : "opacity-0"
+              )}
               style={{ opacity: currentImageIndex === index ? 1 : 0 }}
             >
               <Image
-                src={image}
+                src={src}
                 alt="Church audio services"
                 fill
                 className="object-cover"
-                priority={index === 0}
+                priority={true}
+                sizes="100vw"
+                quality={90}
               />
               <div className="absolute inset-0 bg-[#0A1A3B]/60 backdrop-blur-[2px]" />
             </div>
           ))}
+
+          {/* Loading placeholder */}
+          <div className={cn(
+            "absolute inset-0 bg-[#0A1A3B] transition-opacity duration-500",
+            imagesLoaded ? "opacity-0" : "opacity-100"
+          )} />
           
           <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:4rem_4rem] animate-[pulse_4s_ease-in-out_infinite]" />
           <div className="absolute inset-0">
@@ -215,7 +252,7 @@ export default function ServicesPage() {
             <div className="absolute -bottom-8 left-1/2 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-[blob_8s_infinite]" />
           </div>
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative">
-            <ScrollAnimation animation="fade-up">
+            <ScrollAnimation type="fade-up">
               <div className="max-w-4xl mx-auto text-center">
                 <div className="animate-fade-in-up">
                   <div className="inline-flex items-center justify-center px-4 py-2 mb-8 rounded-full bg-white/10 backdrop-blur-sm border border-white/20">
@@ -259,9 +296,64 @@ export default function ServicesPage() {
           </div>
         </section>
 
+        {/* Consultation Section */}
+        <section className="relative -mt-44 mb-24 z-10">
+          <ScrollAnimation type="fade-up">
+            <div className="max-w-xl mx-auto px-4">
+              <div className="bg-white/95 rounded-2xl shadow-md p-6 relative overflow-hidden">
+                <div className="relative">
+                  <div className="flex items-center gap-3 mb-5">
+                    <div className="p-2 bg-blue-50 rounded-lg">
+                      <Headphones className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-semibold text-[#0A1A3B]">Expert Consultation</h2>
+                      <p className="text-gray-500 text-sm">Custom Audio & Streaming Assessment</p>
+                    </div>
+                  </div>
+
+                  <p className="text-gray-600 text-sm mb-6">
+                    Get a personalized streaming and audio solution designed by our experts to perfectly match your church's needs and budget
+                  </p>
+
+                  <div className="bg-blue-50/40 rounded-lg p-5 mb-6 hover:bg-blue-50/60 transition-colors duration-300">
+                    <div className="text-gray-600 text-sm mb-1">Professional Assessment</div>
+                    <div className="text-2xl font-semibold text-[#0A1A3B]">$250</div>
+                    <div className="text-gray-500 text-sm">Value credited towards your custom bundle</div>
+                  </div>
+
+                  <div className="mb-6">
+                    <div className="grid grid-cols-2 gap-3">
+                      {[
+                        "Expert evaluation of your needs",
+                        "Custom streaming & audio bundle",
+                        "Detailed cost breakdown",
+                        "Professional recommendations"
+                      ].map((feature, index) => (
+                        <div key={index} className="flex items-start gap-2">
+                          <Check className="w-4 h-4 text-green-500 mt-0.5" />
+                          <span className="text-sm text-gray-600">{feature}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={scrollToQuote}
+                    className="w-full py-3 bg-[#0A1A3B] text-white rounded-lg font-medium text-sm
+                             hover:bg-[#1E293B] transition-all duration-300"
+                  >
+                    Schedule Your Expert Consultation
+                  </button>
+                </div>
+              </div>
+            </div>
+          </ScrollAnimation>
+        </section>
+
         {/* Services Section */}
-        <section className="container mx-auto px-4 sm:px-6 lg:px-8 mb-32">
-          <ScrollAnimation animation="fade-up">
+        <section className="container mx-auto px-4 sm:px-6 lg:px-8 mb-32 pt-12">
+          <ScrollAnimation type="fade-up">
             <div className="text-center max-w-3xl mx-auto mb-20">
               <div className="inline-flex items-center justify-center space-x-2 mb-6">
                 <div className="p-2.5 bg-blue-50 rounded-xl">
@@ -282,16 +374,20 @@ export default function ServicesPage() {
             {services.map((service, index) => {
               const Icon = service.icon
               const isExpanded = expandedCard === index
+              const sectionId = service.title.toLowerCase().split(':')[0].replace(/\s+/g, '-')
 
               return (
                 <ScrollAnimation 
                   key={service.title}
-                  animation="fade-up"
+                  type="fade-up"
                   delay={0.2 * index}
                 >
                   <div
-                    className="group bg-white rounded-xl overflow-hidden shadow-md hover:shadow-lg 
-                             transition-all duration-300 animate-fade-in-up cursor-pointer h-fit"
+                    id={sectionId}
+                    className={cn(
+                      "group bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 animate-fade-in-up cursor-pointer",
+                      service.featured && "border-2 border-blue-100"
+                    )}
                     style={{ animationDelay: `${index * 100}ms` }}
                     onClick={(e) => toggleCard(index, e)}
                   >
@@ -302,19 +398,21 @@ export default function ServicesPage() {
                             <Icon className="w-6 h-6 text-blue-600" />
                           </div>
                           <div>
-                            <h3 className="text-lg font-bold text-[#0A1A3B] group-hover:text-blue-600 
-                                       transition-colors duration-300">
-                              {service.title.split(':')[0]}
+                            <h3 className="text-lg font-bold text-[#0A1A3B] group-hover:text-blue-600 transition-colors duration-300">
+                              {service.title}
                             </h3>
-                            <p className="text-gray-500 text-sm mt-0.5">
-                              {service.title.split(':')[1]}
-                            </p>
+                            {service.subtitle && (
+                              <p className="text-gray-500 text-sm mt-0.5">
+                                {service.subtitle}
+                              </p>
+                            )}
                           </div>
                         </div>
                         <ChevronDown 
-                          className={`w-5 h-5 text-gray-400 transition-transform duration-300 ${
-                            isExpanded ? 'rotate-180' : ''
-                          }`}
+                          className={cn(
+                            "w-5 h-5 text-gray-400 transition-transform duration-300",
+                            isExpanded ? "rotate-180" : ""
+                          )}
                         />
                       </div>
 
@@ -322,42 +420,45 @@ export default function ServicesPage() {
                         {service.description}
                       </p>
 
+                      {service.pricing && (
+                        <div className="mb-4 p-4 bg-blue-50/50 rounded-lg">
+                          <div className="flex items-baseline justify-between mb-2">
+                            <span className="text-gray-600">Initial Consultation</span>
+                            <div className="text-right">
+                              <span className="text-2xl font-bold text-[#0A1A3B]">{service.pricing.initial}</span>
+                              <p className="text-sm text-gray-500">{service.pricing.note}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-baseline justify-between">
+                            <span className="text-gray-600">Full Assessment</span>
+                            <div className="text-right">
+                              <span className="text-2xl font-bold text-[#0A1A3B]">{service.pricing.fullAssessment}</span>
+                              <p className="text-sm text-gray-500">{service.pricing.fullAssessmentNote}</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       <div 
-                        className={`grid transition-[grid-template-rows] duration-300 ease-in-out`}
-                        style={{ 
-                          gridTemplateRows: isExpanded ? '1fr' : '0fr'
-                        }}
+                        className={cn(
+                          "grid transition-[grid-template-rows] duration-300 ease-in-out",
+                          isExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+                        )}
                       >
                         <div className="overflow-hidden">
                           <div className="space-y-6 pt-4 border-t border-gray-100">
-                            <div>
-                              <h4 className="text-sm font-bold text-[#0A1A3B] uppercase tracking-wider mb-3">
-                                What's Included
-                              </h4>
-                              <ul className="space-y-3">
-                                {service.includes.map((item, i) => (
-                                  <li 
-                                    key={item} 
-                                    className="flex items-start text-gray-600 group/item"
-                                  >
-                                    <Check className="w-5 h-5 text-green-500 mr-3 mt-0.5 shrink-0 group-hover/item:scale-110 transition-transform duration-300" />
-                                    <span>{item}</span>
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-
-                            {service.upgrades && (
-                              <div className="flex items-center p-3 rounded-lg text-gray-600 border border-gray-200 bg-gray-50/50">
-                                <Plus className="w-4 h-4 text-blue-600 mr-2 shrink-0" />
-                                <span className="text-sm">Upgrades Available</span>
+                            {service.includes && (
+                              <div>
+                                <h4 className="text-sm font-semibold text-[#0A1A3B] mb-3">What's Included:</h4>
+                                <ul className="space-y-2">
+                                  {service.includes.map((item, i) => (
+                                    <li key={i} className="flex items-start gap-3 text-gray-600">
+                                      <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+                                      <span className="text-sm">{item}</span>
+                                    </li>
+                                  ))}
+                                </ul>
                               </div>
-                            )}
-
-                            {service.note && (
-                              <p className="text-sm text-gray-500 italic">
-                                {service.note}
-                              </p>
                             )}
                           </div>
                         </div>
@@ -370,7 +471,7 @@ export default function ServicesPage() {
           </div>
 
           {/* Service CTAs */}
-          <ScrollAnimation animation="fade-up" delay={0.6}>
+          <ScrollAnimation type="fade-up" delay={0.6}>
             <div className="flex flex-col sm:flex-row gap-4 justify-center mt-16 sticky bottom-8 z-50">
               <button
                 onClick={scrollToQuote}
@@ -397,7 +498,7 @@ export default function ServicesPage() {
         </section>
 
         {/* Trust Badge */}
-        <ScrollAnimation animation="fade-up">
+        <ScrollAnimation type="fade-up">
           <div className="bg-[#F8FAFF] py-16">
             <div className="container mx-auto px-4 sm:px-6 lg:px-8">
               <div className="max-w-4xl mx-auto text-center">

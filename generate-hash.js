@@ -1,0 +1,1 @@
+const bcrypt = require('bcrypt'); async function generateHash() { const password = 'paulo2004'; const saltRounds = 10; const hash = await bcrypt.hash(password, saltRounds); console.log('Hash:', hash); } generateHash();

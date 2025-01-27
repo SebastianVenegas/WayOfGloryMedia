@@ -1,0 +1,184 @@
+{
+  "products": [
+    {
+      "id": "mixer-001",
+      "title": "Behringer X32 Digital Mixer",
+      "description": "32-channel digital mixer with advanced features, ideal for live sound and studio applications.",
+      "price": 1999.00,
+      "category": "individual",
+      "image_url": "/images/products/behringer-x32.jpg",
+      "features": [
+        "32 channels",
+        "Digital mixer",
+        "Built-in effects",
+        "Expandable inputs/outputs"
+      ],
+      "technical_details": {
+        "connectivity": "Digital"
+      },
+      "included_items": [
+        "Behringer X32",
+        "Power cable"
+      ],
+      "warranty_info": "Standard manufacturer warranty",
+      "installation_available": false
+    },
+    {
+      "id": "mixer-002",
+      "title": "Behringer X32 Compact Mixer",
+      "description": "Compact version of the Behringer X32 with the same great digital features in a smaller footprint.",
+      "price": 1499.00,
+      "category": "individual",
+      "image_url": "/images/products/behringer-x32-compact.jpg",
+      "features": [
+        "Compact size",
+        "32-channel capability",
+        "Integrated effects"
+      ],
+      "technical_details": {
+        "connectivity": "Digital"
+      },
+      "included_items": [
+        "Behringer X32 Compact",
+        "Power cable"
+      ],
+      "warranty_info": "Standard manufacturer warranty",
+      "installation_available": false
+    },
+    {
+      "id": "mixer-003",
+      "title": "Allen & Heath SQ-6 Mixer",
+      "description": "Professional-grade 48-channel digital mixer designed for live sound mixing and recording.",
+      "price": 3999.00,
+      "category": "individual",
+      "image_url": "/images/products/allen-heath-sq6.jpg",
+      "features": [
+        "48 channels",
+        "Built-in effects",
+        "Expandable I/O",
+        "Multi-bus output"
+      ],
+      "technical_details": {
+        "connectivity": "Digital"
+      },
+      "included_items": [
+        "Allen & Heath SQ-6",
+        "Power cable"
+      ],
+      "warranty_info": "Standard manufacturer warranty",
+      "installation_available": false
+    },
+    {
+      "id": "mixer-004",
+      "title": "Yamaha MGP32X Mixer",
+      "description": "32-channel analog mixer offering studio-quality sound and robust build for live applications.",
+      "price": 1799.99,
+      "category": "individual",
+      "image_url": "/images/products/yamaha-mgp32x.jpg",
+      "features": [
+        "32 analog channels",
+        "Studio-quality sound",
+        "Durable build"
+      ],
+      "technical_details": {
+        "connectivity": "Analog"
+      },
+      "included_items": [
+        "Yamaha MGP32X",
+        "Power cable"
+      ],
+      "warranty_info": "Standard manufacturer warranty",
+      "installation_available": false
+    },
+    {
+      "id": "speaker-001",
+      "title": "QSC K12.2 Powered PA Speaker",
+      "description": "12-inch powered PA speaker delivering exceptional sound quality and performance for any venue.",
+      "price": 899.99,
+      "category": "individual",
+      "image_url": "/images/products/qsc-k12-2.jpg",
+      "features": [
+        "Powered speaker",
+        "12-inch driver",
+        "Durable design"
+      ],
+      "technical_details": {
+        "frequencyResponse": "50 Hz – 20 kHz",
+        "speakerPower": "2000W"
+      },
+      "included_items": [
+        "QSC K12.2",
+        "Power cable"
+      ],
+      "warranty_info": "6-year manufacturer warranty",
+      "installation_available": false
+    },
+    {
+      "id": "speaker-002",
+      "title": "RSG15 15\" DJ Speaker with Subwoofers",
+      "description": "3000W passive DJ/Pro Audio PA speaker system with two 15-inch subwoofers for high power output.",
+      "price": 650.00,
+      "category": "bundle",
+      "image_url": "/images/products/rsg15-speaker.jpg",
+      "features": [
+        "15-inch passive speakers",
+        "Subwoofer included",
+        "High wattage output"
+      ],
+      "technical_details": {
+        "speakerPower": "3000W"
+      },
+      "included_items": [
+        "RSG15 15\" speakers",
+        "Subwoofers"
+      ],
+      "warranty_info": "Standard manufacturer warranty",
+      "installation_available": false
+    },
+    {
+      "id": "speaker-003",
+      "title": "JBL EON PA System with Subwoofer",
+      "description": "JBL EON715 15-inch speaker and EON718S 18-inch subwoofer, a complete powered PA system.",
+      "price": 3700.00,
+      "category": "bundle",
+      "image_url": "/images/products/jbl-eon-system.jpg",
+      "features": [
+        "15-inch speaker",
+        "18-inch subwoofer",
+        "Powered system"
+      ],
+      "technical_details": {
+        "frequencyResponse": "40 Hz – 20 kHz",
+        "speakerPower": "3000W"
+      },
+      "included_items": [
+        "JBL EON715",
+        "JBL EON718S",
+        "Power cables"
+      ],
+      "warranty_info": "Standard manufacturer warranty",
+      "installation_available": false
+    },
+    {
+      "id": "mic-001",
+      "title": "PTU-6000-8H Wireless Microphone System",
+      "description": "8-channel UHF wireless microphone system suitable for professional audio applications.",
+      "price": 539.99,
+      "category": "individual",
+      "image_url": "/images/products/ptu-6000-8h.jpg",
+      "features": [
+        "8-channel UHF",
+        "Wireless range up to 100 feet"
+      ],
+      "technical_details": {
+        "wirelessRange": "100 feet"
+      },
+      "included_items": [
+        "PTU-6000-8H microphones",
+        "Receivers"
+      ],
+      "warranty_info": "Standard manufacturer warranty",
+      "installation_available": false
+    }
+  ]
+} 

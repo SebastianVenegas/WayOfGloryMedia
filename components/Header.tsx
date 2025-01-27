@@ -30,13 +30,13 @@ export default function Header() {
           </div>
           <div className="hidden md:flex items-center space-x-8">
             {navigation.map((item) => (
-              <Link
+                <Link
                 key={item.name}
                 href={item.href}
-                className="text-gray-600 hover:text-[#1E3A8A] transition-colors duration-300"
-              >
+                  className="text-gray-600 hover:text-[#1E3A8A] transition-colors duration-300"
+                >
                 {item.name}
-              </Link>
+                </Link>
             ))}
             <button
               onClick={scrollToQuote}
@@ -66,15 +66,16 @@ export default function Header() {
           <div className="md:hidden">
             <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
               {navigation.map((item) => (
-                <Link
+                        <Link
                   key={item.name}
                   href={item.href}
                   className="block px-3 py-2 rounded-md text-base font-medium 
                            text-gray-600 hover:text-[#1E3A8A] hover:bg-gray-50"
-                >
+                        >
                   {item.name}
-                </Link>
-              ))}
+                        </Link>
+
+                      ))}
               <button
                 onClick={scrollToQuote}
                 className="w-full text-left px-3 py-2 rounded-md text-base font-medium 

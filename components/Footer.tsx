@@ -3,6 +3,7 @@ import { Facebook, Youtube, Instagram, Music2 } from 'lucide-react'
 
 const quickLinks = [
   { name: 'Services', href: '/services' },
+  { name: 'Products', href: '/products' },
   { name: 'About Us', href: '/about' },
   { name: 'Contact', href: '/contact' }
 ]
@@ -19,6 +20,19 @@ const socialLinks = [
   { name: 'YouTube', icon: Youtube, href: 'https://youtube.com/wayofglory' },
   { name: 'Instagram', icon: Instagram, href: 'https://instagram.com/wayofglory' }
 ]
+
+const navigation = {
+  main: [
+    { name: "Home", href: "/" },
+    { name: "About", href: "/about" },
+    { name: "Services", href: "/services" },
+    { name: "Products", href: "/products" },
+    { name: "Contact", href: "/contact" }
+  ],
+  social: [
+    // ... existing social links ...
+  ]
+}
 
 export default function Footer() {
   return (

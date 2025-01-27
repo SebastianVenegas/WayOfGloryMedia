@@ -11,12 +11,12 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-white">
       <Header />
-      <HeroSection />
-      <AboutUs />
-      <ServicesOverview />
-      <ChurchShowcase />
-      <QuoteSection />
-      <CallToAction />
+            <HeroSection />
+            <AboutUs />
+            <ServicesOverview />
+            <ChurchShowcase />
+            <QuoteSection />
+            <CallToAction />
       <Footer />
     </main>
   )
