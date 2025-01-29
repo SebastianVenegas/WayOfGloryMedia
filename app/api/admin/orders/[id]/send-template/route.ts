@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { sql } from '@vercel/postgres';
 import { Resend } from 'resend';
+import { getEmailTemplate } from '@/lib/email-templates';
 
 interface Order {
   id: number;
@@ -35,174 +36,12 @@ interface CustomEmail {
   content: string;
 }
 
-interface EmailTemplate {
-  subject: string;
-  html: string;
-}
-
 interface SendTemplateRequest {
   templateId: string;
   customEmail?: CustomEmail;
 }
 
 const resend = new Resend(process.env.RESEND_API_KEY);
-
-// Email templates
-const getEmailTemplate = (templateId: string, order: Order, customEmail?: CustomEmail): EmailTemplate | null => {
-  // Base email styling
-  const baseStyle = `
-    <style>
-      .email-container {
-        font-family: Arial, sans-serif;
-        max-width: 600px;
-        margin: 0 auto;
-        padding: 20px;
-        background-color: #ffffff;
-      }
-      .header {
-        background-color: #1a365d;
-        color: white;
-        padding: 20px;
-        text-align: center;
-        border-radius: 8px 8px 0 0;
-      }
-      .content {
-        padding: 20px;
-        line-height: 1.6;
-        color: #333;
-        border: 1px solid #e2e8f0;
-        border-radius: 0 0 8px 8px;
-      }
-      .footer {
-        text-align: center;
-        margin-top: 20px;
-        padding-top: 20px;
-        border-top: 1px solid #e2e8f0;
-        color: #666;
-      }
-    </style>
-  `;
-
-  // If it's a custom email
-  if (customEmail && templateId === 'custom') {
-    return {
-      subject: customEmail.subject,
-      html: `
-        ${baseStyle}
-        <div class="email-container">
-          <div class="header">
-            <h1>Way of Glory</h1>
-          </div>
-          <div class="content">
-            ${customEmail.content}
-          </div>
-          <div class="footer">
-            <p>Thank you for choosing Way of Glory</p>
-            <p>Order #${order.id}</p>
-          </div>
-        </div>
-      `
-    };
-  }
-
-  const templates: { [key: string]: { subject: string; html: string } } = {
-    payment_reminder: {
-      subject: 'Payment Reminder for Your Way of Glory Order',
-      html: `
-        ${baseStyle}
-        <div class="email-container">
-          <div class="header">
-            <h1>Payment Reminder</h1>
-          </div>
-          <div class="content">
-            <p>Dear ${order.first_name} ${order.last_name},</p>
-            <p>This is a friendly reminder about your pending payment for order #${order.id}.</p>
-            <p>Total amount due: <strong>$${order.total_amount}</strong></p>
-            <p>Please complete your payment to proceed with your order.</p>
-            <a href="#" class="button">Complete Payment</a>
-          </div>
-          <div class="footer">
-            <p>Thank you for choosing Way of Glory</p>
-          </div>
-        </div>
-      `
-    },
-    installation_confirmation: {
-      subject: 'Installation Details for Your Way of Glory Order',
-      html: `
-        ${baseStyle}
-        <div class="email-container">
-          <div class="header">
-            <h1>Installation Confirmation</h1>
-          </div>
-          <div class="content">
-            <p>Dear ${order.first_name} ${order.last_name},</p>
-            <p>Your installation for order #${order.id} has been scheduled.</p>
-            <div style="background-color: #f8fafc; padding: 15px; border-radius: 5px; margin: 15px 0;">
-              <h3 style="margin-top: 0;">Installation Details</h3>
-              <p><strong>Address:</strong> ${order.installation_address}, ${order.installation_city}, ${order.installation_state} ${order.installation_zip}</p>
-              <p><strong>Date:</strong> ${order.installation_date}</p>
-              <p><strong>Time:</strong> ${order.installation_time}</p>
-            </div>
-          </div>
-          <div class="footer">
-            <p>Thank you for choosing Way of Glory</p>
-          </div>
-        </div>
-      `
-    },
-    shipping_update: {
-      subject: 'Shipping Update for Your Way of Glory Order',
-      html: `
-        ${baseStyle}
-        <div class="email-container">
-          <div class="header">
-            <h1>Shipping Update</h1>
-          </div>
-          <div class="content">
-            <p>Dear ${order.first_name} ${order.last_name},</p>
-            <p>Great news! Your order #${order.id} has been shipped!</p>
-            <div style="background-color: #f8fafc; padding: 15px; border-radius: 5px; margin: 15px 0;">
-              <h3 style="margin-top: 0;">Shipping Details</h3>
-              <p><strong>Address:</strong> ${order.shipping_address}, ${order.shipping_city}, ${order.shipping_state} ${order.shipping_zip}</p>
-            </div>
-            <a href="#" class="button">Track Your Order</a>
-          </div>
-          <div class="footer">
-            <p>Thank you for choosing Way of Glory</p>
-          </div>
-        </div>
-      `
-    },
-    thank_you: {
-      subject: 'Thank You for Your Way of Glory Order',
-      html: `
-        ${baseStyle}
-        <div class="email-container">
-          <div class="header">
-            <h1>Thank You for Your Order</h1>
-          </div>
-          <div class="content">
-            <p>Dear ${order.first_name} ${order.last_name},</p>
-            <p>Thank you for choosing Way of Glory. We truly appreciate your business!</p>
-            <div style="background-color: #f8fafc; padding: 15px; border-radius: 5px; margin: 15px 0;">
-              <h3 style="margin-top: 0;">Order Summary</h3>
-              <p><strong>Order Number:</strong> #${order.id}</p>
-              <p><strong>Total Amount:</strong> $${order.total_amount}</p>
-            </div>
-            <p>We're excited to serve you and ensure your complete satisfaction.</p>
-            <a href="#" class="button">View Order Details</a>
-          </div>
-          <div class="footer">
-            <p>Thank you for choosing Way of Glory</p>
-          </div>
-        </div>
-      `
-    }
-  };
-
-  return templates[templateId];
-};
 
 export async function POST(
   request: Request,
@@ -263,7 +102,7 @@ export async function POST(
     };
 
     // Get email template
-    const template = getEmailTemplate(templateId, order, customEmail);
+    const template = getEmailTemplate(templateId, order);
 
     if (!template) {
       return NextResponse.json(
