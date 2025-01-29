@@ -22,10 +22,10 @@ interface Order {
 
 export async function POST(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const orderId = Number(context.params.id);
+    const orderId = Number(params.id);
     const { templateId } = await request.json();
 
     // Get the order details from the database

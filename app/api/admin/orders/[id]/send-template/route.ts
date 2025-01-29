@@ -45,11 +45,11 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
     const { templateId, customEmail } = await request.json() as SendTemplateRequest;
-    const orderId = context.params.id;
+    const orderId = params.id;
 
     // Fetch order details
     const { rows } = await sql`
