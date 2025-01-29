@@ -59,8 +59,7 @@ const filterByCategory = (product: Product, selectedCategory: CategoryType): boo
   return product.category === selectedCategory;
 };
 
-// Product images mapping
-export const getProductImageKey = (title: string): string => {
+const getProductImageKey = (title: string): string => {
   const titleToKeyMap: Record<string, string> = {
     'PTU-6000-8H 8-Channel UHF Wireless Microphone System': 'ptu-6000-8h',
     'Shure BLX288/PG58 Dual Wireless Microphone System': 'shure-blx288-pg58',
@@ -443,47 +442,6 @@ const itemVariants = {
     }
   }
 }
-
-const titleToKeyMap: Record<string, string> = {
-    'PTU-6000-8H 8-Channel UHF Wireless Microphone System': 'ptu-6000-8h',
-    'Shure BLX288/PG58 Dual Wireless Microphone System': 'shure-blx288-pg58',
-    'VocoPro UHF-8800 Professional 8-Channel Wireless System': 'vocopro-uhf-8800',
-    'Drum Microphone Kit - 7-Piece Professional Set': 'drum-mic-kit',
-    'Behringer X32 Compact Digital Mixer': 'behringer-x32-compact',
-    'Allen & Heath SQ-6 48-channel Digital Mixer': 'allen-heath-sq6',
-    'Yamaha MGP32X 32-channel Mixer with Effects': 'yamaha-mgp32x',
-    'XLR Cable - 15ft Professional Microphone Cable': 'xlr-15ft',
-    'XLR Cable - 20ft Professional Microphone Cable': 'xlr-20ft',
-    'XLR Cable - 25ft Professional Microphone Cable': 'xlr-25ft',
-    'XLR Cable - 50ft Professional Microphone Cable': 'xlr-50ft',
-    'XLR Cable - 100ft Professional Microphone Cable': 'xlr-100ft',
-    'Quarter Inch Cable - 15ft Professional Instrument Cable': 'quarter-inch-15ft',
-    'Quarter Inch Cable - 20ft Professional Instrument Cable': 'quarter-inch-20ft',
-    'Cat6 Cable - 10ft Professional Network Cable': 'cat6-10ft',
-    'Cat6 Cable - 50ft Professional Network Cable': 'cat6-50ft',
-    'Cat6 Cable - 100ft Professional Network Cable': 'cat6-100ft',
-    'AC Power Cable - Professional Grade IEC Power Cord': 'ac-power-cable',
-    'QSC K12.2 12" 2000W Powered Speaker': 'qsc-k12-2',
-    'RSG15 15" 3000W Passive Speaker System': 'rsg15-speaker-system',
-    'JBL EON715 15" & EON718S 18" Powered Speaker System': 'jbl-eon715-system',
-    'Mackie THUMP215 15" & THUMP118S 18" Powered System': 'mackie-thump215-system',
-    'On Stage SS7761B Pro Speaker Stand': 'ss7761b-speaker-stand',
-    'On Stage MS7701B Telescoping Boom Stand': 'ms7701b-mic-stand',
-    'Kick Drum Microphone Stand': 'kick-drum-mic-stand',
-    'On Stage MS7701B Microphone Boom Stand': 'ms7701b-mic-stand',
-    'On Stage SS7761B All-Aluminum Speaker Stand': 'ss7761b-speaker-stand',
-    'Allen & Heath DX168 Digital Snake': 'allen-heath-dx168',
-    'Midas DL16/DL32 Digital Stage Box': 'midas-dl16-dl32',
-    'ProCo StageMASTER 32/4 Analog Snake': 'proco-stagemaster-32-4',
-    'Hosa HSS-005X 32-Channel Snake': 'hosa-hss-005x',
-    'Behringer S32 Digital Snake': 'behringer-s32',
-    'Whirlwind M-32/4 Analog Snake': 'whirlwind-m-32-4',
-    'Allen & Heath AB168 Digital Snake': 'allen-heath-ab168',
-    'Behringer Powerplay P16-M 16-Channel Digital Personal Mixer': 'behringer-powerplay-p16m',
-    'Behringer Powerplay P16-I 16-channel Input Module': 'behringer-powerplay-p16i',
-    'Behringer Powerplay P16-D 16-channel Distribution Module': 'behringer-powerplay-p16d',
-    'In-Ear Monitors (IEM)': 'iem-headphones'
-  };
 
 const TAX_RATE = 0.0775 // 7.75% for Riverside, CA
 
