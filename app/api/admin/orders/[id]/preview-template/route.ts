@@ -20,9 +20,10 @@ interface Order {
   shipping_zip?: string;
 }
 
-export async function POST(request: NextRequest, context: { params: { id: string } }) {
+export async function POST(request: NextRequest) {
   try {
-    const orderId = Number(context.params.id);
+    const url = new URL(request.url);
+    const orderId = Number(url.pathname.split('/').slice(-2, -1)[0]); // Extract `[id]` from URL path
 
     if (!orderId || isNaN(orderId)) {
       return NextResponse.json({ error: "Invalid order ID" }, { status: 400 });
@@ -76,10 +77,10 @@ export async function POST(request: NextRequest, context: { params: { id: string
       html: html
     });
   } catch (error) {
-    console.error('Error generating template preview:', error);
+    console.error("Error generating template preview:", error);
     return NextResponse.json(
-      { error: 'Failed to generate template preview' },
+      { error: "Failed to generate template preview" },
       { status: 500 }
     );
   }
-} 
+}
