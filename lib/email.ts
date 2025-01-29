@@ -34,7 +34,7 @@ export const sendContractEmail = async ({
   contactOnSite,
   contactOnSitePhone,
   paymentMethod,
-  signature,
+  signature_url,
   taxAmount,
 }: {
   firstName: string
@@ -65,7 +65,7 @@ export const sendContractEmail = async ({
   contactOnSite?: string
   contactOnSitePhone?: string
   paymentMethod: string
-  signature: string
+  signature_url: string
   taxAmount: number | string
 }) => {
   const formatPrice = (price: number | string) => {
@@ -169,8 +169,8 @@ export const sendContractEmail = async ({
 
     // Convert base64 signature to buffer
     let signatureBuffer: Buffer | undefined
-    if (signature && signature.includes('base64,')) {
-      const signatureData = signature.split(';base64,').pop()
+    if (signature_url && signature_url.includes('base64,')) {
+      const signatureData = signature_url.split(';base64,').pop()
       if (signatureData) {
         signatureBuffer = Buffer.from(signatureData, 'base64')
       }
@@ -252,9 +252,9 @@ export const sendContractEmail = async ({
               </div>
               <div style="margin: 0 0 8px 0; padding-top: 12px; border-top: 1px solid #e5e7eb;">
                 <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                  <span style="color: #666;">Subtotal:</span>
+                  <span style="color: #666;">Products Subtotal:</span>
                   <span style="font-weight: 500; color: #1a1a1a;">
-                    $${formatPrice(Number(totalAmount) - Number(installationPrice))}
+                    $${formatPrice(Number(totalAmount) - Number(taxAmount) - Number(installationPrice))}
                   </span>
                 </div>
                 <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
@@ -263,20 +263,18 @@ export const sendContractEmail = async ({
                     $${formatPrice(taxAmount)}
                   </span>
                 </div>
-                ${
-                  Number(installationPrice) > 0
-                    ? `<div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                        <span style="color: #666;">Installation:</span>
-                        <span style="font-weight: 500; color: #1a1a1a;">
-                          $${formatPrice(installationPrice)}
-                        </span>
-                      </div>`
-                    : ''
-                }
+                ${Number(installationPrice) > 0 ? `
+                  <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <span style="color: #666;">Installation (No Tax):</span>
+                    <span style="font-weight: 500; color: #1a1a1a;">
+                      $${formatPrice(installationPrice)}
+                    </span>
+                  </div>
+                ` : ''}
                 <div style="display: flex; justify-content: space-between; padding-top: 12px; border-top: 1px solid #e5e7eb; margin-top: 12px;">
                   <span style="font-weight: 600; color: #1a1a1a;">Total:</span>
                   <span style="font-weight: 600; color: #2563eb; font-size: 18px;">
-                    $${formatPrice(Number(totalAmount) + Number(taxAmount))}
+                    $${formatPrice(Number(totalAmount))}
                   </span>
                 </div>
               </div>

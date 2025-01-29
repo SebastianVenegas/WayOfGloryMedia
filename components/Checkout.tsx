@@ -491,12 +491,16 @@ export default function Checkout({ products, onClose, onSubmit, installationPric
                       </div>
                     ))}
                     <div className="flex justify-between text-sm">
+                      <span>Products Subtotal</span>
+                      <span>${productsSubtotal.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
                       <span>Sales Tax</span>
                       <span>${productsTax.toFixed(2)}</span>
                     </div>
                     {installationPrice > 0 && (
                       <div className="flex justify-between">
-                        <span>Installation</span>
+                        <span>Installation (No Tax)</span>
                         <span>${installationPrice.toFixed(2)}</span>
                       </div>
                     )}

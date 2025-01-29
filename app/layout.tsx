@@ -6,6 +6,7 @@ import { SpeedInsights } from '@vercel/speed-insights/next'
 import { BundleProvider } from '@/context/BundleContext'
 import TawkToScript from '@/components/TawkToScript'
 import { headers } from 'next/headers'
+import { Toaster } from "@/components/ui/toaster"
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -33,6 +34,7 @@ export default async function RootLayout({
           </div>
         </BundleProvider>
         <TawkToScript />
+        <Toaster />
       </body>
     </html>
   )

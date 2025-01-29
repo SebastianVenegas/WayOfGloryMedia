@@ -30,6 +30,9 @@ import {
   Clock, 
   CheckCircle2, 
   XCircle,
+  Settings,
+  Code,
+  Sparkles,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -51,6 +54,10 @@ import {
 } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { toast } from 'sonner'
+import dynamic from 'next/dynamic'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+
+const Editor = dynamic(() => import('@/components/ui/editor'), { ssr: false })
 
 interface OrderItem {
   id: number
@@ -190,6 +197,43 @@ type OrderStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'all';
 type OrderStatusUpdate = 'pending' | 'confirmed' | 'completed' | 'cancelled';
 type SortOrder = 'newest' | 'oldest' | 'highest' | 'lowest';
 
+// Add this before the component
+function formatEmailPreview({ subject, content, order }: { 
+  subject: string
+  content: string
+  order: any
+}): string {
+  const formattedContent = content
+    .split('\n')
+    .map(line => line.trim())
+    .filter(line => line)
+    .map(line => line.startsWith('<p>') ? line : `<p>${line}</p>`)
+    .join('\n')
+
+  return `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      </head>
+      <body>
+        <div>
+          <h1>Dear ${order.first_name},</h1>
+          <div>
+            ${formattedContent}
+          </div>
+          <div>
+            <p>Best regards,</p>
+            <p>Way of Glory Team</p>
+            <p>Order #${order.id}</p>
+          </div>
+        </div>
+      </body>
+    </html>
+  `
+}
+
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([])
@@ -203,6 +247,49 @@ export default function OrdersPage() {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [isStatusOpen, setIsStatusOpen] = useState(false)
+  const [isEmailTemplatesOpen, setIsEmailTemplatesOpen] = useState(false)
+  const [sendingTemplateId, setSendingTemplateId] = useState<string | null>(null)
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null)
+  const [previewHtml, setPreviewHtml] = useState<string>('')
+  const [editedSubject, setEditedSubject] = useState<string>('')
+  const [viewMode, setViewMode] = useState<'edit' | 'preview'>('edit')
+  const [templateVars, setTemplateVars] = useState<Record<string, string>>({})
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false)
+  const [aiPrompt, setAiPrompt] = useState('')
+  const [isAiPromptOpen, setIsAiPromptOpen] = useState(false)
+  const [shippingStatus, setShippingStatus] = useState('')
+  const [isShippingPromptOpen, setIsShippingPromptOpen] = useState(false)
+
+  const emailTemplates = [
+    {
+      id: 'payment_reminder',
+      title: 'Payment Reminder',
+      subject: 'Payment Reminder for Your Way of Glory Order',
+      description: 'Remind customer about pending payment',
+      icon: DollarSign,
+    },
+    {
+      id: 'installation_confirmation',
+      title: 'Installation Confirmation',
+      subject: 'Installation Details for Your Way of Glory Order',
+      description: 'Confirm installation date and details',
+      icon: Wrench,
+    },
+    {
+      id: 'shipping_update',
+      title: 'Shipping Update',
+      subject: 'Shipping Update for Your Way of Glory Order',
+      description: 'Update customer about shipping status',
+      icon: Truck,
+    },
+    {
+      id: 'thank_you',
+      title: 'Thank You',
+      subject: 'Thank You for Your Way of Glory Order',
+      description: 'Send a thank you note after completion',
+      icon: CheckCircle2,
+    },
+  ]
 
   useEffect(() => {
     fetchOrders()
@@ -319,8 +406,10 @@ export default function OrdersPage() {
       }, 0),
       totalTax: orders.reduce((sum, order) => sum + calculateOrderTax(order), 0),
       totalWithTax: orders.reduce((sum, order) => {
-        const withTax = calculateOrderTotalWithTax(order)
-        return sum + withTax
+        const amount = typeof order.total_amount === 'string' 
+          ? parseFloat(order.total_amount) 
+          : order.total_amount
+        return sum + amount
       }, 0),
       totalProfit: orders.reduce((sum, order) => {
         // Get the subtotal of products only (before tax)
@@ -338,10 +427,8 @@ export default function OrdersPage() {
             : order.installation_price)
           : 0;
 
-        // For products with 20% markup, profit is (selling price - cost)
-        // If selling price is S, then cost is S/1.2
-        // So profit = S - (S/1.2) = S * (1 - 1/1.2) = S * 0.1667
-        const productProfit = productSubtotal * 0.1667;
+        // Calculate profit as 21.55% of product subtotal
+        const productProfit = productSubtotal * 0.2155;
         
         // Total profit is product profit plus 100% of installation
         const orderProfit = productProfit + installationPrice;
@@ -390,6 +477,352 @@ export default function OrdersPage() {
     handleDeleteOrder(orderId, orders, setOrders);
   };
 
+  const getTemplatePrompt = (templateType: string) => {
+    switch (templateType) {
+      case 'payment_reminder':
+        return `Create a professional payment reminder email with the following requirements:
+        
+        Subject: Payment Reminder for Order #${selectedOrder?.id}
+
+        Email Content:
+        - Start with a polite greeting to ${selectedOrder?.first_name}
+        - Remind about the pending payment of $${selectedOrder?.total_amount}
+        - Clearly state that we ONLY accept these payment methods:
+          * Cash (in person at our office)
+          * Check (made payable to Way of Glory)
+          * Direct Deposit/Bank Transfer
+        - For cash payments: Include our office address and hours
+        - For checks: Provide mailing address and check details
+        - For direct deposit: Include bank account information
+        - Create appropriate urgency while staying professional
+        - Include our contact information for payment questions
+        - End with a professional signature
+
+        Note: The email must follow our exact HTML structure with header, content, and footer sections.`
+      case 'installation_confirmation':
+        return `Create a professional installation confirmation email with the following requirements:
+        
+        Subject: Installation Confirmation for Order #${selectedOrder?.id}
+
+        Email Content:
+        - Start with a warm greeting to ${selectedOrder?.first_name}
+        - Confirm the installation date: ${selectedOrder?.installation_date}
+        - List preparation instructions for the customer
+        - Explain what to expect during installation
+        - Include our contact information
+        - End with a professional signature
+
+        Note: The email must follow our exact HTML structure with header, content, and footer sections.`
+      case 'shipping_update':
+        return `Create a professional shipping update email with the following requirements:
+        
+        Subject: Shipping Update for Order #${selectedOrder?.id}
+
+        Email Content:
+        - Start with a friendly greeting to ${selectedOrder?.first_name}
+        - Inform that their order status is: ${shippingStatus}
+        - Provide specific details based on the status:
+          ${shippingStatus === 'Processing' ? '* Order is being prepared for shipping\n      * Expected to ship within 1-2 business days' : ''}
+          ${shippingStatus === 'Shipped' ? '* Order has been shipped\n      * Include tracking number placeholder\n      * Estimated delivery timeframe' : ''}
+          ${shippingStatus === 'Out for Delivery' ? '* Order will be delivered today\n      * Delivery window if available' : ''}
+          ${shippingStatus === 'Delayed' ? '* Explain reason for delay\n      * Provide new estimated timeframe\n      * Apologize for inconvenience' : ''}
+        - Include any relevant next steps or actions needed
+        - Provide customer support contact information
+        - End with a professional signature
+
+        Note: The email must follow our exact HTML structure with header, content, and footer sections.`
+      case 'thank_you':
+        return `Create a professional thank you email with the following requirements:
+        
+        Subject: Thank You for Your Order #${selectedOrder?.id}
+
+        Email Content:
+        - Start with a warm greeting to ${selectedOrder?.first_name}
+        - Express sincere gratitude for their business
+        - Confirm their order details (Order #${selectedOrder?.id})
+        - Provide any relevant follow-up information
+        - Encourage future engagement
+        - End with a professional signature
+
+        Note: The email must follow our exact HTML structure with header, content, and footer sections.`
+      default:
+        return emailTemplates.find(t => t.id === templateType)?.description || ''
+    }
+  }
+
+  const handleShippingUpdate = async (status: string) => {
+    setShippingStatus(status)
+    setIsShippingPromptOpen(false)
+    setIsGeneratingAI(true)
+    
+    const templatePrompt = `Create a shipping update email for Order #${selectedOrder?.id}.
+    Current Status: ${status}
+
+    Guidelines:
+    - Only state the current order status
+    - Do not include any estimated times or dates unless provided
+    - Do not make assumptions about delivery times
+    - Provide only factual information about the order
+    - Include customer service contact information for questions
+    - Keep the message clear and concise
+
+    Note: Stick to only the facts we know about the order status.`
+
+    try {
+      const response = await fetch('/api/admin/generate-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt: templatePrompt,
+          templateType: 'shipping_update',
+          order: selectedOrder,
+          viewMode,
+          variables: {
+            customerName: `${selectedOrder?.first_name} ${selectedOrder?.last_name}`,
+            orderNumber: selectedOrder?.id,
+            amount: selectedOrder?.total_amount,
+            installationDate: selectedOrder?.installation_date,
+          }
+        }),
+      })
+
+      const data = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to generate content')
+      }
+
+      setPreviewHtml(data.html || '')
+      setEditedSubject(data.subject || '')
+      toast.success('Email content generated successfully')
+    } catch (error) {
+      console.error('Error generating content:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to generate content. Please try again.')
+    } finally {
+      setIsGeneratingAI(false)
+    }
+  }
+
+  // Clear email state function
+  const clearEmailState = () => {
+    setPreviewHtml('')
+    setEditedSubject('')
+    setAiPrompt('')
+    setSelectedTemplate(null)
+    setViewMode('edit')
+    setTemplateVars({})
+    setIsGeneratingAI(false)
+    setSendingTemplateId(null)
+  }
+
+  // Handle email templates dialog
+  const handleEmailTemplatesOpenChange = (open: boolean) => {
+    if (!open) {
+      clearEmailState()
+    }
+    setIsEmailTemplatesOpen(open)
+  }
+
+  // Handle template selection
+  const handleTemplateSelect = async (templateId: string) => {
+    try {
+      clearEmailState()
+      setSelectedTemplate(templateId)
+      
+      if (templateId === 'shipping_update') {
+        setIsShippingPromptOpen(true)
+        return
+      }
+      
+      setIsGeneratingAI(true)
+      const templatePrompt = getTemplatePrompt(templateId)
+      if (!templatePrompt) return
+
+      const response = await fetch('/api/admin/generate-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt: templatePrompt,
+          templateType: templateId,
+          order: selectedOrder,
+          viewMode,
+          variables: {
+            customerName: `${selectedOrder?.first_name} ${selectedOrder?.last_name}`,
+            orderNumber: selectedOrder?.id,
+            amount: selectedOrder?.total_amount,
+            installationDate: selectedOrder?.installation_date,
+          }
+        }),
+      })
+
+      const data = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to generate content')
+      }
+
+      if (viewMode === 'preview') {
+        setPreviewHtml(data.html)
+      } else {
+        setPreviewHtml(data.editContent)
+      }
+      setEditedSubject(data.subject || '')
+      setIsAiPromptOpen(false)
+      toast.success('Email content generated successfully')
+    } catch (error) {
+      console.error('Error generating content:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to generate content. Please try again.')
+    } finally {
+      setIsGeneratingAI(false)
+    }
+  }
+
+  // Handle email generation
+  const handleGenerateEmail = async () => {
+    try {
+      setIsGeneratingAI(true)
+      const response = await fetch('/api/admin/generate-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt: aiPrompt,
+          templateType: selectedTemplate || 'custom',
+          order: selectedOrder,
+          viewMode,
+          variables: {
+            customerName: `${selectedOrder?.first_name} ${selectedOrder?.last_name}`,
+            orderNumber: selectedOrder?.id,
+            amount: selectedOrder?.total_amount,
+            installationDate: selectedOrder?.installation_date,
+          }
+        }),
+      })
+
+      const data = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to generate content')
+      }
+
+      if (viewMode === 'preview') {
+        setPreviewHtml(data.html)
+      } else {
+        setPreviewHtml(data.editContent)
+      }
+      setEditedSubject(data.subject || '')
+      setIsAiPromptOpen(false)
+      toast.success('Email content generated successfully')
+    } catch (error) {
+      console.error('Error generating content:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to generate content. Please try again.')
+    } finally {
+      setIsGeneratingAI(false)
+    }
+  }
+
+  // Handle sending email
+  const handleSendEmail = async () => {
+    if (!selectedOrder?.id) {
+      toast.error('No order selected')
+      return
+    }
+
+    try {
+      setSendingTemplateId('sending')
+      const response = await fetch(`/api/admin/orders/${selectedOrder.id}/send-template`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          templateId: selectedTemplate || 'custom',
+          customEmail: {
+            subject: editedSubject,
+            content: viewMode === 'preview' ? previewHtml : formatEmailPreview({
+              subject: editedSubject,
+              content: previewHtml,
+              order: selectedOrder
+            })
+          }
+        }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        toast.success('Email sent successfully')
+        clearEmailState()
+        setIsEmailTemplatesOpen(false)
+      } else {
+        throw new Error(data.error || 'Failed to send email')
+      }
+    } catch (error) {
+      console.error('Error sending email:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to send email')
+    } finally {
+      setSendingTemplateId(null)
+    }
+  }
+
+  // Handle quick generate
+  const handleQuickGenerate = async (templateId: string) => {
+    try {
+      clearEmailState()
+      setPreviewHtml('<p>Generating your email content...</p>')
+      setIsGeneratingAI(true)
+      
+      const templatePrompt = getTemplatePrompt(templateId)
+      if (!templatePrompt) return
+
+      const response = await fetch('/api/admin/generate-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt: templatePrompt,
+          templateType: templateId,
+          order: selectedOrder,
+          viewMode,
+          variables: {
+            customerName: `${selectedOrder?.first_name} ${selectedOrder?.last_name}`,
+            orderNumber: selectedOrder?.id,
+            amount: selectedOrder?.total_amount,
+            installationDate: selectedOrder?.installation_date,
+          }
+        }),
+      })
+
+      const data = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to generate content')
+      }
+
+      setPreviewHtml(data.html || '')
+      setEditedSubject(data.subject || '')
+      setIsAiPromptOpen(false)
+      toast.success('Email content generated successfully')
+    } catch (error) {
+      console.error('Error generating content:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to generate content. Please try again.')
+      setPreviewHtml('<p>Start typing your email content here...</p>')
+    } finally {
+      setIsGeneratingAI(false)
+    }
+  }
+
+  // Handle new email
+  const handleNewEmail = () => {
+    clearEmailState()
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -402,6 +835,17 @@ export default function OrdersPage() {
 
   return (
     <>
+      {/* Add global loading overlay */}
+      {isGeneratingAI && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
+          <div className="bg-white rounded-lg p-8 flex flex-col items-center gap-4 shadow-xl">
+            <div className="h-16 w-16 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+            <div className="text-xl font-semibold">Generating Email...</div>
+            <div className="text-gray-500">Please wait while we craft your email</div>
+          </div>
+        </div>
+      )}
+
       <Dialog open={!!selectedSignature} onOpenChange={() => setSelectedSignature(null)}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
@@ -487,28 +931,86 @@ export default function OrdersPage() {
 
             {/* Revenue Stats */}
             <div className="bg-white rounded-xl border border-gray-200 p-6">
-              <h3 className="text-sm font-medium text-gray-500 mb-4">Revenue</h3>
-              <div className="space-y-4">
+              <h3 className="text-sm font-medium text-gray-500 mb-6">Revenue Overview</h3>
+              <div className="space-y-6">
+                {/* Revenue Section */}
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <p className="text-sm text-gray-500">Total Revenue</p>
-                    <p className="text-2xl font-bold text-gray-900">${stats.totalWithTax.toFixed(2)}</p>
-                  </div>
-                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-blue-500 rounded-full" style={{ width: '100%' }} />
+                  <h4 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">Revenue</h4>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-gray-400"></div>
+                        <p className="text-sm text-gray-600">Products</p>
+                      </div>
+                      <p className="text-sm font-semibold text-gray-900">
+                        ${(stats.totalWithTax - orders.reduce((sum, order) => sum + Number(order.installation_price || 0), 0)).toFixed(2)}
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                        <p className="text-sm text-gray-600">Installation</p>
+                      </div>
+                      <p className="text-sm font-semibold text-blue-600">
+                        ${orders.reduce((sum, order) => sum + Number(order.installation_price || 0), 0).toFixed(2)}
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-between pt-2 mt-2 border-t border-gray-100">
+                      <p className="text-sm font-medium text-gray-900">Total Revenue</p>
+                      <p className="text-base font-bold text-gray-900">
+                        ${stats.totalWithTax.toFixed(2)}
+                      </p>
+                    </div>
                   </div>
                 </div>
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <p className="text-sm text-gray-500">Total Profit</p>
-                    <p className="text-2xl font-bold text-green-600">${stats.totalProfit.toFixed(2)}</p>
+
+                {/* Profit Section */}
+                <div className="pt-4 border-t border-gray-200">
+                  <h4 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">Profit</h4>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
+                        <p className="text-sm text-gray-600">Products (20%)</p>
+                      </div>
+                      <p className="text-sm font-semibold text-emerald-600">
+                        ${(orders.reduce((sum, order) => {
+                          const productSubtotal = order.order_items.reduce((itemSum, item) => 
+                            itemSum + (Number(item.price_at_time) * item.quantity), 0);
+                          return sum + (productSubtotal * 0.2155);
+                        }, 0)).toFixed(2)}
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-emerald-600"></div>
+                        <p className="text-sm text-gray-600">Installation (100%)</p>
+                      </div>
+                      <p className="text-sm font-semibold text-emerald-600">
+                        ${orders.reduce((sum, order) => sum + Number(order.installation_price || 0), 0).toFixed(2)}
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-between pt-2 mt-2 border-t border-gray-100">
+                      <p className="text-sm font-medium text-gray-900">Total Profit</p>
+                      <p className="text-base font-bold text-emerald-600">
+                        ${stats.totalProfit.toFixed(2)}
+                      </p>
+                    </div>
                   </div>
-                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                </div>
+
+                {/* Profit Percentage */}
+                <div className="pt-4 border-t border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">Profit Margin</p>
+                    <p className="text-sm font-bold text-emerald-600">
+                      {((stats.totalProfit / stats.totalWithTax) * 100).toFixed(1)}%
+                    </p>
+                  </div>
+                  <div className="mt-2 h-2 bg-gray-100 rounded-full overflow-hidden">
                     <div 
-                      className="h-full bg-green-500 rounded-full" 
-                      style={{ 
-                        width: `${(stats.totalProfit / stats.totalWithTax * 100).toFixed(0)}%` 
-                      }} 
+                      className="h-full bg-emerald-500 rounded-full" 
+                      style={{ width: `${(stats.totalProfit / stats.totalWithTax * 100).toFixed(1)}%` }}
                     />
                   </div>
                 </div>
@@ -739,7 +1241,7 @@ export default function OrdersPage() {
                       <td className="p-4">
                         <div className="flex flex-col">
                           <span className="text-sm font-semibold text-gray-900">
-                            ${(Number(order.total_amount) + calculateOrderTax(order)).toFixed(2)}
+                            ${Number(order.total_amount).toFixed(2)}
                           </span>
                           {Number(order.installation_price) > 0 && (
                             <span className="text-xs text-gray-600">
@@ -927,7 +1429,7 @@ export default function OrdersPage() {
                     </p>
                     <div className="border-t border-gray-200 pt-2 space-y-3">
                       <p className="text-sm flex items-center gap-2">
-                        <Clock className="h-4 w-4 text-gray-400 shrink-0" />
+                        <Clock className="h-4 w-4 text-gray-400" />
                         <span className="text-gray-600">
                           {new Date(selectedOrder.installation_date).toLocaleDateString('en-US', {
                             weekday: 'long',
@@ -940,7 +1442,7 @@ export default function OrdersPage() {
                       </p>
                       {selectedOrder.contact_onsite && (
                         <p className="text-sm flex items-center gap-2">
-                          <Phone className="h-4 w-4 text-gray-400 shrink-0" />
+                          <Phone className="h-4 w-4 text-gray-400" />
                           <span className="text-gray-600">
                             Contact: {selectedOrder.contact_onsite} ({selectedOrder.contact_onsite_phone})
                           </span>
@@ -995,16 +1497,16 @@ export default function OrdersPage() {
                         <div className="flex justify-between font-medium pt-2 border-t border-gray-200">
                           <span className="text-gray-900">Total</span>
                           <span className="text-lg text-gray-900">
-                            ${(Number(selectedOrder.total_amount) + calculateOrderTax(selectedOrder)).toFixed(2)}
+                            ${Number(selectedOrder.total_amount).toFixed(2)}
                           </span>
                         </div>
                         <div className="pt-4 border-t border-gray-200">
                           <div className="space-y-2">
                             <div className="flex justify-between text-sm">
-                              <span className="text-gray-500">Product Profit (20% markup)</span>
+                              <span className="text-gray-500">Product Profit (20%)</span>
                               <span className="font-medium text-green-600">
-                                ${(selectedOrder.order_items.reduce((sum, item) => 
-                                  sum + (Number(item.price_at_time) * item.quantity), 0) / 6).toFixed(2)}
+                                ${((selectedOrder.order_items.reduce((sum, item) => 
+                                  sum + (Number(item.price_at_time) * item.quantity), 0)) * 0.2155).toFixed(2)}
                               </span>
                             </div>
                             {Number(selectedOrder.installation_price || 0) > 0 && (
@@ -1019,8 +1521,8 @@ export default function OrdersPage() {
                               <span className="text-gray-900">Total Profit</span>
                               <span className="text-lg text-green-600">
                                 ${(
-                                  (selectedOrder.order_items.reduce((sum, item) => 
-                                    sum + (Number(item.price_at_time) * item.quantity), 0) / 6) +
+                                  ((selectedOrder.order_items.reduce((sum, item) => 
+                                    sum + (Number(item.price_at_time) * item.quantity), 0)) * 0.2155) +
                                   Number(selectedOrder.installation_price || 0)
                                 ).toFixed(2)}
                               </span>
@@ -1058,9 +1560,30 @@ export default function OrdersPage() {
                   </div>
                 </div>
 
+                {/* Signature Section */}
+                {selectedOrder.signature_url && (
+                  <div className="bg-gray-50 rounded-lg p-4 space-y-3 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                    <h4 className="text-sm font-medium text-gray-900 flex items-center gap-2 pb-2 border-b border-gray-200">
+                      <PenTool className="h-4 w-4" />
+                      Customer Signature
+                    </h4>
+                    <div className="flex justify-center bg-white p-4 rounded-lg border border-gray-100">
+                      <img 
+                        src={selectedOrder.signature_url} 
+                        alt="Customer Signature" 
+                        className="max-h-32 object-contain"
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 text-center">
+                      Signed electronically on {new Date(selectedOrder.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                )}
+
                 {/* Actions */}
                 <div className="bg-gray-50 rounded-lg p-4 space-y-3 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
                   <h4 className="text-sm font-medium text-gray-900 flex items-center gap-2 pb-2 border-b border-gray-200">
+                    <Settings className="h-4 w-4" />
                     Actions
                   </h4>
                   <div className="flex flex-col gap-2">
@@ -1083,19 +1606,14 @@ export default function OrdersPage() {
                       <RefreshCw className="h-4 w-4" />
                       Update Status
                     </Button>
-                    {selectedOrder.signature_url && (
-                      <Button 
-                        variant="outline" 
-                        className="w-full justify-start gap-2 bg-white hover:bg-gray-100"
-                        onClick={() => {
-                          setIsDetailsOpen(false);
-                          setSelectedSignature(selectedOrder.signature_url);
-                        }}
-                      >
-                        <PenTool className="h-4 w-4" />
-                        View Signature
-                      </Button>
-                    )}
+                    <Button 
+                      variant="outline" 
+                      className="w-full justify-start gap-2 bg-white hover:bg-gray-100"
+                      onClick={() => handleEmailTemplatesOpenChange(true)}
+                    >
+                      <FileText className="h-4 w-4" />
+                      Send Email Template
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -1143,6 +1661,415 @@ export default function OrdersPage() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Email Templates Dialog */}
+      <Dialog open={isEmailTemplatesOpen} onOpenChange={handleEmailTemplatesOpenChange}>
+        <DialogContent className="max-w-7xl h-[90vh] bg-white p-0 gap-0">
+          <div className="border-b px-6 py-4">
+            <DialogTitle className="text-xl font-semibold flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Mail className="h-5 w-5 text-gray-500" />
+                <span>{selectedTemplate ? emailTemplates.find(t => t.id === selectedTemplate)?.title : 'Email Templates'}</span>
+              </div>
+              {selectedTemplate && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={`gap-2 ${viewMode === 'edit' ? 'bg-blue-50 text-blue-600' : ''}`}
+                    onClick={() => setViewMode('edit')}
+                  >
+                    <Code className="h-4 w-4" />
+                    Edit
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={`gap-2 ${viewMode === 'preview' ? 'bg-blue-50 text-blue-600' : ''}`}
+                    onClick={() => setViewMode('preview')}
+                  >
+                    <Eye className="h-4 w-4" />
+                    Preview
+                  </Button>
+                </div>
+              )}
+            </DialogTitle>
+          </div>
+          
+          <div className="flex h-[calc(90vh-80px)]">
+            <div className="w-80 border-r overflow-y-auto p-4 bg-gray-50">
+              <div className="mb-4">
+                <Button
+                  className="w-full gap-2 bg-blue-600 hover:bg-blue-700"
+                  onClick={() => {
+                    clearEmailState()
+                    setSelectedTemplate(null);
+                    setPreviewHtml('');
+                    setEditedSubject('');
+                    setTemplateVars({});
+                    setViewMode('edit');
+                  }}
+                >
+                  <Plus className="h-4 w-4" />
+                  Create New Email
+                </Button>
+              </div>
+              
+              <div className="space-y-1 mb-4">
+                <h4 className="text-sm font-medium text-gray-500 px-4">Email Templates</h4>
+              </div>
+
+              <div className="space-y-3">
+                {emailTemplates.map((template) => (
+                  <div
+                    key={template.id}
+                    className={`flex items-start gap-3 p-4 rounded-lg border ${
+                      selectedTemplate === template.id 
+                        ? 'border-blue-500 bg-white shadow-sm' 
+                        : 'border-transparent hover:border-gray-200 hover:bg-white'
+                    } transition-all cursor-pointer relative group`}
+                    onClick={() => !sendingTemplateId && handleTemplateSelect(template.id)}
+                  >
+                    <div className={`p-2 rounded-lg ${
+                      selectedTemplate === template.id ? 'bg-blue-50' : 'bg-gray-100'
+                    }`}>
+                      {sendingTemplateId === template.id ? (
+                        <div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+                      ) : (
+                        <template.icon className={`h-5 w-5 ${
+                          selectedTemplate === template.id ? 'text-blue-600' : 'text-gray-600'
+                        }`} />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-sm font-medium text-gray-900 truncate">{template.title}</h4>
+                      <p className="text-sm text-gray-500 mt-1 line-clamp-2">{template.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto">
+              <div className="p-6 space-y-6">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-gray-700">Email Subject</Label>
+                    <Input
+                      value={editedSubject}
+                      onChange={(e) => setEditedSubject(e.target.value)}
+                      className="w-full"
+                      placeholder="Enter email subject..."
+                    />
+                  </div>
+
+                  <Tabs defaultValue="content" className="w-full">
+                    <div className="flex items-center justify-between mb-4">
+                      <TabsList className="grid w-[400px] grid-cols-2">
+                        <TabsTrigger value="content" className="gap-2">
+                          <FileText className="h-4 w-4" />
+                          Content
+                        </TabsTrigger>
+                        <TabsTrigger value="variables" className="gap-2">
+                          <Settings className="h-4 w-4" />
+                          Variables
+                        </TabsTrigger>
+                      </TabsList>
+                      
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-2 border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
+                        onClick={() => setIsAiPromptOpen(true)}
+                      >
+                        <Sparkles className="h-4 w-4" />
+                        Generate with AI
+                      </Button>
+                    </div>
+
+                    <TabsContent value="content" className="mt-0">
+                      {viewMode === 'edit' ? (
+                        <div className="border rounded-lg overflow-hidden bg-white shadow-sm">
+                          <div className="p-4">
+                            <Editor
+                              value={previewHtml}
+                              onChange={(value) => {
+                                const cleanValue = value.replace(/<p>/g, '').replace(/<\/p>/g, '\n')
+                                setPreviewHtml(cleanValue)
+                              }}
+                              className="min-h-[500px] prose max-w-none"
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="border rounded-lg overflow-hidden bg-white">
+                          <div className="min-h-[600px] w-full">
+                            <iframe
+                              srcDoc={previewHtml}
+                              className="w-full h-full min-h-[600px]"
+                              title="Email Preview"
+                              style={{ border: 'none' }}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </TabsContent>
+
+                    <TabsContent value="variables" className="mt-0">
+                      <div className="bg-white border rounded-lg p-6 shadow-sm">
+                        <div className="grid grid-cols-2 gap-6">
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium text-gray-700">Customer Name</Label>
+                            <Input
+                              value={templateVars.customerName || ''}
+                              onChange={(e) => setTemplateVars(prev => ({
+                                ...prev,
+                                customerName: e.target.value
+                              }))}
+                              placeholder={`${selectedOrder?.first_name} ${selectedOrder?.last_name}`}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium text-gray-700">Order Number</Label>
+                            <Input
+                              value={templateVars.orderNumber || ''}
+                              onChange={(e) => setTemplateVars(prev => ({
+                                ...prev,
+                                orderNumber: e.target.value
+                              }))}
+                              placeholder={`#${selectedOrder?.id}`}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium text-gray-700">Total Amount</Label>
+                            <Input
+                              value={templateVars.totalAmount || ''}
+                              onChange={(e) => setTemplateVars(prev => ({
+                                ...prev,
+                                totalAmount: e.target.value
+                              }))}
+                              placeholder={`$${selectedOrder?.total_amount}`}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium text-gray-700">Installation Date</Label>
+                            <Input
+                              value={templateVars.installationDate || ''}
+                              onChange={(e) => setTemplateVars(prev => ({
+                                ...prev,
+                                installationDate: e.target.value
+                              }))}
+                              placeholder={selectedOrder?.installation_date || ''}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+                </div>
+
+                <div className="flex items-center gap-4 p-4 border-t">
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => {
+                      clearEmailState()
+                      setIsEmailTemplatesOpen(false)
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    className="flex-1 gap-2 bg-blue-600 hover:bg-blue-700"
+                    onClick={handleGenerateEmail}
+                    disabled={!aiPrompt.trim() || isGeneratingAI}
+                  >
+                    {isGeneratingAI ? (
+                      <>
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-4 w-4" />
+                        Generate Email
+                      </>
+                    )}
+                  </Button>
+                  {previewHtml && (
+                    <Button
+                      className="flex-1 gap-2 bg-green-600 hover:bg-green-700"
+                      onClick={handleSendEmail}
+                      disabled={sendingTemplateId === 'sending'}
+                    >
+                      {sendingTemplateId === 'sending' ? (
+                        <>
+                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                          Sending...
+                        </>
+                      ) : (
+                        <>
+                          <Mail className="h-4 w-4" />
+                          Send Email
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* AI Prompt Dialog */}
+      <Dialog open={isAiPromptOpen} onOpenChange={setIsAiPromptOpen}>
+        <DialogContent className="sm:max-w-[800px] bg-white">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <Sparkles className="h-5 w-5 text-blue-500" />
+              Generate Email Content
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6 py-4">
+            <Tabs defaultValue="quick" className="w-full">
+              <TabsList className="grid w-[400px] grid-cols-2 mb-6">
+                <TabsTrigger value="quick" className="gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white">
+                  <Sparkles className="h-4 w-4" />
+                  Quick Generate
+                </TabsTrigger>
+                <TabsTrigger value="custom" className="gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white">
+                  <PenTool className="h-4 w-4" />
+                  Custom Write
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="quick" className="mt-0 space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  {emailTemplates.map((template) => (
+                    <Button
+                      key={template.id}
+                      variant="outline"
+                      className="h-auto p-4 flex flex-col items-start gap-2 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700 transition-colors bg-white text-gray-700"
+                      onClick={() => {
+                        setAiPrompt(template.description)
+                        handleQuickGenerate(template.id)
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <template.icon className="h-4 w-4 text-blue-500" />
+                        <span className="font-medium">{template.title}</span>
+                      </div>
+                      <p className="text-sm text-gray-500 text-left">{template.description}</p>
+                    </Button>
+                  ))}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="custom" className="mt-0 space-y-4">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-gray-700">What would you like to say?</Label>
+                    <textarea
+                      value={aiPrompt}
+                      onChange={(e) => setAiPrompt(e.target.value)}
+                      placeholder="Describe what you want to communicate to the customer..."
+                      className="w-full h-32 p-4 text-sm rounded-lg border border-gray-200 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-gray-400"
+                    />
+                  </div>
+
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                    <div className="flex gap-2">
+                      <Info className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                      <div className="space-y-2 text-sm text-gray-700">
+                        <p className="font-medium">Available Variables:</p>
+                        <ul className="list-disc pl-4 space-y-1">
+                          <li>{'{{customerName}}'} - Full name of the customer</li>
+                          <li>{'{{orderNumber}}'} - Order reference number</li>
+                          <li>{'{{amount}}'} - Total order amount</li>
+                          <li>{'{{installationDate}}'} - Scheduled installation date</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
+          <div className="flex justify-end gap-3 border-t pt-4">
+            <Button
+              variant="outline"
+              onClick={() => setIsAiPromptOpen(false)}
+              className="text-gray-700 hover:text-gray-900"
+            >
+              Cancel
+            </Button>
+            <Button
+              className="gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+              onClick={handleGenerateEmail}
+              disabled={!aiPrompt.trim() || isGeneratingAI}
+            >
+              {isGeneratingAI ? (
+                <>
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4" />
+                  Generate Email
+                </>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Shipping Status Dialog */}
+      <Dialog open={isShippingPromptOpen} onOpenChange={setIsShippingPromptOpen}>
+        <DialogContent className="sm:max-w-[500px] bg-white">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <Truck className="h-5 w-5 text-blue-500" />
+              Select Current Order Status
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {isGeneratingAI && (
+              <div className="absolute inset-0 flex items-center justify-center bg-white/80 z-50">
+                <div className="flex flex-col items-center gap-2">
+                  <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+                  <p className="text-sm text-gray-600">Generating email...</p>
+                </div>
+              </div>
+            )}
+            <div className="grid grid-cols-1 gap-3">
+              {['Processing', 'Shipped', 'Out for Delivery', 'Delayed'].map((status) => (
+                <Button
+                  key={status}
+                  variant="outline"
+                  className="w-full justify-start gap-3 py-6 text-left"
+                  onClick={() => handleShippingUpdate(status)}
+                  disabled={isGeneratingAI}
+                >
+                  <div className="flex items-center gap-3">
+                    {status === 'Processing' && <Package className="h-5 w-5 text-blue-500" />}
+                    {status === 'Shipped' && <Truck className="h-5 w-5 text-green-500" />}
+                    {status === 'Out for Delivery' && <MapPin className="h-5 w-5 text-purple-500" />}
+                    {status === 'Delayed' && <Clock className="h-5 w-5 text-orange-500" />}
+                    <div>
+                      <div className="font-medium">{status}</div>
+                      <div className="text-sm text-gray-500">
+                        Select to update customer about this status
+                      </div>
+                    </div>
+                  </div>
+                </Button>
+              ))}
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </>

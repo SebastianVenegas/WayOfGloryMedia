@@ -13,7 +13,8 @@ import {
   Plus,
   MessageSquare,
   Star,
-  ChevronDown
+  ChevronDown,
+  ChevronRight
 } from 'lucide-react'
 import Header from '../../components/Header'
 import Footer from '../../components/Footer'
@@ -22,8 +23,10 @@ import Image from 'next/image'
 import ScrollAnimation from '../../components/ui/scroll-animation'
 import { cn } from '../../lib/utils'
 import { LucideIcon } from 'lucide-react'
+import ServiceCard from '@/components/ui/service-card'
 
 interface Service {
+  id: string
   title: string
   subtitle?: string
   description: string
@@ -32,6 +35,8 @@ interface Service {
   note?: string
   icon: LucideIcon
   featured?: boolean
+  price: number
+  category: string
   pricing?: {
     initial: string
     note: string
@@ -42,6 +47,7 @@ interface Service {
 
 const services: Service[] = [
   {
+    id: "1",
     title: "Professional Live Streaming Setup & Management",
     description: "Complete streaming solution for churches with existing equipment",
     includes: [
@@ -59,65 +65,68 @@ const services: Service[] = [
       "On-Site Operator Support"
     ],
     note: "Custom packages available based on your needs",
-    icon: Video
+    icon: Video,
+    price: 250.00,
+    category: "Streaming"
   },
   {
-    title: "Church Sound System Optimization",
-    description: "Professional audio system tuning and optimization",
+    id: "2",
+    title: "Audio Equipment Training",
+    description: "Comprehensive training sessions for your team on audio equipment operation",
     includes: [
-      "Comprehensive audio assessment & system diagnostics",
-      "Mixer & microphone calibration for optimal clarity",
-      "Acoustic adjustment to eliminate echo & distortion",
-      "Basic staff training on system operation"
+      "Hands-on equipment operation training",
+      "Signal flow and routing instruction",
+      "Troubleshooting techniques",
+      "Best practices for live sound",
+      "Maintenance procedures"
     ],
     upgrades: [
-      "Advanced System Tuning",
-      "Extended Staff Training",
-      "Feedback Elimination System"
+      "Advanced mixing techniques",
+      "Digital console mastery",
+      "Effects processing",
+      "Recording basics"
     ],
-    icon: Settings
+    icon: Headphones,
+    price: 250.00,
+    category: "Training"
   },
   {
-    title: "Ongoing Audio Support Subscription",
-    description: "Flexible monthly support and maintenance packages",
+    id: "3",
+    title: "Emergency Technical Support",
+    description: "Priority response technical support for urgent audio system issues",
     includes: [
-      "Regular system check-ups & maintenance",
-      "Remote support for troubleshooting",
-      "Priority emergency support",
-      "Access to exclusive tech training sessions"
+      "24/7 emergency response",
+      "Remote troubleshooting",
+      "On-site support when needed",
+      "Post-incident analysis",
+      "Preventive recommendations"
     ],
-    note: "Flexible plans to fit your budget",
-    icon: HeadphonesIcon
+    note: "Available for existing clients",
+    icon: Settings,
+    price: 250.00,
+    category: "Support"
   },
   {
-    title: "Custom Audio System Design",
-    description: "Tailored audio solution design for your church",
+    id: "4",
+    title: "Live Sound System Design",
+    description: "Professional consultation for designing and optimizing your church's sound system",
     includes: [
-      "Custom sound system blueprints",
-      "Equipment recommendations & cost planning",
-      "Site acoustic evaluation for best placement",
-      "Integration with existing church infrastructure"
-    ],
-    note: "Free consultation for new projects",
-    icon: Wrench
-  },
-  {
-    title: "Comprehensive Audio Team Training",
-    description: "Complete training program for your audio team",
-    includes: [
-      "Hands-on workshops for volunteers & staff",
-      "Live mixing techniques for balanced sound during services",
-      "Troubleshooting strategies for audio issues",
-      "Custom training guides for ongoing reference",
-      "Certification upon completion"
+      "Complete venue acoustic analysis",
+      "Speaker placement and coverage optimization",
+      "Equipment recommendations",
+      "Budget planning",
+      "Installation supervision"
     ],
     upgrades: [
-      "Advanced Mixing Techniques",
-      "Custom Training Plan",
-      "One-on-One Expert Coaching"
+      "3D acoustic modeling",
+      "Custom speaker design",
+      "Digital network planning",
+      "Wireless coordination"
     ],
-    note: "Group rates available",
-    icon: Users
+    note: "Includes detailed documentation",
+    icon: HeadphonesIcon,
+    price: 250.00,
+    category: "Design"
   }
 ]
 
@@ -166,6 +175,8 @@ export default function ServicesPage() {
   const [expandedCard, setExpandedCard] = useState<number | null>(null)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [imagesLoaded, setImagesLoaded] = useState(false)
+  const [selectedService, setSelectedService] = useState<Service | null>(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
 
   // Preload images on mount
   useEffect(() => {
@@ -352,146 +363,131 @@ export default function ServicesPage() {
         </section>
 
         {/* Services Section */}
-        <section className="container mx-auto px-4 sm:px-6 lg:px-8 mb-32 pt-12">
+        <section className="container mx-auto px-4 sm:px-6 lg:px-8 mb-32">
           <ScrollAnimation type="fade-up">
-            <div className="text-center max-w-3xl mx-auto mb-20">
-              <div className="inline-flex items-center justify-center space-x-2 mb-6">
-                <div className="p-2.5 bg-blue-50 rounded-xl">
-                  <Headphones className="w-6 h-6 text-blue-600" />
+            <div className="text-center max-w-3xl mx-auto mb-16">
+              <div className="inline-flex items-center justify-center space-x-2 mb-4">
+                <div className="p-2 bg-blue-50 rounded-lg">
+                  <Headphones className="w-5 h-5 text-blue-600" />
                 </div>
-                <span className="text-blue-600 font-semibold">Our Services</span>
+                <span className="text-blue-600 font-medium">Our Services</span>
               </div>
-              <h2 className="text-4xl md:text-5xl font-bold text-[#0A1A3B] mb-6 leading-tight">
+              <h2 className="text-3xl md:text-4xl font-bold text-[#0A1A3B] mb-4 leading-tight">
                 Comprehensive Audio Solutions
               </h2>
-              <p className="text-xl text-gray-600">
+              <p className="text-lg text-gray-600">
                 Professional audio solutions tailored for your church's unique needs
               </p>
             </div>
           </ScrollAnimation>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
-            {services.map((service, index) => {
-              const Icon = service.icon
-              const isExpanded = expandedCard === index
-              const sectionId = service.title.toLowerCase().split(':')[0].replace(/\s+/g, '-')
+          {/* Services Grid */}
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5 max-w-6xl mx-auto">
+            {services.map((service, index) => (
+              <ScrollAnimation 
+                key={service.title}
+                type="fade-up"
+                delay={0.1 * index}
+              >
+                <div className="group relative bg-white rounded-xl border border-gray-100 hover:border-blue-100 hover:shadow-lg transition-all duration-300 h-full">
+                  {/* Service Badge */}
+                  <div className="absolute top-4 right-4">
+                    <div className="px-2.5 py-1 bg-blue-50/80 text-blue-600 rounded-full text-xs font-medium border border-blue-100/50">
+                      {service.category}
+                    </div>
+                  </div>
 
-              return (
-                <ScrollAnimation 
-                  key={service.title}
-                  type="fade-up"
-                  delay={0.2 * index}
-                >
-                  <div
-                    id={sectionId}
-                    className={cn(
-                      "group bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 animate-fade-in-up cursor-pointer",
-                      service.featured && "border-2 border-blue-100"
-                    )}
-                    style={{ animationDelay: `${index * 100}ms` }}
-                    onClick={(e) => toggleCard(index, e)}
-                  >
-                    <div className="p-6">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-4">
-                          <div className="p-2.5 bg-blue-50 rounded-lg transform group-hover:scale-105 transition-all duration-300">
-                            <Icon className="w-6 h-6 text-blue-600" />
-                          </div>
-                          <div>
-                            <h3 className="text-lg font-bold text-[#0A1A3B] group-hover:text-blue-600 transition-colors duration-300">
-                              {service.title}
-                            </h3>
-                            {service.subtitle && (
-                              <p className="text-gray-500 text-sm mt-0.5">
-                                {service.subtitle}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        <ChevronDown 
-                          className={cn(
-                            "w-5 h-5 text-gray-400 transition-transform duration-300",
-                            isExpanded ? "rotate-180" : ""
-                          )}
-                        />
+                  <div className="p-6">
+                    {/* Service Icon */}
+                    <div className="mb-5">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100/50 border border-blue-100/50 flex items-center justify-center transform group-hover:scale-105 transition-transform duration-300">
+                        <service.icon className="w-6 h-6 text-blue-600" />
                       </div>
+                    </div>
 
-                      <p className="text-gray-600 mb-4">
+                    {/* Title & Description */}
+                    <div className="mb-5">
+                      <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors mb-2">
+                        {service.title}
+                      </h3>
+                      <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed">
                         {service.description}
                       </p>
+                    </div>
 
-                      {service.pricing && (
-                        <div className="mb-4 p-4 bg-blue-50/50 rounded-lg">
-                          <div className="flex items-baseline justify-between mb-2">
-                            <span className="text-gray-600">Initial Consultation</span>
-                            <div className="text-right">
-                              <span className="text-2xl font-bold text-[#0A1A3B]">{service.pricing.initial}</span>
-                              <p className="text-sm text-gray-500">{service.pricing.note}</p>
+                    {/* Features */}
+                    {service.includes && (
+                      <div className="mb-6">
+                        <div className="space-y-2.5">
+                          {service.includes.slice(0, 3).map((feature, index) => (
+                            <div key={index} className="flex items-start gap-2">
+                              <Check className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
+                              <span className="text-sm text-gray-600 leading-tight">{feature}</span>
                             </div>
-                          </div>
-                          <div className="flex items-baseline justify-between">
-                            <span className="text-gray-600">Full Assessment</span>
-                            <div className="text-right">
-                              <span className="text-2xl font-bold text-[#0A1A3B]">{service.pricing.fullAssessment}</span>
-                              <p className="text-sm text-gray-500">{service.pricing.fullAssessmentNote}</p>
-                            </div>
-                          </div>
+                          ))}
                         </div>
-                      )}
-
-                      <div 
-                        className={cn(
-                          "grid transition-[grid-template-rows] duration-300 ease-in-out",
-                          isExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+                        {service.includes.length > 3 && (
+                          <button 
+                            onClick={() => {
+                              setSelectedService(service)
+                              setIsModalOpen(true)
+                            }}
+                            className="mt-3 text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1 group/btn"
+                          >
+                            +{service.includes.length - 3} more features
+                            <ChevronRight className="w-3 h-3 group-hover/btn:translate-x-0.5 transition-transform" />
+                          </button>
                         )}
-                      >
-                        <div className="overflow-hidden">
-                          <div className="space-y-6 pt-4 border-t border-gray-100">
-                            {service.includes && (
-                              <div>
-                                <h4 className="text-sm font-semibold text-[#0A1A3B] mb-3">What's Included:</h4>
-                                <ul className="space-y-2">
-                                  {service.includes.map((item, i) => (
-                                    <li key={i} className="flex items-start gap-3 text-gray-600">
-                                      <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                                      <span className="text-sm">{item}</span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-                          </div>
+                      </div>
+                    )}
+
+                    {/* Price & CTA */}
+                    <div className="pt-4 mt-auto border-t border-gray-100">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-2xl font-bold text-blue-600">
+                            ${service.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                          <p className="text-xs text-gray-500 mt-0.5">Starting Price</p>
                         </div>
+                        <button
+                          onClick={() => {
+                            setSelectedService(service)
+                            setIsModalOpen(true)
+                          }}
+                          className="inline-flex items-center justify-center px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 hover:text-blue-700 rounded-lg text-sm font-medium transition-colors gap-1.5 group/btn"
+                        >
+                          Book Now
+                          <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-0.5 transition-transform" />
+                        </button>
                       </div>
                     </div>
                   </div>
-                </ScrollAnimation>
-              )
-            })}
+                </div>
+              </ScrollAnimation>
+            ))}
           </div>
 
           {/* Service CTAs */}
-          <ScrollAnimation type="fade-up" delay={0.6}>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center mt-16 sticky bottom-8 z-50">
+          <ScrollAnimation type="fade-up" delay={0.4}>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center mt-16">
               <button
                 onClick={scrollToQuote}
-                className="inline-flex items-center justify-center px-5 py-2.5 bg-[#0A1A3B] text-white rounded-lg
+                className="inline-flex items-center justify-center px-6 py-3 bg-[#0A1A3B] text-white rounded-lg
                          font-medium hover:bg-[#1E3A8A] transition-all duration-300
-                         transform hover:translate-y-[-2px] hover:shadow-lg group
-                         text-base"
+                         transform hover:translate-y-[-2px] hover:shadow-lg group/btn"
               >
                 Get Quote
-                <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform duration-300" />
+                <ArrowRight className="ml-2 w-4 h-4 group-hover/btn:translate-x-0.5 transition-transform" />
               </button>
               <button
                 onClick={openChat}
-                className="inline-flex items-center justify-center px-5 py-2.5 bg-white border-2 border-[#0A1A3B] 
+                className="inline-flex items-center justify-center px-6 py-3 bg-white border-2 border-[#0A1A3B] 
                          text-[#0A1A3B] rounded-lg font-medium hover:bg-[#F8FAFF]
-                         transition-all duration-300 transform hover:translate-y-[-2px] group
-                         text-base"
+                         transition-all duration-300 transform hover:translate-y-[-2px] group/btn"
               >
                 Chat Now
-                <MessageSquare className="ml-2 w-4 h-4 group-hover:rotate-12 transition-transform duration-300" />
+                <MessageSquare className="ml-2 w-4 h-4 group-hover/btn:rotate-12 transition-transform" />
               </button>
             </div>
           </ScrollAnimation>

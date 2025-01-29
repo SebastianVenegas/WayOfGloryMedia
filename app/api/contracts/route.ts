@@ -15,13 +15,21 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await request.json()
-    
-    // Calculate totals
-    const productsSubtotal = data.products.reduce((sum: number, product: any) => 
-      sum + (product.our_price || product.price) * product.quantity, 0
+
+    // Calculate amounts using our_price for products
+    const productSubtotal = data.products.reduce((total: number, product: any) => 
+      total + product.our_price * product.quantity, 0
     );
-    const taxAmount = productsSubtotal * TAX_RATE;
-    const totalAmount = productsSubtotal + taxAmount + (data.installationPrice || 0);
+    const tax = productSubtotal * TAX_RATE; // Tax only on products
+    const installationPrice = data.installationPrice || 0;
+    const totalAmount = productSubtotal + tax + installationPrice; // Installation added after tax
+
+    console.log('Calculated amounts:', {
+      productSubtotal,
+      tax,
+      installationPrice,
+      totalAmount
+    });
 
     // Insert into database
     const result = await sql`
@@ -43,12 +51,13 @@ export async function POST(request: NextRequest) {
         installation_date,
         installation_time,
         access_instructions,
-        contact_onsite,
-        contact_onsite_phone,
+        contact_on_site,
+        contact_on_site_phone,
         payment_method,
+        signature_url,
         total_amount,
         installation_price,
-        signature_url,
+        tax_amount,
         status
       ) VALUES (
         ${data.firstName},
@@ -71,9 +80,10 @@ export async function POST(request: NextRequest) {
         ${data.contactOnSite},
         ${data.contactOnSitePhone},
         ${data.paymentMethod},
+        ${data.signatureUrl},
         ${totalAmount},
-        ${data.installationPrice || 0},
-        ${data.signature},
+        ${installationPrice},
+        ${tax},
         'pending'
       ) RETURNING id
     `;
@@ -92,30 +102,29 @@ export async function POST(request: NextRequest) {
           ${orderId},
           ${product.id},
           ${product.quantity},
-          ${product.our_price || product.price}
+          ${product.our_price}
         )
       `;
     }
 
-    // Simulate a delay to show loading state
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
     // Send confirmation email
     try {
+      console.log('Sending confirmation email to:', data.email);
+      
       await sendContractEmail({
         firstName: data.firstName,
         lastName: data.lastName,
         email: data.email,
         phone: data.phone,
-        organization: data.organization || '',
-        orderId,
+        organization: data.organization,
+        orderId: orderId,
         orderItems: data.products.map((product: any) => ({
           product: { title: product.title },
           quantity: product.quantity,
-          price_at_time: product.our_price || product.price
+          price_at_time: product.our_price
         })),
-        totalAmount,
-        installationPrice: data.installationPrice || 0,
+        totalAmount: totalAmount,
+        installationPrice: installationPrice,
         shippingAddress: data.shippingAddress,
         shippingCity: data.shippingCity,
         shippingState: data.shippingState,
@@ -131,34 +140,48 @@ export async function POST(request: NextRequest) {
         contactOnSite: data.contactOnSite,
         contactOnSitePhone: data.contactOnSitePhone,
         paymentMethod: data.paymentMethod,
-        signature: data.signature,
-        taxAmount
+        signature_url: data.signatureUrl,
+        taxAmount: tax
       });
+
+      console.log('Email sent successfully');
     } catch (emailError) {
       console.error('Error sending confirmation email:', emailError);
-      // Continue with success response even if email fails
+      // Return error response if email fails
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Failed to send confirmation email',
+        details: emailError instanceof Error ? emailError.message : 'Unknown error'
+      }, { 
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
     }
 
     return NextResponse.json({ 
       success: true,
       message: 'Contract created successfully',
-      orderId
+      orderId: orderId,
+      totalAmount: totalAmount,
+      taxAmount: tax
     }, {
       status: 200,
       headers: {
         'Content-Type': 'application/json'
       }
-    })
+    });
   } catch (error) {
-    console.error('Error creating contract:', error)
+    console.error('Error creating contract:', error);
     return NextResponse.json({ 
       success: false, 
-      error: 'Failed to create contract'
+      error: error instanceof Error ? error.message : 'Failed to create contract'
     }, {
       status: 500,
       headers: {
         'Content-Type': 'application/json'
       }
-    })
+    });
   }
 } 

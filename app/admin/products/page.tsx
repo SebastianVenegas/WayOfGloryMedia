@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Package, Loader2, Search, ChevronLeft, ChevronRight, Filter, Plus, ShoppingBag, Minus, X, LayoutGrid, List, CheckCircle2, Mail } from 'lucide-react'
+import { Package, Loader2, Search, ChevronLeft, ChevronRight, Filter, Plus, ShoppingBag, Minus, X, LayoutGrid, List, CheckCircle2, Mail, Speaker, Network, GraduationCap, Siren, Mic2, Music2, Settings, ArrowRight, WormIcon as WaveformIcon, Check, Pencil, Trash2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 import { Button } from "@/components/ui/button"
@@ -13,6 +13,7 @@ import { Slider } from "@/components/ui/slider"
 import Checkout, { CheckoutFormData } from '@/components/Checkout'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import ServiceModal from "@/components/ui/service-modal"
 
 // Category type definitions
 type MainCategory = 'all' | 'Audio Gear' | 'Streaming Gear' | 'Services';
@@ -59,6 +60,51 @@ const filterByCategory = (product: Product, selectedCategory: CategoryType): boo
 };
 
 // Product images mapping
+export const getProductImageKey = (title: string): string => {
+  const titleToKeyMap: Record<string, string> = {
+    'PTU-6000-8H 8-Channel UHF Wireless Microphone System': 'ptu-6000-8h',
+    'Shure BLX288/PG58 Dual Wireless Microphone System': 'shure-blx288-pg58',
+    'VocoPro UHF-8800 Professional 8-Channel Wireless System': 'vocopro-uhf-8800',
+    'Drum Microphone Kit - 7-Piece Professional Set': 'drum-mic-kit',
+    'Behringer X32 Compact Digital Mixer': 'behringer-x32-compact',
+    'Allen & Heath SQ-6 48-channel Digital Mixer': 'allen-heath-sq6',
+    'Yamaha MGP32X 32-channel Mixer with Effects': 'yamaha-mgp32x',
+    'XLR Cable - 15ft Professional Microphone Cable': 'xlr-15ft',
+    'XLR Cable - 20ft Professional Microphone Cable': 'xlr-20ft',
+    'XLR Cable - 25ft Professional Microphone Cable': 'xlr-25ft',
+    'XLR Cable - 50ft Professional Microphone Cable': 'xlr-50ft',
+    'XLR Cable - 100ft Professional Microphone Cable': 'xlr-100ft',
+    'Quarter Inch Cable - 15ft Professional Instrument Cable': 'quarter-inch-15ft',
+    'Quarter Inch Cable - 20ft Professional Instrument Cable': 'quarter-inch-20ft',
+    'Cat6 Cable - 10ft Professional Network Cable': 'cat6-10ft',
+    'Cat6 Cable - 50ft Professional Network Cable': 'cat6-50ft',
+    'Cat6 Cable - 100ft Professional Network Cable': 'cat6-100ft',
+    'AC Power Cable - Professional Grade IEC Power Cord': 'ac-power-cable',
+    'QSC K12.2 12" 2000W Powered Speaker': 'qsc-k12-2',
+    'RSG15 15" 3000W Passive Speaker System': 'rsg15-speaker-system',
+    'JBL EON715 15" & EON718S 18" Powered Speaker System': 'jbl-eon715-system',
+    'Mackie THUMP215 15" & THUMP118S 18" Powered System': 'mackie-thump215-system',
+    'On Stage SS7761B Pro Speaker Stand': 'ss7761b-speaker-stand',
+    'On Stage MS7701B Telescoping Boom Stand': 'ms7701b-mic-stand',
+    'Kick Drum Microphone Stand': 'kick-drum-mic-stand',
+    'On Stage MS7701B Microphone Boom Stand': 'ms7701b-mic-stand',
+    'On Stage SS7761B All-Aluminum Speaker Stand': 'ss7761b-speaker-stand',
+    'Allen & Heath DX168 Digital Snake': 'allen-heath-dx168',
+    'Midas DL16/DL32 Digital Stage Box': 'midas-dl16-dl32',
+    'ProCo StageMASTER 32/4 Analog Snake': 'proco-stagemaster-32-4',
+    'Hosa HSS-005X 32-Channel Snake': 'hosa-hss-005x',
+    'Behringer S32 Digital Snake': 'behringer-s32',
+    'Whirlwind M-32/4 Analog Snake': 'whirlwind-m-32-4',
+    'Allen & Heath AB168 Digital Snake': 'allen-heath-ab168',
+    'Behringer Powerplay P16-M 16-Channel Digital Personal Mixer': 'behringer-powerplay-p16m',
+    'Behringer Powerplay P16-I 16-channel Input Module': 'behringer-powerplay-p16i',
+    'Behringer Powerplay P16-D 16-channel Distribution Module': 'behringer-powerplay-p16d',
+    'In-Ear Monitors (IEM)': 'iem-headphones'
+  };
+
+  return titleToKeyMap[title] || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
 export const productImages = {
   'proco-stagemaster-32-4': [
     '/images/products/proco-stagemaster-32-4/proco-stagemaster-32-4-1.jpg',
@@ -439,51 +485,6 @@ const titleToKeyMap: Record<string, string> = {
     'In-Ear Monitors (IEM)': 'iem-headphones'
   };
 
-const getProductImageKey = (title: string): string => {
-  const titleToKeyMap: Record<string, string> = {
-    'PTU-6000-8H 8-Channel UHF Wireless Microphone System': 'ptu-6000-8h',
-    'Shure BLX288/PG58 Dual Wireless Microphone System': 'shure-blx288-pg58',
-    'VocoPro UHF-8800 Professional 8-Channel Wireless System': 'vocopro-uhf-8800',
-    'Drum Microphone Kit - 7-Piece Professional Set': 'drum-mic-kit',
-    'Behringer X32 Compact Digital Mixer': 'behringer-x32-compact',
-    'Allen & Heath SQ-6 48-channel Digital Mixer': 'allen-heath-sq6',
-    'Yamaha MGP32X 32-channel Mixer with Effects': 'yamaha-mgp32x',
-    'XLR Cable - 15ft Professional Microphone Cable': 'xlr-15ft',
-    'XLR Cable - 20ft Professional Microphone Cable': 'xlr-20ft',
-    'XLR Cable - 25ft Professional Microphone Cable': 'xlr-25ft',
-    'XLR Cable - 50ft Professional Microphone Cable': 'xlr-50ft',
-    'XLR Cable - 100ft Professional Microphone Cable': 'xlr-100ft',
-    'Quarter Inch Cable - 15ft Professional Instrument Cable': 'quarter-inch-15ft',
-    'Quarter Inch Cable - 20ft Professional Instrument Cable': 'quarter-inch-20ft',
-    'Cat6 Cable - 10ft Professional Network Cable': 'cat6-10ft',
-    'Cat6 Cable - 50ft Professional Network Cable': 'cat6-50ft',
-    'Cat6 Cable - 100ft Professional Network Cable': 'cat6-100ft',
-    'AC Power Cable - Professional Grade IEC Power Cord': 'ac-power-cable',
-    'QSC K12.2 12" 2000W Powered Speaker': 'qsc-k12-2',
-    'RSG15 15" 3000W Passive Speaker System': 'rsg15-speaker-system',
-    'JBL EON715 15" & EON718S 18" Powered Speaker System': 'jbl-eon715-system',
-    'Mackie THUMP215 15" & THUMP118S 18" Powered System': 'mackie-thump215-system',
-    'On Stage SS7761B Pro Speaker Stand': 'ss7761b-speaker-stand',
-    'On Stage MS7701B Telescoping Boom Stand': 'ms7701b-mic-stand',
-    'Kick Drum Microphone Stand': 'kick-drum-mic-stand',
-    'On Stage MS7701B Microphone Boom Stand': 'ms7701b-mic-stand',
-    'On Stage SS7761B All-Aluminum Speaker Stand': 'ss7761b-speaker-stand',
-    'Allen & Heath DX168 Digital Snake': 'allen-heath-dx168',
-    'Midas DL16/DL32 Digital Stage Box': 'midas-dl16-dl32',
-    'ProCo StageMASTER 32/4 Analog Snake': 'proco-stagemaster-32-4',
-    'Hosa HSS-005X 32-Channel Snake': 'hosa-hss-005x',
-    'Behringer S32 Digital Snake': 'behringer-s32',
-    'Whirlwind M-32/4 Analog Snake': 'whirlwind-m-32-4',
-    'Allen & Heath AB168 Digital Snake': 'allen-heath-ab168',
-    'Behringer Powerplay P16-M 16-Channel Digital Personal Mixer': 'behringer-powerplay-p16m',
-    'Behringer Powerplay P16-I 16-channel Input Module': 'behringer-powerplay-p16i',
-    'Behringer Powerplay P16-D 16-channel Distribution Module': 'behringer-powerplay-p16d',
-    'In-Ear Monitors (IEM)': 'iem-headphones'
-  };
-
-  return titleToKeyMap[title] || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-}
-
 const TAX_RATE = 0.0775 // 7.75% for Riverside, CA
 
 const calculateTax = (price: number): number => {
@@ -492,6 +493,93 @@ const calculateTax = (price: number): number => {
 
 const calculateTotalWithTax = (price: number): number => {
   return price * (1 + TAX_RATE)
+}
+
+// Add new ServiceCard component after the imports
+const ServiceCard = ({ service, onSelect }: { service: Product, onSelect: (service: Product) => void }) => {
+  return (
+    <motion.div
+      variants={itemVariants}
+      className="group relative bg-white rounded-xl border border-gray-100 hover:border-blue-100 hover:shadow-xl transition-all duration-300"
+    >
+      {/* Service Type Badge */}
+      <div className="absolute top-4 right-4 z-10">
+        <span className="px-2.5 py-1 bg-blue-50/90 text-blue-600 rounded-full text-xs font-medium border border-blue-100/50 backdrop-blur-sm">
+          {service.category}
+        </span>
+      </div>
+
+      <div className="p-6">
+        {/* Icon Section */}
+        <div className="mb-6">
+          <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100/50 border border-blue-100/50 flex items-center justify-center transform group-hover:scale-105 transition-transform duration-300">
+            {service.title.includes('Audio System') && <Speaker className="h-7 w-7 text-blue-600" />}
+            {service.title.includes('Network') && <Network className="h-7 w-7 text-blue-600" />}
+            {service.title.includes('Training') && <GraduationCap className="h-7 w-7 text-blue-600" />}
+            {service.title.includes('Emergency') && <Siren className="h-7 w-7 text-blue-600" />}
+            {service.title.includes('Studio') && <Mic2 className="h-7 w-7 text-blue-600" />}
+            {service.title.includes('Event') && <Music2 className="h-7 w-7 text-blue-600" />}
+            {service.title.includes('Acoustics') && <WaveformIcon className="h-7 w-7 text-blue-600" />}
+            {!service.title.match(/(Audio System|Network|Training|Emergency|Studio|Event|Acoustics)/) && 
+              <Settings className="h-7 w-7 text-blue-600" />
+            }
+          </div>
+        </div>
+
+        {/* Title and Description */}
+        <div className="mb-6">
+          <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors mb-2.5">
+            {service.title}
+          </h3>
+          <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed">
+            {service.description}
+          </p>
+        </div>
+
+        {/* Features List */}
+        {service.features && (
+          <div className="mb-6">
+            <div className="space-y-2.5">
+              {service.features.slice(0, 3).map((feature, i) => (
+                <div key={i} className="flex items-start gap-2.5">
+                  <div className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center mt-0.5">
+                    <Check className="w-3 h-3 text-blue-600" />
+                  </div>
+                  <span className="text-sm text-gray-600 leading-tight">{feature}</span>
+                </div>
+              ))}
+            </div>
+            {service.features.length > 3 && (
+              <button 
+                onClick={() => onSelect(service)}
+                className="mt-3 text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1.5 group/btn"
+              >
+                View {service.features.length - 3} more features
+                <ChevronRight className="w-3.5 h-3.5 group-hover/btn:translate-x-0.5 transition-transform" />
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Actions */}
+        <div className="flex items-center justify-between pt-4 mt-auto border-t border-gray-100">
+          <button
+            onClick={() => onSelect(service)}
+            className="text-sm text-gray-600 hover:text-gray-900 flex items-center gap-1.5 group/btn"
+          >
+            View Details
+            <ArrowRight className="w-3.5 h-3.5 group-hover/btn:translate-x-0.5 transition-transform" />
+          </button>
+          <button
+            onClick={() => onSelect(service)}
+            className="p-2 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
+          >
+            <Pencil className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    </motion.div>
+  );
 }
 
 export default function ProductsPage() {
@@ -505,21 +593,13 @@ export default function ProductsPage() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false)
-  const [isCartOpen, setIsCartOpen] = useState(false)
-  const [installationSelected, setInstallationSelected] = useState(false)
-  const [installationPrice, setInstallationPrice] = useState(0)
-  const [cartWidth, setCartWidth] = useState(384)
-  const [isCreatingContract, setIsCreatingContract] = useState(false)
-  const [showSuccessNotification, setShowSuccessNotification] = useState(false)
-  const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false)
-  const [quoteEmail, setQuoteEmail] = useState('')
-  const [isCreatingQuote, setIsCreatingQuote] = useState(false)
-  const [showQuoteSuccess, setShowQuoteSuccess] = useState(false)
-  const [showQuoteError, setShowQuoteError] = useState(false)
-  const [quoteErrorMessage, setQuoteErrorMessage] = useState('')
-  const productsPerPage = isCartOpen ? 8 : 10 // Adjust based on cart state
   const [cardQuantities, setCardQuantities] = useState<CardQuantityState>({})
   const [isListView, setIsListView] = useState(false)
+  const [selectedService, setSelectedService] = useState<Product | null>(null)
+  const [isServiceModalOpen, setIsServiceModalOpen] = useState(false)
+  const [isScrolled, setIsScrolled] = useState(false)
+  const [isCartOpen, setIsCartOpen] = useState(false)
+  const productsPerPage = 12
 
   useEffect(() => {
     setMounted(true)
@@ -529,6 +609,15 @@ export default function ProductsPage() {
   useEffect(() => {
     setCurrentPage(1)
   }, [searchQuery, selectedCategory])
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 10);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const fetchProducts = async () => {
     try {
@@ -621,17 +710,22 @@ export default function ProductsPage() {
   }
 
   const handleProductClick = (product: Product) => {
-    const key = getProductImageKey(product.title);
-    const images = productImages[key as keyof typeof productImages];
-    
-    const productWithImages = {
-      ...product,
-      images: images?.map(url => ({ image_url: url })) || []
-    };
-    
-    setSelectedProduct(productWithImages);
-    setIsModalOpen(true);
-  }
+    if (product.category === 'Services') {
+      setSelectedService(product);
+      setIsServiceModalOpen(true);
+    } else {
+      const key = getProductImageKey(product.title);
+      const images = productImages[key as keyof typeof productImages];
+      
+      const productWithImages = {
+        ...product,
+        images: images?.map(url => ({ image_url: url })) || []
+      };
+      
+      setSelectedProduct(productWithImages);
+      setIsModalOpen(true);
+    }
+  };
 
   const handleCardQuantityChange = (productId: string, amount: number) => {
     setCardQuantities(prev => ({
@@ -641,25 +735,24 @@ export default function ProductsPage() {
   }
 
   const addToBundle = (product: Product) => {
-    const quantity = cardQuantities[product.id] || 1
-    if (!bundleItems.find(item => item.id === product.id)) {
-      const bundleItem: BundleItem = { ...product, quantity }
-      setBundleItems([...bundleItems, bundleItem])
-    // Open the cart when adding a product
-    setIsCartOpen(true)
-    }
-    // Reset quantity after adding to bundle
-    setCardQuantities(prev => ({ ...prev, [product.id]: 1 }))
+    setBundleItems(prevItems => {
+      const existingItem = prevItems.find(item => item.id === product.id)
+      if (existingItem) {
+        // If item exists, increase its quantity
+        return prevItems.map(item =>
+          item.id === product.id
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
+        )
+      }
+      // If item doesn't exist, add it with quantity 1
+      return [...prevItems, { ...product, quantity: 1 }]
+    })
+    setIsCartOpen(true)  // Open the cart when adding any item
   }
 
   const removeFromBundle = (productId: string) => {
-    setBundleItems(prev => {
-      const newItems = prev.filter(item => item.id !== productId)
-      if (newItems.length === 0) {
-        setIsCartOpen(false)
-      }
-      return newItems
-    })
+    setBundleItems(prev => prev.filter(item => item.id !== productId))
   }
 
   const handleBundleQuantityUpdate = (productId: string, newQuantity: number) => {
@@ -669,9 +762,6 @@ export default function ProductsPage() {
   }
 
   const handleContractCreation = async (formData: CheckoutFormData) => {
-    setIsCreatingContract(true) // Show loading immediately
-    setIsCheckoutOpen(false) // Close checkout modal immediately
-    
     try {
       const response = await fetch('/api/contracts', {
         method: 'POST',
@@ -685,104 +775,20 @@ export default function ProductsPage() {
             quantity: item.quantity,
             title: item.title,
             price: item.our_price || item.price
-          })),
-          installationPrice: installationSelected ? installationPrice : 0
+          }))
         }),
       })
 
       const data = await response.json()
 
       if (data.success) {
-        setShowSuccessNotification(true)
-        setTimeout(() => {
-          setShowSuccessNotification(false)
-          setBundleItems([])
-          setIsCartOpen(false)
-        }, 2000)
+        setBundleItems([])
       } else {
         throw new Error(data.error || 'Failed to create contract')
       }
     } catch (error) {
       console.error('Error creating contract:', error)
-      throw error // Re-throw the error to be handled by the Checkout component
-    } finally {
-      setIsCreatingContract(false)
-    }
-  }
-
-  const toggleCart = () => {
-    setIsCartOpen(!isCartOpen)
-  }
-
-  const handleResize = (e: React.MouseEvent<HTMLDivElement>) => {
-    e.preventDefault()
-    
-    const startX = e.pageX
-    const startWidth = cartWidth
-    
-    const handleMouseMove = (e: MouseEvent) => {
-      const newWidth = Math.max(384, Math.min(800, startWidth + (startX - e.pageX)))
-      setCartWidth(newWidth)
-    }
-    
-    const handleMouseUp = () => {
-      document.removeEventListener('mousemove', handleMouseMove)
-      document.removeEventListener('mouseup', handleMouseUp)
-    }
-    
-    document.addEventListener('mousemove', handleMouseMove)
-    document.addEventListener('mouseup', handleMouseUp)
-  }
-
-  const handleQuoteCreation = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsCreatingQuote(true)
-    
-    try {
-      if (!bundleItems.length) {
-        throw new Error('Please add items to your quote')
-      }
-
-      const subtotal = bundleItems.reduce((sum, product) => 
-        sum + (product.our_price || product.price) * product.quantity, 0
-      );
-
-      const response = await fetch('/api/quotes', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: quoteEmail,
-          products: bundleItems.map(item => ({
-            title: item.title,
-            quantity: item.quantity,
-            price: Number(item.our_price || item.price)
-          })),
-          subtotal,
-          totalAmount: subtotal + calculateTax(subtotal) + (installationSelected ? installationPrice : 0),
-          installationPrice: installationSelected ? installationPrice : 0,
-          taxAmount: calculateTax(subtotal)
-        }),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to create quote')
-      }
-
-      const data = await response.json()
-      setShowQuoteSuccess(true)
-      setIsQuoteModalOpen(false)
-      setQuoteEmail('')
-      setTimeout(() => {
-        setShowQuoteSuccess(false)
-      }, 3000)
-    } catch (error) {
-      console.error('Error creating quote:', error)
-      alert(error instanceof Error ? error.message : 'Failed to create quote. Please try again.')
-    } finally {
-      setIsCreatingQuote(false)
+      throw error
     }
   }
 
@@ -811,130 +817,141 @@ export default function ProductsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50/50">
-      {/* Top Navigation Bar */}
+      {/* Dynamic Header */}
       <div className={cn(
-        "sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-gray-200 shadow-sm"
+        "sticky top-0 z-40 transition-all duration-300",
+        isScrolled ? "bg-white/80 backdrop-blur-xl shadow-sm" : "bg-white",
+        isCartOpen && "cart-push"
       )}>
         <div className="max-w-[2000px] mx-auto">
           {/* Main Header */}
-          <div className="h-16 flex items-center">
-            {/* Left side - Search */}
-            <div className="w-[320px] relative">
-              <Search className="h-4 w-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <div className="h-16 px-2 sm:px-4 flex items-center gap-2 sm:gap-4 lg:gap-8">
+            {/* Left side - Search with animation */}
+            <motion.div 
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="w-full max-w-[200px] sm:max-w-[320px] relative group"
+            >
+              <Search className="h-4 w-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 transition-colors group-focus-within:text-blue-500" />
               <Input
                 type="text"
-                placeholder="Search products..."
+                placeholder="Search..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 h-9 bg-gray-50/80 border-0 ring-1 ring-gray-200 focus-visible:ring-2 focus-visible:ring-blue-500 transition-all duration-200 rounded-none"
+                className="w-full pl-9 h-9 bg-gray-50/80 border-0 ring-1 ring-gray-200 focus-visible:ring-2 focus-visible:ring-blue-500 transition-all duration-200 rounded-lg text-sm"
               />
-            </div>
+              {searchQuery && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              )}
+            </motion.div>
 
-            {/* Center - Categories */}
-            <div className="flex-1 flex items-center justify-center">
-              <div className="flex items-center bg-gray-100/50 rounded-lg p-1">
-                <Button
-                  variant={selectedCategory === 'all' ? 'default' : 'ghost'}
-                  onClick={() => setSelectedCategory('all')}
-                  className={cn(
-                    "h-8 text-sm font-medium rounded-md transition-all duration-200",
-                    selectedCategory === 'all' 
-                      ? "bg-white shadow-sm text-gray-900" 
-                      : "text-gray-600 hover:text-gray-900 hover:bg-white/50"
-                  )}
-                >
-                  All
-                </Button>
-                <div className="h-4 w-px bg-gray-200 mx-1" />
-                <Button
-                  variant={selectedCategory === 'Audio Gear' ? 'default' : 'ghost'}
-                  onClick={() => setSelectedCategory('Audio Gear')}
-                  className={cn(
-                    "h-8 text-sm font-medium rounded-md transition-all duration-200",
-                    selectedCategory === 'Audio Gear' 
-                      ? "bg-white shadow-sm text-gray-900" 
-                      : "text-gray-600 hover:text-gray-900 hover:bg-white/50"
-                  )}
-                >
-                  Audio Gear
-                </Button>
-                <div className="h-4 w-px bg-gray-200 mx-1" />
-                <Button
-                  variant={selectedCategory === 'Streaming Gear' ? 'default' : 'ghost'}
-                  onClick={() => setSelectedCategory('Streaming Gear')}
-                  className={cn(
-                    "h-8 text-sm font-medium rounded-md transition-all duration-200",
-                    selectedCategory === 'Streaming Gear' 
-                      ? "bg-white shadow-sm text-gray-900" 
-                      : "text-gray-600 hover:text-gray-900 hover:bg-white/50"
-                  )}
-                >
-                  Streaming Gear
-                </Button>
-                <div className="h-4 w-px bg-gray-200 mx-1" />
-                <Button
-                  variant={selectedCategory === 'Services' ? 'default' : 'ghost'}
-                  onClick={() => setSelectedCategory('Services')}
-                  className={cn(
-                    "h-8 text-sm font-medium rounded-md transition-all duration-200",
-                    selectedCategory === 'Services' 
-                      ? "bg-white shadow-sm text-gray-900" 
-                      : "text-gray-600 hover:text-gray-900 hover:bg-white/50"
-                  )}
-                >
-                  Services
-                </Button>
-              </div>
+            {/* Center - Categories with responsive design */}
+            <div className="flex-1 flex items-center justify-center overflow-x-auto scrollbar-hide">
+              <motion.div 
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center bg-gray-100/80 backdrop-blur-sm rounded-xl p-1.5 shadow-sm"
+              >
+                <AnimatePresence mode="wait">
+                  {['all', 'Audio Gear', 'Streaming Gear', 'Services'].map((category) => (
+                    <motion.div key={category} className="relative">
+                      <Button
+                        variant={selectedCategory === category ? 'default' : 'ghost'}
+                        onClick={() => setSelectedCategory(category)}
+                        className={cn(
+                          "h-8 px-2 sm:px-4 text-xs sm:text-sm font-medium rounded-lg transition-all duration-200 relative whitespace-nowrap",
+                          selectedCategory === category 
+                            ? "bg-blue-50 text-blue-500" 
+                            : "text-gray-600 hover:text-blue-500 hover:bg-blue-50/50"
+                        )}
+                      >
+                        {category === 'all' ? 'All' : category.replace(' Gear', '')}
+                      </Button>
+                      {selectedCategory === category && (
+                        <motion.div
+                          layoutId="activeCategory"
+                          className="absolute inset-0 bg-white rounded-lg shadow-sm -z-10"
+                          transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                        />
+                      )}
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </motion.div>
             </div>
 
             {/* Right side - View options and Bundle */}
-            <div className="flex items-center gap-3">
+            <motion.div 
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="flex items-center gap-2 sm:gap-3"
+            >
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => setIsListView(!isListView)}
-                className="h-8 w-8 text-gray-500 hover:text-gray-900"
+                className="h-9 w-9 text-gray-500 hover:text-gray-900 rounded-lg hidden sm:flex"
               >
-                {isListView ? <LayoutGrid className="h-4 w-4" /> : <List className="h-4 w-4" />}
+                <motion.div
+                  initial={false}
+                  animate={{ rotate: isListView ? 0 : 180 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  {isListView ? <LayoutGrid className="h-4 w-4" /> : <List className="h-4 w-4" />}
+                </motion.div>
               </Button>
               <Button
                 variant="default"
-                onClick={toggleCart}
-                className="h-8 bg-blue-50 hover:bg-blue-100 text-blue-600 hover:text-blue-700 flex items-center gap-2"
+                onClick={() => setIsCartOpen(true)}
+                className={cn(
+                  "h-9 px-3 sm:px-4 bg-blue-500 hover:bg-blue-600 text-white flex items-center gap-2 rounded-lg transition-all duration-200",
+                  bundleItems.length > 0 && "ring-2 ring-blue-200"
+                )}
               >
-                <ShoppingBag className="h-4 w-4" />
-                View Bundle
+                <span className="hidden sm:inline">Bundle</span>
+                <ShoppingBag className="h-4 w-4 sm:hidden" />
                 {bundleItems.length > 0 && (
-                  <span className="bg-blue-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-medium">
+                  <motion.div
+                    initial={{ scale: 0.5 }}
+                    animate={{ scale: 1 }}
+                    className="bg-white text-blue-500 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold"
+                  >
                     {bundleItems.reduce((sum, item) => sum + item.quantity, 0)}
-                  </span>
+                  </motion.div>
                 )}
               </Button>
-            </div>
+            </motion.div>
           </div>
         </div>
       </div>
 
-      {/* Main Content with Persistent Cart */}
+      {/* Main Content */}
       <div className="flex h-[calc(100vh-65px)] overflow-hidden">
-        {/* Products Section - Make this section scrollable */}
+        {/* Products Section */}
         <div className={cn(
-          "flex-1 overflow-y-auto transition-all duration-200",
-          isCartOpen ? "mr-[384px]" : "mr-0"
+          "flex-1 overflow-y-auto transition-all duration-300",
+          isCartOpen && "cart-push"
         )}>
-          {/* Subcategories Bar - Moved here */}
+          {/* Subcategories Bar */}
           {selectedCategory.startsWith('Audio Gear') && (
             <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-sm border-b border-gray-200 shadow-sm">
-              <div className="px-4 sm:px-6 lg:px-8">
+              <div className="px-2 sm:px-4 lg:px-8">
                 <div className="flex items-center -mb-px overflow-x-auto scrollbar-hide py-2">
                   <Button
                     variant="ghost"
                     onClick={() => setSelectedCategory('Audio Gear')}
                     className={cn(
-                      "px-4 h-9 text-sm font-medium rounded-lg transition-all whitespace-nowrap",
+                      "px-3 sm:px-4 h-9 text-xs sm:text-sm font-medium rounded-lg transition-all whitespace-nowrap",
                       selectedCategory === 'Audio Gear'
-                        ? "bg-blue-50 text-blue-600"
-                        : "text-gray-600 hover:text-blue-600 hover:bg-blue-50/50"
+                        ? "bg-blue-50 text-blue-500"
+                        : "text-gray-600 hover:text-blue-500 hover:bg-blue-50/50"
                     )}
                   >
                     All Audio
@@ -945,10 +962,10 @@ export default function ProductsPage() {
                       variant="ghost"
                       onClick={() => setSelectedCategory(subcat.path)}
                       className={cn(
-                        "px-4 h-9 text-sm font-medium rounded-lg transition-all whitespace-nowrap ml-2",
+                        "px-3 sm:px-4 h-9 text-xs sm:text-sm font-medium rounded-lg transition-all whitespace-nowrap ml-2",
                         selectedCategory === subcat.path 
-                          ? "bg-blue-50 text-blue-600" 
-                          : "text-gray-600 hover:text-blue-600 hover:bg-blue-50/50"
+                          ? "bg-blue-50 text-blue-500" 
+                          : "text-gray-600 hover:text-blue-500 hover:bg-blue-50/50"
                       )}
                     >
                       {subcat.name}
@@ -960,14 +977,14 @@ export default function ProductsPage() {
           )}
 
           {/* Header */}
-          <div className="flex items-center justify-between mb-8 px-8 pt-6">
+          <div className="flex items-center justify-between mb-4 sm:mb-8 px-4 sm:px-8 pt-4 sm:pt-6">
             <div>
-              <h1 className="text-2xl font-semibold text-gray-900">Products</h1>
-              <p className="mt-1 text-sm text-gray-500">
+              <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">Products</h1>
+              <p className="mt-1 text-xs sm:text-sm text-gray-500">
                 Showing {indexOfFirstProduct + 1}-{Math.min(indexOfLastProduct, filteredProducts.length)} of {filteredProducts.length} products
               </p>
-              </div>
             </div>
+          </div>
 
           {/* No Results */}
           {filteredProducts.length === 0 && (
@@ -993,178 +1010,181 @@ export default function ProductsPage() {
             animate="show"
             className={cn(
               isListView 
-                ? "flex flex-col gap-4 px-8"
-                : "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 px-8",
-              isCartOpen && "lg:grid-cols-3 xl:grid-cols-4"
+                ? "flex flex-col gap-4 px-4 sm:px-8"
+                : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4 px-4 sm:px-8",
+              isCartOpen && "xl:grid-cols-3 2xl:grid-cols-4"
             )}
           >
             {currentProducts.map((product) => (
-              <motion.div
-                key={product.id}
-                variants={itemVariants}
-                className={cn(
-                  "group relative bg-white rounded-lg border border-gray-200 hover:border-blue-500/20 hover:shadow-lg transition-all duration-300",
-                  isListView ? "flex gap-4 p-4" : ""
-                )}
-              >
-                <div 
+              product.category === 'Services' ? (
+                <ServiceCard
+                  key={product.id}
+                  service={product}
+                  onSelect={handleProductClick}
+                />
+              ) : (
+                <motion.div
+                  key={product.id}
+                  variants={itemVariants}
                   className={cn(
-                    "relative bg-white overflow-hidden cursor-pointer rounded-lg",
-                    isListView ? "h-24 w-24 flex-shrink-0" : "aspect-square"
+                    "group relative bg-white rounded-lg border border-gray-200 hover:border-blue-500/20 hover:shadow-lg transition-all duration-300",
+                    isListView ? "flex gap-4 p-4" : ""
                   )}
-                  onClick={() => handleProductClick(product)}
                 >
-                  {(() => {
-                    const key = getProductImageKey(product.title);
-                    const images = productImages[key as keyof typeof productImages];
-                    if (images && images.length > 0) {
+                  <div 
+                    className={cn(
+                      "relative bg-white overflow-hidden cursor-pointer rounded-lg",
+                      isListView ? "h-24 w-24 flex-shrink-0" : "aspect-square"
+                    )}
+                    onClick={() => handleProductClick(product)}
+                  >
+                    {(() => {
+                      const key = getProductImageKey(product.title);
+                      const images = productImages[key as keyof typeof productImages];
+                      if (images && images.length > 0) {
+                        return (
+                          <div className="absolute inset-0 flex items-center justify-center bg-white">
+                            <Image
+                              src={images[0]}
+                              alt={product.title}
+                              fill
+                              className="object-contain p-2"
+                              sizes="80px"
+                            />
+                          </div>
+                        );
+                      }
                       return (
-                        <div className="absolute inset-0 flex items-center justify-center bg-white">
-                          <Image
-                            src={images[0]}
-                            alt={product.title}
-                            fill
-                            className="object-contain p-2"
-                            sizes="80px"
-                          />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <Package className="h-8 w-8 text-gray-400" />
                         </div>
                       );
-                    }
-                    return (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <Package className="h-8 w-8 text-gray-400" />
-                      </div>
-                    );
-                  })()}
-                </div>
-
-                <div className={cn(
-                  isListView ? "flex-1 py-1" : "p-4"
-                )}>
-                  <div className="flex items-start justify-between gap-4">
-                    <h3 
-                      className={cn(
-                        "font-medium text-gray-900 group-hover:text-blue-600 transition-colors cursor-pointer",
-                        isListView ? "text-sm line-clamp-1" : "text-base line-clamp-2"
-                      )}
-                      onClick={() => handleProductClick(product)}
-                    >
-                      {product.title}
-                    </h3>
-                    <div className="flex flex-col items-end">
-                      <span className={cn(
-                        "font-semibold text-blue-600 whitespace-nowrap",
-                        isListView ? "text-sm" : "text-base"
-                      )}>
-                        ${(product.our_price || product.price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </span>
-                      <span className="text-xs text-gray-500 whitespace-nowrap">
-                        + ${calculateTax(product.our_price || product.price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} tax
-                      </span>
-                    </div>
+                    })()}
                   </div>
-                  
-                  {!isListView && (
-                    <p className="mt-2 text-sm text-gray-600 line-clamp-2">
-                      {product.description}
-                    </p>
-                  )}
-
-                  {!isListView && product.features && product.features.length > 0 && (
-                    <div className="mt-3">
-                      <h4 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Key Features</h4>
-                      <ul className="space-y-1.5">
-                        {product.features.slice(0, 2).map((feature, i) => (
-                          <li key={i} className="text-xs text-gray-600 flex items-center">
-                            <span className="w-1 h-1 rounded-full bg-blue-600/80 mr-1.5 flex-shrink-0" />
-                            <span className="line-clamp-1">{feature}</span>
-                          </li>
-                        ))}
-                      </ul>
-                      {product.features.length > 2 && (
-                        <button 
-                          onClick={() => handleProductClick(product)}
-                          className="mt-1 text-xs text-blue-600 hover:text-blue-700 cursor-pointer flex items-center gap-1 group/btn"
-                        >
-                          +{product.features.length - 2} more features
-                          <ChevronRight className="w-3 h-3 group-hover/btn:translate-x-0.5 transition-transform" />
-                        </button>
-                      )}
-                    </div>
-                  )}
 
                   <div className={cn(
-                    isListView 
-                      ? "flex items-center justify-between mt-2" 
-                      : "mt-3 pt-3 border-t border-gray-100 flex items-center justify-between"
+                    isListView ? "flex-1 py-1" : "p-4"
                   )}>
-                    <span className="px-2.5 py-1 bg-gray-50 text-gray-600 rounded-md text-xs font-medium border border-gray-100">
-                      {product.category.split('/')[1] || product.category}
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-1 bg-gray-50 rounded-lg p-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleCardQuantityChange(product.id, -1);
-                          }}
-                          disabled={!cardQuantities[product.id] || cardQuantities[product.id] <= 1}
-                          className="h-6 w-6"
-                        >
-                          <Minus className="h-3 w-3" />
-                        </Button>
-                        <span className="w-6 text-center text-sm font-medium">
-                          {cardQuantities[product.id] || 1}
+                    <div className="flex items-start justify-between gap-4">
+                      <h3 
+                        className={cn(
+                          "font-medium text-gray-900 group-hover:text-blue-600 transition-colors cursor-pointer",
+                          isListView ? "text-sm line-clamp-1" : "text-base line-clamp-2"
+                        )}
+                        onClick={() => handleProductClick(product)}
+                      >
+                        {product.title}
+                      </h3>
+                      <div className="flex flex-col items-end">
+                        <span className={cn(
+                          "font-semibold text-blue-600 whitespace-nowrap",
+                          isListView ? "text-sm" : "text-base"
+                        )}>
+                          ${(product.our_price || product.price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
+                        <span className="text-xs text-gray-500 whitespace-nowrap">
+                          + ${calculateTax(product.our_price || product.price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} tax
+                        </span>
+                      </div>
+                    </div>
+                    
+                    {!isListView && (
+                      <p className="mt-2 text-sm text-gray-600 line-clamp-2">
+                        {product.description}
+                      </p>
+                    )}
+
+                    {!isListView && product.features && product.features.length > 0 && (
+                      <div className="mt-3">
+                        <h4 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Key Features</h4>
+                        <ul className="space-y-1.5">
+                          {product.features.slice(0, 2).map((feature, i) => (
+                            <li key={i} className="text-xs text-gray-600 flex items-center">
+                              <span className="w-1 h-1 rounded-full bg-blue-600/80 mr-1.5 flex-shrink-0" />
+                              <span className="line-clamp-1">{feature}</span>
+                            </li>
+                          ))}
+                        </ul>
+                        {product.features.length > 2 && (
+                          <button 
+                            onClick={() => handleProductClick(product)}
+                            className="mt-1 text-xs text-blue-600 hover:text-blue-700 cursor-pointer flex items-center gap-1 group/btn"
+                          >
+                            +{product.features.length - 2} more features
+                            <ChevronRight className="w-3 h-3 group-hover/btn:translate-x-0.5 transition-transform" />
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    <div className={cn(
+                      isListView 
+                        ? "flex items-center justify-between mt-2" 
+                        : "mt-3 pt-3 border-t border-gray-100 flex items-center justify-between"
+                    )}>
+                      <span className="px-2.5 py-1 bg-gray-50 text-gray-600 rounded-md text-xs font-medium border border-gray-100">
+                        {product.category.split('/')[1] || product.category}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1 bg-gray-50 rounded-lg p-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCardQuantityChange(product.id, -1);
+                            }}
+                            disabled={!cardQuantities[product.id] || cardQuantities[product.id] <= 1}
+                            className="h-6 w-6"
+                          >
+                            <Minus className="h-3 w-3" />
+                          </Button>
+                          <span className="w-6 text-center text-sm font-medium">
+                            {cardQuantities[product.id] || 1}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCardQuantityChange(product.id, 1);
+                            }}
+                            className="h-6 w-6"
+                          >
+                            <Plus className="h-3 w-3" />
+                          </Button>
+                        </div>
                         <Button
                           variant="ghost"
-                          size="icon"
+                          size="sm"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleCardQuantityChange(product.id, 1);
+                            addToBundle(product);
                           }}
-                          className="h-6 w-6"
+                          className="text-blue-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg font-medium"
                         >
-                          <Plus className="h-3 w-3" />
+                          <span className="flex items-center gap-1">
+                            <span>Add</span>
+                            <Plus className="h-3 w-3" />
+                          </span>
                         </Button>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          addToBundle(product);
-                        }}
-                        className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg font-medium"
-                        disabled={bundleItems.some(item => item.id === product.id)}
-                      >
-                        {bundleItems.some(item => item.id === product.id) ? (
-                          'Added'
-              ) : (
-                          <>
-                        <Plus className="h-4 w-4 mr-1" />
-                        Add
-                          </>
-                        )}
-                      </Button>
                     </div>
                   </div>
-                </div>
-              </motion.div>
+                </motion.div>
+              )
             ))}
           </motion.div>
 
           {/* Pagination */}
-          <div className="mt-8 mb-6">
-            <div className="flex justify-center items-center gap-3">
+          <div className="mt-6 sm:mt-8 mb-4 sm:mb-6">
+            <div className="flex justify-center items-center gap-2 sm:gap-3">
               <Button
                 variant="outline"
                 size="icon"
                 onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                 disabled={currentPage === 1}
-                className="h-9 w-9 transition-all hover:scale-105 hover:border-blue-400"
+                className="h-8 w-8 sm:h-9 sm:w-9 transition-all hover:scale-105 hover:border-blue-400"
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
@@ -1174,10 +1194,10 @@ export default function ProductsPage() {
                   variant={currentPage === page ? "default" : "outline"}
                   onClick={() => setCurrentPage(page)}
                   className={cn(
-                    "h-9 w-9 transition-all",
+                    "h-8 w-8 sm:h-9 sm:w-9 transition-all text-sm",
                     currentPage === page 
                       ? "bg-blue-500 hover:bg-blue-600 shadow-md hover:shadow-lg transform hover:scale-105 text-white" 
-                      : "hover:border-blue-400 hover:scale-105 text-gray-600"
+                      : "hover:border-blue-300 hover:scale-105 text-gray-600"
                   )}
                 >
                   {page}
@@ -1188,7 +1208,7 @@ export default function ProductsPage() {
                 size="icon"
                 onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                 disabled={currentPage === totalPages}
-                className="h-9 w-9 transition-all hover:scale-105 hover:border-blue-400"
+                className="h-8 w-8 sm:h-9 sm:w-9 transition-all hover:scale-105 hover:border-blue-400"
               >
                 <ChevronRight className="h-4 w-4" />
               </Button>
@@ -1196,273 +1216,15 @@ export default function ProductsPage() {
           </div>
         </div>
 
-        {/* Persistent Cart Section */}
-        <AnimatePresence mode="popLayout">
-          {isCartOpen && (
-            <motion.div 
-              initial={{ x: "100%", opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: "100%", opacity: 0 }}
-              transition={{ 
-                type: "spring",
-                stiffness: 300,
-                damping: 30
-              }}
-              className="fixed right-0 top-0 bottom-0 w-[384px] border-l border-gray-200 bg-white shadow-xl"
-              style={{ marginTop: "65px" }}
-            >
-              {/* Resize Handle */}
-              <div 
-                className="absolute left-0 top-0 bottom-0 w-1 cursor-ew-resize hover:bg-blue-500/10 group"
-                onMouseDown={handleResize}
-                style={{ touchAction: 'none' }}
-              >
-                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-full bg-gray-200 group-hover:bg-blue-500/50 transition-colors" />
-              </div>
-
-              <div className="flex-1 flex flex-col">
-                <motion.div 
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 10 }}
-                  transition={{ 
-                    duration: 0.3,
-                    delay: 0.1,
-                    ease: "easeOut"
-                  }}
-                  className="flex flex-col h-full p-6"
-                >
-                  <div className="flex items-center justify-between mb-6">
-                    <div>
-                      <h2 className="text-lg font-semibold text-gray-900">Your Bundle</h2>
-                      <p className="text-sm text-gray-500">
-                        {bundleItems.reduce((sum, product) => sum + product.quantity, 0)} items in your bundle
-                      </p>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setIsCartOpen(false)}
-                      className="h-8 w-8 rounded-full hover:bg-gray-100"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-
-                  <div className="flex-1 overflow-y-auto space-y-6 pr-2 -mr-2">
-                    {bundleItems.map((product) => (
-                      <motion.div
-                        key={product.id}
-                        variants={itemVariants}
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -20 }}
-                        transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                        className="flex flex-col bg-white rounded-lg p-4"
-                      >
-                        {/* Product Image and Basic Info */}
-                        <div className="flex gap-4 mb-3">
-                          <div className="relative h-20 w-20 flex-shrink-0 rounded-lg overflow-hidden bg-white border border-gray-200">
-                            {(() => {
-                              const key = getProductImageKey(product.title);
-                              const images = productImages[key as keyof typeof productImages];
-                              if (images && images.length > 0) {
-                                return (
-                                  <div className="absolute inset-0 flex items-center justify-center bg-white">
-                                    <Image
-                                      src={images[0]}
-                                      alt={product.title}
-                                      fill
-                                      className="object-contain p-2"
-                                      sizes="80px"
-                                    />
-                                  </div>
-                                );
-                              }
-                              return (
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                  <Package className="h-8 w-8 text-gray-400" />
-                                </div>
-                              );
-                            })()}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h4 className="text-sm font-medium text-gray-900 break-words">
-                              {product.title}
-                            </h4>
-                            <div className="mt-1 text-sm font-medium text-blue-600">
-                              ${(product.our_price || product.price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Quantity Controls and Remove */}
-                        <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                          <div className="flex items-center gap-3">
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleBundleQuantityUpdate(product.id, product.quantity - 1);
-                              }}
-                              disabled={product.quantity <= 1}
-                              className="h-7 w-7"
-                            >
-                              <Minus className="h-3 w-3" />
-                            </Button>
-                            <span className="w-4 text-center text-sm">
-                              {product.quantity}
-                            </span>
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleBundleQuantityUpdate(product.id, product.quantity + 1);
-                              }}
-                              className="h-7 w-7"
-                            >
-                              <Plus className="h-3 w-3" />
-                            </Button>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeFromBundle(product.id)}
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                          >
-                            Remove
-                          </Button>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-
-                  <div className="pt-6 border-t border-gray-200 mt-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <span className="text-base font-medium text-gray-900">Subtotal</span>
-                        <p className="text-sm text-gray-500 mt-0.5">Tax will be added to the final contract</p>
-                      </div>
-                      <span className="text-lg font-semibold text-blue-600">
-                        ${bundleItems.reduce((sum, product) => 
-                          sum + (product.our_price || product.price) * product.quantity, 0
-                        ).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </span>
-                    </div>
-
-                    {/* Installation Option */}
-                    <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
-                        <label className="flex items-center gap-2">
-                          <input 
-                            type="checkbox" 
-                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                            checked={installationSelected}
-                            onChange={(e) => setInstallationSelected(e.target.checked)}
-                          />
-                          <span className="text-sm font-medium text-gray-900">Add Installation Service</span>
-                        </label>
-                      </div>
-                      {installationSelected && (
-                        <div className="mt-2">
-                          <div className="relative">
-                            <span className="absolute left-3 top-2 text-gray-500">$</span>
-                            <Input
-                              type="number"
-                              value={installationPrice}
-                              onChange={(e) => setInstallationPrice(parseFloat(e.target.value) || 0)}
-                              className="pl-7"
-                              placeholder="Enter installation price"
-                              step="0.01"
-                              min="0"
-                            />
-                          </div>
-                          <p className="text-xs text-gray-500 mt-1">Enter the installation service price</p>
-                </div>
-              )}
-            </div>
-
-                    {/* Total with Installation */}
-                    <div className="flex items-center justify-between mb-4 pt-4 border-t border-gray-200">
-                      <span className="text-base font-medium text-gray-900">Total</span>
-                      <span className="text-lg font-semibold text-blue-600">
-                        ${(bundleItems.reduce((sum, product) => 
-                          sum + (product.our_price || product.price) * product.quantity, 0
-                        ) + (installationSelected ? installationPrice : 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </span>
-          </div>
-
-                    <div className="space-y-3">
-                      <Button
-                        className="w-full"
-                        variant="outline"
-                        onClick={() => setIsQuoteModalOpen(true)}
-                      >
-                        Create Quote
-                      </Button>
-                      <Button
-                        className="w-full bg-blue-600 hover:bg-blue-700"
-                        size="lg"
-                        onClick={() => setIsCheckoutOpen(true)}
-                      >
-                        Create Contract
-                        <ChevronRight className="w-4 h-4 ml-2" />
-                      </Button>
-                      <p className="text-xs text-center text-gray-500">
-                        By creating a contract, you agree to our terms of service and rental agreement.
-                      </p>
-        </div>
+        {/* Bundle Component */}
+        <Bundle 
+          products={bundleItems}
+          onRemove={removeFromBundle}
+          onUpdateQuantity={handleBundleQuantityUpdate}
+          isOpen={isCartOpen}
+          setIsOpen={setIsCartOpen}
+        />
       </div>
-                </motion.div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      {/* Success Notifications */}
-      <AnimatePresence>
-        {showSuccessNotification && (
-          <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 50 }}
-            className="fixed inset-x-0 bottom-4 mx-auto w-fit z-50 bg-white rounded-lg shadow-lg border border-gray-200 p-4 flex items-center gap-3"
-          >
-            <CheckCircle2 className="h-5 w-5 text-green-500" />
-            <p className="text-sm font-medium text-gray-900">Contract created successfully!</p>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Loading Overlay */}
-      <AnimatePresence>
-        {isCreatingContract && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-center justify-center"
-          >
-            <motion.div
-              initial={{ scale: 0.9 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0.9 }}
-              className="bg-white rounded-lg shadow-lg p-6 flex flex-col items-center gap-4"
-            >
-              <div className="relative">
-                <div className="w-12 h-12 rounded-full border-4 border-blue-100 animate-pulse" />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <Loader2 className="w-6 h-6 text-blue-600 animate-spin" />
-                </div>
-              </div>
-              <p className="text-sm font-medium text-gray-900">Creating your contract...</p>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Checkout Modal */}
       <AnimatePresence>
@@ -1474,7 +1236,6 @@ export default function ProductsPage() {
             }))}
             onClose={() => setIsCheckoutOpen(false)}
             onSubmit={handleContractCreation}
-            installationPrice={installationSelected ? installationPrice : 0}
           />
         )}
       </AnimatePresence>
@@ -1499,124 +1260,19 @@ export default function ProductsPage() {
         />
       )}
 
-      {/* Quote Modal */}
-      <Dialog open={isQuoteModalOpen} onOpenChange={setIsQuoteModalOpen}>
-        <DialogContent className="sm:max-w-md bg-white/90 backdrop-blur-md border border-white/20 shadow-xl">
-          <DialogHeader className="space-y-3 pb-4 border-b">
-            <DialogTitle className="text-2xl font-semibold">Create Quote</DialogTitle>
-            <p className="text-sm text-gray-500">
-              We'll send a detailed quote with product images and specifications to your email.
-            </p>
-          </DialogHeader>
-          <form onSubmit={handleQuoteCreation} className="space-y-6 pt-4">
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-medium">Email Address</Label>
-              <div className="relative">
-                <Input
-                  id="email"
-                  type="email"
-                  value={quoteEmail}
-                  onChange={(e) => setQuoteEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  className="w-full pl-10 bg-white/50"
-                  required
-                />
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              </div>
-            </div>
-
-            <div className="bg-white/50 rounded-xl border border-gray-100 overflow-hidden">
-              <div className="p-4 space-y-3">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Items in Quote:</span>
-                  <span className="font-medium">{bundleItems.length}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Subtotal:</span>
-                  <span className="font-medium">
-                    ${(bundleItems.reduce((sum, product) => 
-                      sum + (product.our_price || product.price) * product.quantity, 0
-                    )).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Sales Tax:</span>
-                  <span className="font-medium">
-                    ${calculateTax(bundleItems.reduce((sum, product) => 
-                      sum + (product.our_price || product.price) * product.quantity, 0
-                    )).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </span>
-                </div>
-                {installationSelected && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Installation:</span>
-                    <span className="font-medium">
-                      ${installationPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </span>
-                  </div>
-                )}
-              </div>
-              <div className="border-t border-gray-100 bg-gray-50/50 p-4">
-                <div className="flex justify-between items-baseline">
-                  <span className="text-sm font-medium">Total Amount:</span>
-                  <span className="text-lg font-semibold text-blue-600">
-                    ${(bundleItems.reduce((sum, product) => 
-                      sum + (product.our_price || product.price) * product.quantity, 0
-                    ) + (installationSelected ? installationPrice : 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-2">
-              <Button
-                type="submit"
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white h-11 text-base"
-                disabled={isCreatingQuote}
-              >
-                {isCreatingQuote ? (
-                  <div className="flex items-center justify-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Generating Quote...</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-center gap-2">
-                    <Mail className="h-4 w-4" />
-                    <span>Send Quote</span>
-                  </div>
-                )}
-              </Button>
-              <p className="mt-3 text-xs text-center text-gray-500">
-                The quote will be valid for 30 days from the date of creation.
-              </p>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Quote Success/Error Notification */}
-      <AnimatePresence>
-        {(showQuoteSuccess || showQuoteError) && (
-          <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 50 }}
-            className="fixed inset-x-0 bottom-4 mx-auto w-fit z-50 bg-white rounded-lg shadow-lg border border-gray-200 p-4 flex items-center gap-3"
-          >
-            {showQuoteSuccess ? (
-              <>
-                <CheckCircle2 className="h-5 w-5 text-green-500" />
-                <span className="text-sm font-medium text-gray-900">Quote sent successfully!</span>
-              </>
-            ) : (
-              <>
-                <X className="h-5 w-5 text-red-500" />
-                <span className="text-sm font-medium text-gray-900">{quoteErrorMessage}</span>
-              </>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Service Modal */}
+      {selectedService && (
+        <ServiceModal
+          isOpen={isServiceModalOpen}
+          onClose={() => {
+            setIsServiceModalOpen(false);
+            setSelectedService(null);
+          }}
+          service={selectedService}
+          onAddToBundle={(service) => addToBundle({...service, price: Number(service.price)})}
+          setIsCartOpen={setIsCartOpen}
+        />
+      )}
     </div>
   )
 } 
