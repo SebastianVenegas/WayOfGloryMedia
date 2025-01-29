@@ -224,6 +224,63 @@ function formatEmailPreview({ subject, content, order, baseStyle }: {
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         ${baseStyle}
+        <style>
+          .order-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 24px 0;
+          }
+          .order-card h3 {
+            color: #1e293b;
+            font-size: 16px;
+            font-weight: 600;
+            margin: 0 0 12px 0;
+          }
+          .order-detail {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #e2e8f0;
+          }
+          .order-detail:last-child {
+            border-bottom: none;
+          }
+          .order-label {
+            color: #64748b;
+            font-size: 14px;
+          }
+          .order-value {
+            color: #0f172a;
+            font-size: 14px;
+            font-weight: 500;
+          }
+          .signature {
+            margin-top: 32px;
+            padding-top: 24px;
+            border-top: 1px solid #e2e8f0;
+          }
+          .signature img {
+            height: 60px;
+            margin-bottom: 12px;
+          }
+          .signature-name {
+            font-weight: 600;
+            color: #0f172a;
+            margin: 0;
+          }
+          .signature-title {
+            color: #64748b;
+            font-size: 14px;
+            margin: 4px 0;
+          }
+          .signature-contact {
+            color: #64748b;
+            font-size: 14px;
+            margin: 4px 0;
+          }
+        </style>
       </head>
       <body>
         <div class="email-container">
@@ -231,10 +288,33 @@ function formatEmailPreview({ subject, content, order, baseStyle }: {
           <div class="content">
             ${formattedContent}
           </div>
-          <div class="footer">
-            <p>Best regards,</p>
-            <p>Way of Glory Team</p>
-            <p>Order #${order.id}</p>
+
+          <div class="order-card">
+            <h3>Order Details</h3>
+            <div class="order-detail">
+              <span class="order-label">Order Number</span>
+              <span class="order-value">#${order.id}</span>
+            </div>
+            <div class="order-detail">
+              <span class="order-label">Total Amount</span>
+              <span class="order-value">$${order.total_amount}</span>
+            </div>
+            ${order.installation_date ? `
+            <div class="order-detail">
+              <span class="order-label">Installation Date</span>
+              <span class="order-value">${order.installation_date}</span>
+            </div>
+            ` : ''}
+          </div>
+
+          <div class="signature">
+            <img src="https://wayofglory.com/signature.png" alt="Digital Signature" />
+            <p class="signature-name">Way of Glory Team</p>
+            <p class="signature-title">Customer Success Team</p>
+            <p class="signature-contact">
+              Email: support@wayofglory.com<br>
+              Phone: (555) 123-4567
+            </p>
           </div>
         </div>
       </body>

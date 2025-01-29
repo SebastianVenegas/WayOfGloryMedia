@@ -9,11 +9,35 @@ interface Order {
   email: string;
   total_amount: number | string;
   installation_date?: string;
+  installation_time?: string;
+  installation_address?: string;
+  installation_city?: string;
+  installation_state?: string;
+  installation_zip?: string;
+  shipping_address?: string;
+  shipping_city?: string;
+  shipping_state?: string;
+  shipping_zip?: string;
+  order_items?: Array<{
+    id: number;
+    product_id: number;
+    quantity: number;
+    price_at_time: number;
+    cost_at_time: number;
+    product: {
+      title: string;
+    };
+  }>;
 }
 
 interface CustomEmail {
   subject: string;
   content: string;
+}
+
+interface EmailTemplate {
+  subject: string;
+  html: string;
 }
 
 interface SendTemplateRequest {
@@ -24,7 +48,7 @@ interface SendTemplateRequest {
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Email templates
-const getEmailTemplate = (templateId: string, order: any, customEmail?: { subject: string; body: string }) => {
+const getEmailTemplate = (templateId: string, order: Order, customEmail?: CustomEmail): EmailTemplate | null => {
   // Base email styling
   const baseStyle = `
     <style>
@@ -56,15 +80,6 @@ const getEmailTemplate = (templateId: string, order: any, customEmail?: { subjec
         border-top: 1px solid #e2e8f0;
         color: #666;
       }
-      .button {
-        display: inline-block;
-        padding: 10px 20px;
-        background-color: #1a365d;
-        color: white;
-        text-decoration: none;
-        border-radius: 5px;
-        margin: 10px 0;
-      }
     </style>
   `;
 
@@ -79,7 +94,7 @@ const getEmailTemplate = (templateId: string, order: any, customEmail?: { subjec
             <h1>Way of Glory</h1>
           </div>
           <div class="content">
-            ${customEmail.body}
+            ${customEmail.content}
           </div>
           <div class="footer">
             <p>Thank you for choosing Way of Glory</p>
@@ -225,7 +240,27 @@ export async function POST(
       );
     }
 
-    const order = rows[0];
+    const orderData = rows[0];
+    
+    // Cast the database result to Order type
+    const order: Order = {
+      id: orderData.id,
+      first_name: orderData.first_name,
+      last_name: orderData.last_name,
+      email: orderData.email,
+      total_amount: orderData.total_amount,
+      installation_date: orderData.installation_date,
+      installation_time: orderData.installation_time,
+      installation_address: orderData.installation_address,
+      installation_city: orderData.installation_city,
+      installation_state: orderData.installation_state,
+      installation_zip: orderData.installation_zip,
+      shipping_address: orderData.shipping_address,
+      shipping_city: orderData.shipping_city,
+      shipping_state: orderData.shipping_state,
+      shipping_zip: orderData.shipping_zip,
+      order_items: orderData.order_items,
+    };
 
     // Get email template
     const template = getEmailTemplate(templateId, order, customEmail);
@@ -246,9 +281,9 @@ export async function POST(
     const emailResponse = await resend.emails.send({
       from: 'Way of Glory <orders@wayofglory.com>',
       to: order.email,
-      subject: templateId === 'custom' ? customEmail.subject : template.subject,
-      html: templateId === 'custom' ? customEmail.content : template.html,
-      text: templateId === 'custom' ? customEmail.content.replace(/<[^>]*>/g, '') : template.html.replace(/<[^>]*>/g, ''),
+      subject: customEmail?.subject || template.subject,
+      html: customEmail?.content || template.html,
+      text: (customEmail?.content || template.html).replace(/<[^>]*>/g, ''),
     });
 
     if (!emailResponse.data?.id) {

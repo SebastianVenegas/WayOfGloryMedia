@@ -1,7 +1,23 @@
 import { NextResponse } from 'next/server'
 import nodemailer from 'nodemailer'
+import { Resend } from 'resend'
 
-export async function POST(req: Request) {
+interface ContactFormData {
+  name: string;
+  email: string;
+  phone: string;
+  message: string;
+}
+
+interface ResendError {
+  statusCode: number;
+  message: string;
+  name: string;
+}
+
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+export async function POST(request: Request) {
   // Check environment variables
   const gmailUser = process.env.GMAIL_USER
   const gmailPassword = process.env.GMAIL_APP_PASSWORD
@@ -18,10 +34,11 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { name, email, churchName, message } = await req.json()
+    const formData = await request.json() as ContactFormData;
+    const { name, email, phone, message } = formData;
 
     // Validate input
-    if (!name || !email || !churchName || !message) {
+    if (!name || !email || !phone || !message) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
@@ -54,12 +71,12 @@ export async function POST(req: Request) {
     const mailOptions = {
       from: `"WayofGlory Contact Form" <${gmailUser}>`,
       to: "paulovenegas2004@gmail.com",
-      subject: `New Consultation Request from ${churchName}`,
+      subject: `New Consultation Request from ${name}`,
       html: `
         <h2>New Consultation Request</h2>
         <p><strong>Name:</strong> ${name}</p>
         <p><strong>Email:</strong> ${email}</p>
-        <p><strong>Church:</strong> ${churchName}</p>
+        <p><strong>Phone:</strong> ${phone}</p>
         <p><strong>Message:</strong></p>
         <p>${message}</p>
       `
@@ -80,10 +97,14 @@ export async function POST(req: Request) {
       )
     }
   } catch (error) {
-    console.error('General error:', error)
+    const resendError = error as ResendError;
+    console.error('Error sending contact form:', resendError);
     return NextResponse.json(
-      { error: "An unexpected error occurred" },
-      { status: 500 }
-    )
+      { 
+        error: resendError.message || 'Failed to submit contact form',
+        statusCode: resendError.statusCode || 500
+      },
+      { status: resendError.statusCode || 500 }
+    );
   }
 } 
