@@ -43,13 +43,19 @@ interface SendTemplateRequest {
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+type RouteContext = {
+  params: {
+    id: string;
+  };
+};
+
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteContext
 ) {
   try {
     const { templateId, customEmail } = await request.json() as SendTemplateRequest;
-    const orderId = params.id;
+    const orderId = context.params.id;
 
     // Fetch order details
     const { rows } = await sql`

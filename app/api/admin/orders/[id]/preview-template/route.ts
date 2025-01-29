@@ -20,12 +20,18 @@ interface Order {
   shipping_zip?: string;
 }
 
+type RouteContext = {
+  params: {
+    id: string;
+  };
+};
+
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteContext
 ) {
   try {
-    const orderId = Number(params.id);
+    const orderId = Number(context.params.id);
     const { templateId } = await request.json();
 
     // Get the order details from the database
