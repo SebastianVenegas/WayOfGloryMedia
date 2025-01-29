@@ -102,9 +102,9 @@ const getProductImageKey = (title: string): string => {
   };
 
   return titleToKeyMap[title] || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-}
+};
 
-export const productImages = {
+const productImages = {
   'proco-stagemaster-32-4': [
     '/images/products/proco-stagemaster-32-4/proco-stagemaster-32-4-1.jpg',
     '/images/products/proco-stagemaster-32-4/proco-stagemaster-32-4-2.jpg',

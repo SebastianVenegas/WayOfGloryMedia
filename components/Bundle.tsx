@@ -15,8 +15,8 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet"
 import { Input } from '@/components/ui/input'
-import { productImages, getProductImageKey } from '@/app/admin/products/page'
 import { useToast } from "@/components/ui/use-toast"
+import { useRouter } from 'next/navigation'
 
 interface Product {
   id: string;
@@ -58,6 +58,10 @@ const itemVariants = {
     }
   }
 }
+
+const getProductImageKey = (title: string): string => {
+  return title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+};
 
 export default function Bundle({ products, onRemove, onUpdateQuantity, isOpen, setIsOpen }: BundleProps) {
   const { toast } = useToast()
@@ -231,6 +235,11 @@ Total: $${totalAmount.toFixed(2)}`,
     }
   };
 
+  const getProductImage = (title: string) => {
+    const key = getProductImageKey(title);
+    return `/images/products/${key}/${key}-1.jpg`;
+  };
+
   return (
     <>
       {/* Cart Sidebar */}
@@ -296,26 +305,13 @@ Total: $${totalAmount.toFixed(2)}`,
                       <div className="flex gap-3">
                         {/* Image */}
                         <div className="relative h-16 w-16 rounded-lg bg-white overflow-hidden border border-gray-100">
-                          {(() => {
-                            const key = getProductImageKey(product.title)
-                            const images = productImages[key as keyof typeof productImages]
-                            if (images?.[0]) {
-                              return (
-                                <Image
-                                  src={images[0]}
-                                  alt={product.title}
-                                  fill
-                                  className="object-contain p-2"
-                                  sizes="64px"
-                                />
-                              )
-                            }
-                            return (
-                              <div className="h-full flex items-center justify-center">
-                                <Package className="h-8 w-8 text-gray-400" />
-                              </div>
-                            )
-                          })()}
+                          <Image
+                            src={getProductImage(product.title)}
+                            alt={product.title}
+                            fill
+                            className="object-contain p-2"
+                            sizes="64px"
+                          />
                         </div>
 
                         {/* Info */}
