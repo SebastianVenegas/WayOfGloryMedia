@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@vercel/postgres';
 import { getEmailTemplate, formatEmailPreview } from '@/lib/email-templates';
 
@@ -21,11 +21,11 @@ interface Order {
 }
 
 export async function POST(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  context: { params: { id: string } }
 ) {
   try {
-    const orderId = Number(params.id);
+    const orderId = Number(context.params.id);
     const { templateId } = await request.json();
 
     // Get the order details from the database

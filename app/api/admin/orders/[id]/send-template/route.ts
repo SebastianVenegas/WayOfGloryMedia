@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@vercel/postgres';
 import { Resend } from 'resend';
 import { getEmailTemplate } from '@/lib/email-templates';
@@ -44,12 +44,12 @@ interface SendTemplateRequest {
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  context: { params: { id: string } }
 ) {
   try {
     const { templateId, customEmail } = await request.json() as SendTemplateRequest;
-    const orderId = params.id;
+    const orderId = context.params.id;
 
     // Fetch order details
     const { rows } = await sql`
