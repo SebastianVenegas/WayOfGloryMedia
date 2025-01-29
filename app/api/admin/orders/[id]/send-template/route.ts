@@ -43,13 +43,19 @@ interface SendTemplateRequest {
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function POST(request: NextRequest, context: { params: { id: string } }) {
   try {
+    const orderId = Number(context.params.id);
+
+    if (!orderId || isNaN(orderId)) {
+      return NextResponse.json({ error: "Invalid order ID" }, { status: 400 });
+    }
+
     const { templateId, customEmail } = await request.json() as SendTemplateRequest;
-    const orderId = params.id;
+
+    if (!templateId) {
+      return NextResponse.json({ error: "Missing template ID" }, { status: 400 });
+    }
 
     // Fetch order details
     const { rows } = await sql`
@@ -74,7 +80,7 @@ export async function POST(
 
     if (rows.length === 0) {
       return NextResponse.json(
-        { error: 'Order not found' },
+        { error: "Order not found" },
         { status: 404 }
       );
     }

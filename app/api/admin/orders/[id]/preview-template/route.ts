@@ -20,13 +20,19 @@ interface Order {
   shipping_zip?: string;
 }
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function POST(request: NextRequest, context: { params: { id: string } }) {
   try {
-    const orderId = Number(params.id);
+    const orderId = Number(context.params.id);
+
+    if (!orderId || isNaN(orderId)) {
+      return NextResponse.json({ error: "Invalid order ID" }, { status: 400 });
+    }
+
     const { templateId } = await request.json();
+
+    if (!templateId) {
+      return NextResponse.json({ error: "Missing template ID" }, { status: 400 });
+    }
 
     // Get the order details from the database
     const { rows: [orderData] } = await sql`
@@ -34,7 +40,7 @@ export async function POST(
     `;
 
     if (!orderData) {
-      return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+      return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 
     // Cast the database result to Order type
@@ -60,7 +66,7 @@ export async function POST(
     const template = getEmailTemplate(templateId, order);
 
     if (!template) {
-      return NextResponse.json({ error: 'Invalid template ID' }, { status: 400 });
+      return NextResponse.json({ error: "Invalid template ID" }, { status: 400 });
     }
 
     const html = await formatEmailPreview(template.html, order);
