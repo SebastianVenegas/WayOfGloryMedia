@@ -3,33 +3,41 @@ import { sql } from '@vercel/postgres';
 
 export async function PUT(request: NextRequest) {
   try {
+    // Extract ID from URL path
     const url = new URL(request.url);
-    const productId = Number(url.pathname.split('/').slice(-2, -1)[0]); // Extract ID from URL
+    const orderId = Number(url.pathname.split('/').slice(-2, -1)[0]);
 
-    if (isNaN(productId) || productId <= 0) {
-      return NextResponse.json({ error: "Invalid product ID" }, { status: 400 });
+    if (isNaN(orderId) || orderId <= 0) {
+      return NextResponse.json({ error: "Invalid order ID" }, { status: 400 });
     }
 
-    const { name, price, description } = await request.json();
+    // Parse request body
+    const { status } = await request.json();
 
-    if (!name || !price || !description) {
+    if (!status) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
+    const validStatuses = ["pending", "confirmed", "completed", "cancelled"];
+    if (!validStatuses.includes(status)) {
+      return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+    }
+
+    // Update order in the database
     const { rows } = await sql`
-      UPDATE products
-      SET name = ${name}, price = ${price}, description = ${description}
-      WHERE id = ${productId}
+      UPDATE orders
+      SET status = ${status}
+      WHERE id = ${orderId}
       RETURNING *
     `;
 
     if (rows.length === 0) {
-      return NextResponse.json({ error: "Product not found" }, { status: 404 });
+      return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 
     return NextResponse.json(rows[0]);
   } catch (error) {
-    console.error("Error updating product:", error);
-    return NextResponse.json({ error: "Failed to update product" }, { status: 500 });
+    console.error("Error updating order:", error);
+    return NextResponse.json({ error: "Failed to update order" }, { status: 500 });
   }
 }
