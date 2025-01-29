@@ -43,9 +43,11 @@ interface SendTemplateRequest {
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-export async function POST(request: NextRequest, context: { params: { id: string } }) {
+export async function POST(request: NextRequest) {
   try {
-    const orderId = Number(context.params.id);
+    // Extract order ID from request URL
+    const url = new URL(request.url);
+    const orderId = Number(url.pathname.split('/').slice(-2, -1)[0]);
 
     if (!orderId || isNaN(orderId)) {
       return NextResponse.json({ error: "Invalid order ID" }, { status: 400 });
@@ -79,15 +81,12 @@ export async function POST(request: NextRequest, context: { params: { id: string
     `;
 
     if (rows.length === 0) {
-      return NextResponse.json(
-        { error: "Order not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 
     const orderData = rows[0];
     
-    // Cast the database result to Order type
+    // Cast database result to Order type
     const order: Order = {
       id: orderData.id,
       first_name: orderData.first_name,
@@ -111,13 +110,10 @@ export async function POST(request: NextRequest, context: { params: { id: string
     const template = getEmailTemplate(templateId, order);
 
     if (!template) {
-      return NextResponse.json(
-        { error: 'Invalid template ID' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Invalid template ID' }, { status: 400 });
     }
 
-    // Ensure we have a valid RESEND_API_KEY
+    // Ensure API key is available
     if (!process.env.RESEND_API_KEY) {
       throw new Error('Missing RESEND_API_KEY');
     }
@@ -148,6 +144,7 @@ export async function POST(request: NextRequest, context: { params: { id: string
       message: 'Email sent successfully',
       emailId: emailResponse.data.id
     });
+
   } catch (error) {
     console.error('Error sending email:', error);
     return NextResponse.json(
@@ -155,4 +152,4 @@ export async function POST(request: NextRequest, context: { params: { id: string
       { status: 500 }
     );
   }
-} 
+}
