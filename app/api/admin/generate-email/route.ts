@@ -5,6 +5,22 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 })
 
+interface Order {
+  id: number;
+  first_name: string;
+  last_name: string;
+  email: string;
+  total_amount: number | string;
+  installation_date?: string;
+}
+
+interface EmailResponse {
+  subject: string;
+  html: string;
+  content: string;
+  isNewTemplate: boolean;
+}
+
 export async function POST(request: Request) {
   try {
     const { prompt, order, templateType, viewMode, isTemplateChange } = await request.json()
@@ -189,10 +205,10 @@ const baseStyle = `
 `
 
 function formatEmailPreview({ subject, content, order, baseStyle }: { 
-  subject: string
-  content: string
-  order: any
-  baseStyle: string 
+  subject: string;
+  content: string;
+  order: Order;
+  baseStyle: string;
 }): string {
   const formattedContent = content
     .split('\n')

@@ -1,6 +1,15 @@
 import { NextResponse } from 'next/server';
 import { sql } from '@vercel/postgres';
 
+interface Order {
+  id: number;
+  first_name: string;
+  last_name: string;
+  email: string;
+  total_amount: number | string;
+  installation_date?: string;
+}
+
 // Email templates
 const getEmailTemplate = (templateId: string, order: any) => {
   const baseStyle = `
@@ -209,6 +218,38 @@ const getEmailTemplate = (templateId: string, order: any) => {
   return templates[templateId];
 };
 
+export async function formatEmailPreview(content: string, order: Order): Promise<string> {
+  const formattedContent = content
+    .split('\n')
+    .map(line => line.trim())
+    .filter(line => line)
+    .map(line => line.startsWith('<p>') ? line : `<p>${line}</p>`)
+    .join('\n')
+
+  return `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      </head>
+      <body>
+        <div>
+          <h1>Dear ${order.first_name},</h1>
+          <div>
+            ${formattedContent}
+          </div>
+          <div>
+            <p>Best regards,</p>
+            <p>Way of Glory Team</p>
+            <p>Order #${order.id}</p>
+          </div>
+        </div>
+      </body>
+    </html>
+  `
+}
+
 export async function POST(
   request: Request,
   { params }: { params: { id: string } }
@@ -233,9 +274,11 @@ export async function POST(
       return NextResponse.json({ error: 'Invalid template ID' }, { status: 400 });
     }
 
+    const html = await formatEmailPreview(template.html, order);
+
     return NextResponse.json({
       subject: template.subject,
-      html: template.html
+      html: html
     });
   } catch (error) {
     console.error('Error generating template preview:', error);

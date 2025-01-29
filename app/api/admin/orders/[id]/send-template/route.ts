@@ -2,6 +2,25 @@ import { NextResponse } from 'next/server';
 import { sql } from '@vercel/postgres';
 import { Resend } from 'resend';
 
+interface Order {
+  id: number;
+  first_name: string;
+  last_name: string;
+  email: string;
+  total_amount: number | string;
+  installation_date?: string;
+}
+
+interface CustomEmail {
+  subject: string;
+  content: string;
+}
+
+interface SendTemplateRequest {
+  templateId: string;
+  customEmail?: CustomEmail;
+}
+
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Email templates
@@ -175,7 +194,7 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { templateId, customEmail } = await request.json();
+    const { templateId, customEmail } = await request.json() as SendTemplateRequest;
     const orderId = params.id;
 
     // Fetch order details
