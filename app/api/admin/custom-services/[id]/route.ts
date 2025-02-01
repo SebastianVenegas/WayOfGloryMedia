@@ -4,13 +4,13 @@ import { verifyAuth } from '@/lib/auth'
 
 // GET /api/admin/custom-services/[id]
 export async function GET(
-  request: NextRequest,
-  context: { params: { id: string } }
+  request: Request,
+  { params }: { params: { id: string } }
 ) {
   try {
     const result = await sql`
       SELECT * FROM custom_services 
-      WHERE id = ${context.params.id}
+      WHERE id = ${params.id}
     `
     
     if (result.rows.length === 0) {
