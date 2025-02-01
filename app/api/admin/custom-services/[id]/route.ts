@@ -5,14 +5,20 @@ import type { NextRequest } from 'next/server'
 
 export const dynamic = 'force-dynamic'
 
+type RouteContext = {
+  params: {
+    id: string
+  }
+}
+
 export async function GET(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: RouteContext
 ): Promise<NextResponse> {
   try {
     const result = await sql`
       SELECT * FROM custom_services 
-      WHERE id = ${context.params.id}
+      WHERE id = ${params.id}
     `
     
     if (result.rows.length === 0) {
@@ -28,7 +34,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: RouteContext
 ): Promise<NextResponse> {
   try {
     const authResult = await verifyAuth(request)
@@ -46,7 +52,7 @@ export async function PUT(
         price = ${price},
         features = ${features},
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = ${context.params.id}
+      WHERE id = ${params.id}
       RETURNING *
     `
 
@@ -63,7 +69,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: RouteContext
 ): Promise<NextResponse> {
   try {
     const authResult = await verifyAuth(request)
@@ -74,7 +80,7 @@ export async function DELETE(
     const result = await sql`
       UPDATE custom_services 
       SET is_active = false 
-      WHERE id = ${context.params.id}
+      WHERE id = ${params.id}
       RETURNING *
     `
 
