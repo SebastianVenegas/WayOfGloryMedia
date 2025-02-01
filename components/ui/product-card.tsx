@@ -23,7 +23,7 @@ interface ProductCardProps {
     installation_available?: boolean
     technical_details?: Record<string, any>
     images?: { image_url: string }[]
-    our_price?: number
+    our_prices?: number
     quantity?: number
   }
   onClick?: () => void
@@ -40,7 +40,7 @@ interface ProductCardProps {
     installation_available?: boolean
     technical_details?: Record<string, any>
     images?: { image_url: string }[]
-    our_price?: number
+    our_prices?: number
     quantity: number
   }) => void
   className?: string
@@ -160,7 +160,7 @@ export default function ProductCard({ product, onClick, onAddToBundle, className
           </p>
           <div className="flex items-center justify-between mb-3">
             <span className="text-lg font-bold text-blue-600">
-              ${product.price.toFixed(2)}
+              ${(product.our_prices || product.price).toFixed(2)}
             </span>
             <div className="flex items-center gap-2 bg-gray-50 rounded-lg p-1">
               <Button

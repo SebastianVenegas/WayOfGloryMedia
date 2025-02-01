@@ -16,6 +16,9 @@ interface CheckoutProps {
       warranty: boolean
       installation: boolean
     }
+    category?: string
+    is_service?: boolean
+    is_custom?: boolean
   }[]
   onClose: () => void
   clearCart: () => void
@@ -98,6 +101,25 @@ export function Checkout({ cartItems, onClose, clearCart }: CheckoutProps) {
       (item.addons.warranty ? 199 : 0) + (item.addons.installation ? 299 : 0) : 0
     return sum + basePrice + addonsPrice
   }, 0)
+
+  const taxableAmount = cartItems.reduce((sum, item) => {
+    // Skip tax for services - check title for "Service" keyword as well
+    if (
+      item.category === 'Services' || 
+      item.category === 'Services/Custom' || 
+      item.is_service || 
+      item.is_custom ||
+      item.title.toLowerCase().includes('service')
+    ) {
+      return sum;
+    }
+    const basePrice = item.price * item.quantity;
+    const addonsPrice = item.addons ? 
+      (item.addons.warranty ? 199 : 0) : 0; // Only warranty is taxable, installation is not
+    return sum + basePrice + addonsPrice;
+  }, 0);
+
+  const salesTax = taxableAmount * 0.0775; // 7.75% tax rate
 
   const handleNext = () => {
     if (step < 3) setStep(step + 1)
@@ -471,20 +493,25 @@ export function Checkout({ cartItems, onClose, clearCart }: CheckoutProps) {
                         variants={staggerItem}
                       >
                         <motion.div 
-                          className="flex justify-between items-center text-lg font-semibold"
+                          className="flex justify-between items-center text-lg"
                           variants={staggerItem}
                         >
-                          <motion.span 
-                            variants={staggerItem}
-                          >
-                            Total Price:
-                          </motion.span>
-                          <motion.span 
-                            className="font-semibold"
-                            variants={staggerItem}
-                          >
-                            ${totalPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </motion.span>
+                          <motion.div className="space-y-2 w-full">
+                            <div className="flex justify-between text-base">
+                              <span className="text-gray-600">Subtotal:</span>
+                              <span className="font-medium">${totalPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            </div>
+                            <div className="flex justify-between text-base">
+                              <span className="text-gray-600">Sales Tax (7.75%):</span>
+                              <span className="font-medium">${salesTax.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            </div>
+                            <div className="flex justify-between text-lg pt-2 border-t">
+                              <span className="font-semibold text-gray-900">Total:</span>
+                              <span className="font-bold text-gray-900">
+                                ${(totalPrice + salesTax).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </span>
+                            </div>
+                          </motion.div>
                         </motion.div>
                       </motion.div>
                       <motion.div 
@@ -495,38 +522,40 @@ export function Checkout({ cartItems, onClose, clearCart }: CheckoutProps) {
                           className="font-medium mb-3"
                           variants={staggerItem}
                         >
-                          Terms and Conditions:
+                          Terms and Services
                         </motion.h4>
-                        <motion.ol 
-                          className="list-decimal list-inside space-y-2 text-sm text-gray-600"
+                        <motion.div 
+                          className="text-sm text-gray-600 space-y-4"
                           variants={staggerItem}
                         >
-                          <motion.li 
-                            variants={staggerItem}
-                          >
-                            All sales are final. Refunds are only available for defective products.
-                          </motion.li>
-                          <motion.li 
-                            variants={staggerItem}
-                          >
-                            Shipping times may vary depending on your location and chosen shipping method.
-                          </motion.li>
-                          <motion.li 
-                            variants={staggerItem}
-                          >
-                            Installation services must be scheduled within 30 days of purchase.
-                          </motion.li>
-                          <motion.li 
-                            variants={staggerItem}
-                          >
-                            Warranty coverage begins on the date of purchase.
-                          </motion.li>
-                          <motion.li 
-                            variants={staggerItem}
-                          >
-                            Glory Way Media is not responsible for any damages resulting from improper use.
-                          </motion.li>
-                        </motion.ol>
+                          <div>
+                            <h5 className="font-medium text-gray-700 mb-2">Equipment Terms</h5>
+                            <ul className="list-disc list-inside space-y-1 ml-2">
+                              <li>All equipment remains the property of Santi Sounds</li>
+                              <li>Equipment must be returned in the same condition as received</li>
+                              <li>Client is responsible for any damage or loss during the rental period</li>
+                            </ul>
+                          </div>
+
+                          <div>
+                            <h5 className="font-medium text-gray-700 mb-2">Payment Terms</h5>
+                            <ul className="list-disc list-inside space-y-1 ml-2">
+                              <li>Full payment must be received before equipment delivery</li>
+                              <li>A security deposit may be required for certain equipment</li>
+                              <li>Cancellation fees may apply if cancelled within 48 hours of the event</li>
+                            </ul>
+                          </div>
+
+                          <div>
+                            <h5 className="font-medium text-gray-700 mb-2">Client Responsibilities</h5>
+                            <ul className="list-disc list-inside space-y-1 ml-2">
+                              <li>Provide adequate power supply as specified</li>
+                              <li>Ensure safe storage of equipment during the rental period</li>
+                              <li>Report any issues immediately</li>
+                              <li>No modifications or repairs to be attempted by the client</li>
+                            </ul>
+                          </div>
+                        </motion.div>
                       </motion.div>
                     </motion.div>
                   )}

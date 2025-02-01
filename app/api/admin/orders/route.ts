@@ -16,7 +16,9 @@ export async function GET() {
                 'price_at_time', oi.price_at_time,
                 'cost_at_time', oi.cost_at_time,
                 'product', json_build_object(
-                  'title', p.title
+                  'title', p.title,
+                  'category', p.category,
+                  'is_service', p.is_service
                 )
               )
             ELSE NULL END

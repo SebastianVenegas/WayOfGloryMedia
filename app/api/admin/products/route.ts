@@ -21,7 +21,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = await verifyAuth()
+    const auth = await verifyAuth(request)
     if (!auth.isAuthenticated) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -54,7 +54,6 @@ export async function POST(request: NextRequest) {
           description,
           price,
           category,
-          image_url,
           features,
           technical_details,
           included_items,
@@ -65,7 +64,6 @@ export async function POST(request: NextRequest) {
           ${description || null},
           ${price},
           ${category},
-          ${image_url || null},
           ${features ? JSON.stringify(features) : null},
           ${technical_details ? JSON.stringify(technical_details) : null},
           ${included_items ? JSON.stringify(included_items) : null},
@@ -81,39 +79,20 @@ export async function POST(request: NextRequest) {
           ${price},
           ROUND(${price} * 1.20, 2)
         FROM inserted_product
-      ),
-      inserted_images AS (
-        INSERT INTO product_images (product_id, image_url, display_order)
-        SELECT 
-          p.id,
-          url,
-          ordinality - 1
-        FROM inserted_product p
-        CROSS JOIN unnest(${images}::text[]) WITH ORDINALITY as t(url)
         RETURNING *
       )
       SELECT 
         p.*,
-        COALESCE(
-          json_agg(
-            json_build_object(
-              'id', pi.id,
-              'image_url', pi.image_url,
-              'display_order', pi.display_order
-            ) ORDER BY pi.display_order
-          ) FILTER (WHERE pi.id IS NOT NULL),
-          '[]'
-        ) as images
+        op.our_price
       FROM inserted_product p
-      LEFT JOIN inserted_images pi ON p.id = pi.product_id
-      GROUP BY p.id
+      LEFT JOIN inserted_price op ON p.id = op.product_id;
     `
 
     return NextResponse.json(rows[0])
   } catch (error) {
     console.error('Error creating product:', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Failed to create product' },
       { status: 500 }
     )
   }

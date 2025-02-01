@@ -1,11 +1,12 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog-custom"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Calendar, Clock, MapPin, DollarSign, FileText, X, ArrowRight, CheckCircle, Info, Package, Check } from "lucide-react"
+import { Calendar, Clock, MapPin, DollarSign, FileText, X, ArrowRight, CheckCircle, Info, Package, Check, ArrowLeft } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
+import { useServiceSetup } from "@/lib/store/serviceSetup"
 
 interface Service {
   id: string
@@ -44,24 +45,68 @@ interface Address {
 }
 
 const featureAnimation = {
-  initial: { opacity: 0, y: 20 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -20 }
+  initial: { opacity: 0, y: 10 },
+  animate: { opacity: 1, y: 0, transition: { duration: 0.3, ease: "easeOut" } },
+  exit: { opacity: 0, y: -10, transition: { duration: 0.2, ease: "easeIn" } }
 }
 
+const containerAnimation = {
+  initial: { opacity: 0, scale: 0.98 },
+  animate: { opacity: 1, scale: 1, transition: { duration: 0.3, ease: "easeOut" } },
+  exit: { opacity: 0, scale: 0.98, transition: { duration: 0.2, ease: "easeIn" } }
+}
+
+const slideUpAnimation = {
+  initial: { opacity: 0, y: 10 },
+  animate: { opacity: 1, y: 0, transition: { duration: 0.3, ease: "easeOut" } },
+  exit: { opacity: 0, y: -10, transition: { duration: 0.2, ease: "easeIn" } }
+}
+
+type ModalMode = 'setup' | 'preview' | 'details'
+
 export default function ServiceModal({ isOpen, onClose, service, onAddToBundle, setIsCartOpen }: ServiceModalProps) {
-  const [customPrice, setCustomPrice] = useState(service.price.toString())
-  const [notes, setNotes] = useState("")
-  const [preferredDate, setPreferredDate] = useState("")
-  const [preferredTime, setPreferredTime] = useState("")
-  const [address, setAddress] = useState<Address>({
-    street: "",
-    city: "",
-    state: "",
-    zipCode: ""
-  })
+  const [mode, setMode] = useState<ModalMode>('setup')
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [currentStep, setCurrentStep] = useState(1)
+  const {
+    customPrice,
+    notes,
+    preferredDate,
+    preferredTime,
+    address,
+    setCustomPrice,
+    setNotes,
+    setPreferredDate,
+    setPreferredTime,
+    setAddress,
+    reset
+  } = useServiceSetup()
+
+  useEffect(() => {
+    if (isOpen) {
+      setCustomPrice(service.price.toString())
+    } else {
+      reset()
+    }
+  }, [isOpen, service.price, setCustomPrice, reset])
+
+  const getStepNumber = (currentMode: ModalMode): number => {
+    switch (currentMode) {
+      case 'setup': return 1
+      case 'preview': return 2
+      case 'details': return 3
+      default: return 1
+    }
+  }
+
+  const isStepComplete = (stepMode: ModalMode): boolean => {
+    const currentStep = getStepNumber(mode)
+    const targetStep = getStepNumber(stepMode)
+    return currentStep > targetStep
+  }
+
+  const isCurrentStep = (stepMode: ModalMode): boolean => {
+    return mode === stepMode
+  }
 
   const handleSubmit = () => {
     setIsSubmitting(true)
@@ -69,9 +114,9 @@ export default function ServiceModal({ isOpen, onClose, service, onAddToBundle, 
       ...service,
       price: parseFloat(customPrice),
       customization: {
-        notes,
-        preferredDate,
-        preferredTime,
+        notes: notes,
+        preferredDate: preferredDate,
+        preferredTime: preferredTime,
         location: address,
       },
     }
@@ -94,447 +139,457 @@ export default function ServiceModal({ isOpen, onClose, service, onAddToBundle, 
     )
   }
 
-  const nextStep = () => {
-    if (currentStep < 2) setCurrentStep(prev => prev + 1)
+  const handleSetupSubmit = () => {
+    if (parseFloat(customPrice) > 0) {
+      setMode('preview')
+    }
   }
 
-  const prevStep = () => {
-    if (currentStep > 1) setCurrentStep(prev => prev - 1)
+  const handlePreviewSubmit = () => {
+    setMode('details')
   }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50">
-        <DialogContent className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] max-w-2xl p-0 overflow-hidden bg-white shadow-2xl border-0 rounded-2xl">
+      <div className="fixed inset-0 bg-black/80 z-50">
+        <DialogContent className={cn(
+          "fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] w-full p-0 overflow-hidden bg-white shadow-xl border-0",
+          mode === 'setup' ? 'max-w-lg rounded-3xl' : 'max-w-6xl rounded-3xl'
+        )}>
+          <DialogHeader className="relative">
+            <DialogTitle className="sr-only">Service Customization</DialogTitle>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              className="absolute right-5 top-5 p-2 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors z-50"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </DialogHeader>
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
-            className="max-h-[90vh] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent"
+            variants={containerAnimation}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            className="max-h-[90vh] overflow-y-auto scrollbar-thin scrollbar-thumb-blue-200 scrollbar-track-transparent"
           >
-            <DialogHeader className="p-0">
-              <div className="relative h-56 bg-gradient-to-br from-blue-500 via-blue-600 to-blue-700 flex items-center justify-center overflow-hidden">
-                {/* Decorative Elements */}
+            {mode === 'setup' ? (
+              // Setup Mode (Price Selection)
+              <div className="relative">
                 <div className="absolute inset-0">
-                  {/* Gradient Overlays */}
-                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(255,255,255,0.15),_transparent_50%)]" />
-                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,_rgba(59,130,246,0.15),_transparent_50%)]" />
-                  <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/25 to-transparent" />
-                  
-                  {/* Animated Background Elements */}
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.5 }}
-                    animate={{ 
-                      opacity: [0.3, 0.5, 0.3],
-                      scale: [1, 1.2, 1],
-                      rotate: [0, 90, 0]
-                    }}
-                    transition={{ 
-                      duration: 8,
-                      repeat: Infinity,
-                      ease: "easeInOut"
-                    }}
-                    className="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-blue-400/20 blur-3xl"
-                  />
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.5 }}
-                    animate={{ 
-                      opacity: [0.2, 0.4, 0.2],
-                      scale: [1, 1.1, 1],
-                      rotate: [0, -90, 0]
-                    }}
-                    transition={{ 
-                      duration: 6,
-                      repeat: Infinity,
-                      ease: "easeInOut"
-                    }}
-                    className="absolute -bottom-32 -left-32 w-96 h-96 rounded-full bg-blue-500/20 blur-3xl"
-                  />
-                  
-                  {/* Grid Pattern */}
-                  <div 
-                    className="absolute inset-0 opacity-[0.02]" 
-                    style={{
-                      backgroundImage: `radial-gradient(circle at center, white 1px, transparent 1px)`,
-                      backgroundSize: '24px 24px'
-                    }}
-                  />
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,_rgba(59,130,246,0.03),_transparent_70%)]" />
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,_rgba(59,130,246,0.02),_transparent_70%)]" />
                 </div>
-
-                {/* Content */}
-                <div className="px-12 py-10 relative z-10 text-center">
-                  <motion.div 
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5, delay: 0.2 }}
-                    className="flex items-center justify-center gap-4 mb-6"
+                
+                {/* Header */}
+                <div className="px-12 pt-16 pb-10 text-center relative">
+                  <motion.div
+                    variants={slideUpAnimation}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-50 border border-blue-100 mb-8"
                   >
-                    <div className="w-16 h-16 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20 shadow-lg transform hover:scale-105 transition-transform">
-                      <Package className="h-8 w-8 text-white" />
-                    </div>
-                    <motion.span 
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.5, delay: 0.3 }}
-                      className="px-5 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white text-sm font-medium tracking-wide shadow-lg"
-                    >
+                    <Package className="h-4 w-4 text-blue-600" />
+                    <span className="text-sm font-medium text-blue-700">
                       {service.category}
-                    </motion.span>
+                    </span>
                   </motion.div>
                   
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5, delay: 0.4 }}
+                  <motion.h2 
+                    variants={slideUpAnimation}
+                    className="text-3xl font-bold text-gray-900 mb-4"
                   >
-                    <DialogTitle className="text-4xl font-bold mb-4 text-white tracking-tight">
-                      {service.title}
-                    </DialogTitle>
-                    <DialogDescription className="text-white/90 text-lg leading-relaxed max-w-2xl mx-auto font-medium">
-                      {service.description}
-                    </DialogDescription>
-                  </motion.div>
+                    {service.title}
+                  </motion.h2>
+                  
+                  <motion.p
+                    variants={slideUpAnimation}
+                    className="text-gray-600 max-w-md mx-auto text-lg"
+                  >
+                    Please select your preferred price for this service
+                  </motion.p>
                 </div>
 
-                {/* Close Button */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={onClose}
-                  className="absolute right-6 top-6 text-white hover:bg-white/20 rounded-full h-10 w-10 shadow-lg transition-all backdrop-blur-sm"
-                >
-                  <X className="h-5 w-5" />
-                </Button>
-              </div>
-            </DialogHeader>
-
-            <div className="px-10 py-8">
-              {/* Progress Steps */}
-              <div className="flex items-center justify-center mb-8">
-                <div className="flex items-center space-x-4">
-                  <div 
-                    className={cn(
-                      "w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors",
-                      currentStep === 1 
-                        ? "bg-blue-500 text-white shadow-md" 
-                        : "bg-blue-50 text-blue-500"
-                    )}
-                  >
-                    1
-                  </div>
-                  <div className="w-16 h-0.5 bg-blue-50">
-                    <div 
-                      className={cn(
-                        "h-full bg-blue-500 transition-all duration-300",
-                        currentStep === 2 ? "w-full" : "w-0"
-                      )} 
-                    />
-                  </div>
-                  <div 
-                    className={cn(
-                      "w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors",
-                      currentStep === 2 
-                        ? "bg-blue-500 text-white shadow-md" 
-                        : "bg-blue-50 text-blue-500"
-                    )}
-                  >
-                    2
-                  </div>
-                </div>
-              </div>
-
-              <AnimatePresence mode="wait">
-                {currentStep === 1 ? (
-                  <motion.div
-                    key="step1"
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 20 }}
-                    className="space-y-8"
-                  >
-                    {/* Features Section */}
-                    {service.features && (
-                      <motion.div 
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="mb-8"
-                      >
-                        <h3 className="text-lg font-semibold mb-6 text-gray-800 flex items-center gap-3">
-                          <CheckCircle className="h-6 w-6 text-blue-500" />
-                          Service Features & Benefits
-                        </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <AnimatePresence>
-                            {service.features.map((feature, index) => (
-                              <motion.div
-                                key={index}
-                                variants={featureAnimation}
-                                initial="initial"
-                                animate="animate"
-                                exit="exit"
-                                transition={{ 
-                                  duration: 0.2,
-                                  delay: index * 0.05,
-                                  ease: "easeOut"
-                                }}
-                                className="flex items-start gap-4 p-4 rounded-xl bg-white hover:bg-blue-50/50 border border-gray-100 hover:border-blue-200 transition-all shadow-sm hover:shadow-md group"
-                              >
-                                <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0 mt-0.5 group-hover:bg-blue-100 transition-colors">
-                                  <Check className="h-4 w-4 text-blue-500" />
-                                </div>
-                                <span className="text-base text-gray-600 group-hover:text-gray-900">{feature}</span>
-                              </motion.div>
-                            ))}
-                          </AnimatePresence>
-                        </div>
-                      </motion.div>
-                    )}
-
-                    {/* Price Input with better visual feedback */}
-                    <div className="space-y-3">
-                      <label className="text-sm font-medium text-gray-700 flex items-center gap-2.5">
-                        <DollarSign className="h-5 w-5 text-blue-500" />
-                        Service Price
-                      </label>
-                      <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-lg font-medium">$</span>
-                        <Input
-                          type="number"
-                          value={customPrice}
-                          onChange={(e) => setCustomPrice(e.target.value)}
-                          className={cn(
-                            "pl-9 bg-white border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all h-12 rounded-xl text-lg shadow-sm font-medium",
-                            !customPrice && "border-red-200 focus:border-red-400 focus:ring-red-50"
-                          )}
-                          placeholder="Enter service price"
-                        />
-                      </div>
-                    </div>
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    key="step2"
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    className="space-y-8"
-                  >
-                    {/* Info Box */}
-                    <div className="p-5 rounded-xl bg-gradient-to-br from-blue-50 via-blue-50 to-white border border-blue-100 flex items-start gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0">
-                        <Info className="h-5 w-5 text-blue-500" />
-                      </div>
-                      <div>
-                        <h4 className="text-base font-semibold text-blue-900 mb-1">Schedule Your Service</h4>
-                        <p className="text-sm text-blue-700/90 leading-relaxed">Please provide your preferred date, time, and location for the service.</p>
-                      </div>
-                    </div>
-
-                    {/* Date and Time Grid */}
-                    <div className="grid grid-cols-2 gap-5">
-                      <div className="space-y-3">
-                        <label className="text-sm font-medium text-gray-700 flex items-center gap-2.5">
-                          <Calendar className="h-5 w-5 text-blue-500" />
-                          Preferred Date
-                        </label>
-                        <Input
-                          type="date"
-                          value={preferredDate}
-                          onChange={(e) => setPreferredDate(e.target.value)}
-                          className={cn(
-                            "w-full bg-white border-gray-200 focus:border-blue-300 transition-all h-11 rounded-xl shadow-sm",
-                            !preferredDate && "border-red-200 focus:border-red-400"
-                          )}
-                        />
-                      </div>
-                      <div className="space-y-3">
-                        <label className="text-sm font-medium text-gray-700 flex items-center gap-2.5">
-                          <Clock className="h-5 w-5 text-blue-500" />
-                          Preferred Time
-                        </label>
-                        <Input
-                          type="time"
-                          value={preferredTime}
-                          onChange={(e) => setPreferredTime(e.target.value)}
-                          className={cn(
-                            "w-full bg-white border-gray-200 focus:border-blue-300 transition-all h-11 rounded-xl shadow-sm",
-                            !preferredTime && "border-red-200 focus:border-red-400"
-                          )}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Location Input */}
+                {/* Price Input */}
+                <div className="px-12 pb-12">
+                  <div className="max-w-md mx-auto">
                     <div className="space-y-6">
-                      <div className="flex items-center gap-2.5">
-                        <MapPin className="h-5 w-5 text-blue-500" />
-                        <h4 className="text-sm font-medium text-gray-700">Service Location</h4>
-                      </div>
-                      
-                      <div className="grid gap-5">
-                        <div className="space-y-3">
-                          <label className="text-sm text-gray-600">Street Address</label>
-                          <Input
-                            type="text"
-                            value={address.street}
-                            onChange={(e) => setAddress(prev => ({ ...prev, street: e.target.value }))}
-                            placeholder="Enter street address"
-                            className={cn(
-                              "bg-white border-gray-200 focus:border-blue-300 transition-all h-11 rounded-xl shadow-sm",
-                              !address.street && "border-red-200 focus:border-red-400"
-                            )}
-                          />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-3">
-                            <label className="text-sm text-gray-600">City</label>
-                            <Input
-                              type="text"
-                              value={address.city}
-                              onChange={(e) => setAddress(prev => ({ ...prev, city: e.target.value }))}
-                              placeholder="City"
-                              className={cn(
-                                "bg-white border-gray-200 focus:border-blue-300 transition-all h-11 rounded-xl shadow-sm",
-                                !address.city && "border-red-200 focus:border-red-400"
-                              )}
-                            />
-                          </div>
-
-                          <div className="space-y-3">
-                            <label className="text-sm text-gray-600">State</label>
-                            <Input
-                              type="text"
-                              value={address.state}
-                              onChange={(e) => setAddress(prev => ({ ...prev, state: e.target.value }))}
-                              placeholder="State"
-                              className={cn(
-                                "bg-white border-gray-200 focus:border-blue-300 transition-all h-11 rounded-xl shadow-sm",
-                                !address.state && "border-red-200 focus:border-red-400"
-                              )}
-                            />
-                          </div>
-                        </div>
-
-                        <div className="space-y-3">
-                          <label className="text-sm text-gray-600">ZIP Code</label>
-                          <Input
-                            type="text"
-                            value={address.zipCode}
-                            onChange={(e) => setAddress(prev => ({ ...prev, zipCode: e.target.value }))}
-                            placeholder="ZIP Code"
-                            className={cn(
-                              "bg-white border-gray-200 focus:border-blue-300 transition-all h-11 rounded-xl shadow-sm",
-                              !address.zipCode && "border-red-200 focus:border-red-400"
-                            )}
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Enhanced Notes Section */}
-                    <div className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <label className="text-sm font-medium text-gray-700 flex items-center gap-2.5">
-                          <FileText className="h-5 w-5 text-blue-500" />
-                          Additional Notes
-                        </label>
-                        <span className="text-xs text-gray-500">
-                          {notes.length > 0 ? `${notes.length} characters` : 'Optional'}
+                        <label className="text-base font-medium text-gray-700">Service Price</label>
+                        <span className="text-base font-medium text-blue-600">
+                          Starting from ${service.price}
                         </span>
                       </div>
-                      <div className="relative">
-                        <Textarea
-                          value={notes}
-                          onChange={(e) => setNotes(e.target.value)}
-                          placeholder="Any specific requirements or special instructions..."
-                          className="min-h-[120px] bg-white border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all resize-none text-sm rounded-xl p-4 shadow-sm"
-                        />
-                        <div className="absolute bottom-3 right-3 flex items-center gap-2 pointer-events-none">
-                          {notes.length > 0 && (
-                            <motion.div
-                              initial={{ opacity: 0, scale: 0.5 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-blue-50 border border-blue-100"
-                            >
-                              <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                              <span className="text-xs text-blue-700 font-medium">Saved</span>
-                            </motion.div>
-                          )}
+                      <div className="relative group">
+                        <div className="relative bg-white rounded-2xl border border-gray-200 group-hover:border-blue-200 shadow-sm transition-all duration-200 group-hover:shadow-[0_0_0_1px_rgba(59,130,246,0.1),0_1px_2px_0_rgba(0,0,0,0.05)] overflow-hidden">
+                          <div className="absolute inset-y-0 left-0 w-16 bg-blue-50 flex items-center justify-center border-r border-gray-200 group-hover:border-blue-100 group-hover:bg-blue-50/80 transition-colors">
+                            <DollarSign className="h-5 w-5 text-blue-600 group-hover:text-blue-700 transition-colors" />
+                          </div>
+                          <Input
+                            type="number"
+                            value={customPrice}
+                            onChange={(e) => setCustomPrice(e.target.value)}
+                            className={cn(
+                              "pl-16 bg-transparent border-0 ring-0 focus:ring-0 h-14 text-xl font-medium text-gray-900 placeholder:text-gray-400",
+                              !customPrice && "placeholder:text-red-400"
+                            )}
+                            placeholder="Enter price"
+                          />
                         </div>
                       </div>
-                      <p className="text-xs text-gray-500">
-                        Notes are automatically saved and will be attached to your service bundle.
-                      </p>
                     </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* Footer */}
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.2 }}
-              className="px-10 py-6 bg-gradient-to-b from-transparent to-gray-50/80 border-t border-gray-100"
-            >
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  {currentStep === 2 && !isFormValid() && (
-                    <span className="text-sm text-red-500 flex items-center gap-2">
-                      <Info className="h-4 w-4" />
-                      Please complete all required fields
-                    </span>
-                  )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  {currentStep === 2 && (
+
+                {/* Footer */}
+                <div className="px-12 py-6 bg-gray-50 border-t border-gray-100">
+                  <div className="max-w-md mx-auto flex items-center justify-end gap-4">
                     <Button
-                      variant="ghost"
-                      onClick={prevStep}
-                      className="text-gray-600 hover:text-gray-900 hover:bg-gray-100/80 h-11 px-5 rounded-xl"
-                    >
-                      Back
-                    </Button>
-                  )}
-                  {currentStep === 1 ? (
-                    <Button
-                      onClick={nextStep}
-                      className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white gap-2 min-w-[140px] h-11 rounded-xl shadow-lg"
+                      onClick={handleSetupSubmit}
+                      type="button"
+                      disabled={!parseFloat(customPrice) || parseFloat(customPrice) <= 0}
+                      className={cn(
+                        "relative inline-flex items-center justify-center bg-blue-600 text-white gap-2 px-8 h-11 rounded-xl transition-all",
+                        "hover:bg-blue-700 active:bg-blue-800",
+                        "disabled:opacity-50 disabled:pointer-events-none",
+                        "focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
+                      )}
                     >
                       Continue
                       <ArrowRight className="h-4 w-4" />
                     </Button>
-                  ) : (
-                    <Button
-                      onClick={handleSubmit}
-                      disabled={!isFormValid() || isSubmitting}
-                      className={cn(
-                        "bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white gap-2 min-w-[180px] h-11 rounded-xl shadow-lg transition-all",
-                        isSubmitting && "cursor-not-allowed opacity-80"
-                      )}
-                    >
-                      {isSubmitting ? (
-                        <motion.div
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          className="absolute inset-0 flex items-center justify-center bg-blue-500"
-                        >
-                          <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        </motion.div>
-                      ) : (
-                        <>
-                          Add to Bundle
-                          <ArrowRight className="h-4 w-4" />
-                        </>
-                      )}
-                    </Button>
-                  )}
+                  </div>
                 </div>
               </div>
-            </motion.div>
+            ) : mode === 'preview' ? (
+              <div className="relative">
+                {/* Header */}
+                <div className="relative h-[360px] bg-blue-50 overflow-hidden rounded-t-3xl">
+                  <div className="absolute inset-0">
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,_rgba(59,130,246,0.08),_transparent_70%)]" />
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,_rgba(59,130,246,0.05),_transparent_70%)]" />
+                  </div>
+
+                  {/* Content */}
+                  <div className="relative h-full flex flex-col items-center justify-center px-12">
+                    <motion.div 
+                      variants={slideUpAnimation}
+                      className="w-full max-w-4xl mx-auto text-center"
+                    >
+                      <motion.div
+                        variants={slideUpAnimation}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-blue-100 mb-8"
+                      >
+                        <Package className="h-4 w-4 text-blue-600" />
+                        <span className="text-sm font-medium text-blue-700">
+                          {service.category}
+                        </span>
+                      </motion.div>
+                      
+                      <motion.h2 
+                        variants={slideUpAnimation}
+                        className="text-4xl font-bold text-gray-900 mb-6"
+                      >
+                        {service.title}
+                      </motion.h2>
+                      
+                      <motion.p
+                        variants={slideUpAnimation}
+                        className="text-gray-600 text-lg max-w-2xl mx-auto"
+                      >
+                        {service.description}
+                      </motion.p>
+                    </motion.div>
+                  </div>
+                </div>
+
+                {/* Content Section */}
+                <div className="px-12 py-12 bg-white">
+                  <div className="max-w-4xl mx-auto space-y-12">
+                    {/* Features Grid */}
+                    <div>
+                      <h3 className="text-xl font-semibold text-gray-900 mb-8 flex items-center gap-3">
+                        <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-blue-50 text-blue-600">
+                          <CheckCircle className="h-5 w-5" />
+                        </div>
+                        What's Included
+                      </h3>
+                      <div className="grid grid-cols-2 gap-4">
+                        {service.features?.map((feature, index) => (
+                          <motion.div
+                            key={index}
+                            variants={featureAnimation}
+                            initial="initial"
+                            animate="animate"
+                            exit="exit"
+                            transition={{ delay: index * 0.1 }}
+                            className="group relative p-6 rounded-2xl bg-gray-50 hover:bg-blue-50/50 transition-all duration-200"
+                          >
+                            <div className="flex gap-4">
+                              <div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center flex-shrink-0 text-blue-600 group-hover:text-blue-700 transition-colors">
+                                <Check className="h-4 w-4" />
+                              </div>
+                              <div>
+                                <span className="text-gray-600 group-hover:text-gray-900 transition-colors font-medium">
+                                  {feature}
+                                </span>
+                              </div>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="sticky bottom-0 bg-white/80 border-t border-gray-200 backdrop-blur-sm">
+                  <div className="max-w-4xl mx-auto px-12 py-6">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-8">
+                        <div>
+                          <span className="text-sm font-medium text-gray-500 block mb-1">Selected price</span>
+                          <div className="flex items-baseline gap-1">
+                            <button
+                              type="button"
+                              onClick={() => setMode('setup')}
+                              className="text-3xl font-bold text-blue-600 hover:text-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 rounded-lg px-2 -mx-2"
+                            >
+                              ${customPrice}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                      <Button
+                        onClick={handlePreviewSubmit}
+                        className="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white gap-2 px-8 h-11 rounded-xl shadow-sm hover:shadow-[0_4px_12px_rgba(59,130,246,0.25)] transition-all duration-200"
+                      >
+                        Continue to Details
+                        <ArrowRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              // Details Mode
+              <div className="relative">
+                {/* Header */}
+                <div className="px-12 py-6 border-b border-gray-200 bg-white sticky top-0 z-10">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-6">
+                      <Button
+                        variant="ghost"
+                        onClick={() => setMode('preview')}
+                        className="inline-flex items-center justify-center text-gray-600 hover:text-gray-900 h-10 px-4 rounded-xl hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2"
+                      >
+                        <ArrowLeft className="h-4 w-4 mr-2" />
+                        Back to Preview
+                      </Button>
+                      <div>
+                        <h2 className="text-lg font-semibold text-gray-900">{service.title}</h2>
+                        <div className="flex items-center gap-3 mt-1">
+                          <p className="text-sm text-gray-500">{service.category}</p>
+                          <span className="text-gray-300">•</span>
+                          <button
+                            type="button"
+                            onClick={() => setMode('setup')}
+                            className="text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 rounded-lg px-2 py-1 -mx-2"
+                          >
+                            ${customPrice}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Steps */}
+                <div className="px-12 py-10 bg-white">
+                  <div className="max-w-3xl mx-auto">
+                    <div className="flex items-center justify-center gap-6 mb-12">
+                      {[
+                        { mode: 'setup' as ModalMode, label: 'Setup' },
+                        { mode: 'preview' as ModalMode, label: 'Preview' },
+                        { mode: 'details' as ModalMode, label: 'Details' }
+                      ].map((step, index) => (
+                        <div key={step.label} className="flex items-center">
+                          <div className="flex flex-col items-center">
+                            <motion.div 
+                              animate={{
+                                scale: isCurrentStep(step.mode) ? 1.1 : 1,
+                                backgroundColor: isCurrentStep(step.mode)
+                                  ? "#2563EB"
+                                  : isStepComplete(step.mode)
+                                  ? "#1D4ED8"
+                                  : "#f3f4f6"
+                              }}
+                              className={cn(
+                                "w-10 h-10 rounded-2xl flex items-center justify-center text-sm font-medium transition-all duration-200 shadow-sm",
+                                isCurrentStep(step.mode) || isStepComplete(step.mode)
+                                  ? "text-white"
+                                  : "text-gray-600"
+                              )}
+                            >
+                              {index + 1}
+                            </motion.div>
+                            <span className="text-sm font-medium text-gray-600 mt-3">
+                              {step.label}
+                            </span>
+                          </div>
+                          {index < 2 && (
+                            <div className="w-32 h-[2px] mx-4 bg-gray-100 relative">
+                              <motion.div 
+                                initial={{ width: "0%" }}
+                                animate={{ 
+                                  width: isStepComplete(step.mode) ? "100%" : "0%"
+                                }}
+                                className="absolute inset-0 bg-blue-600 transition-all duration-300"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Form Content */}
+                    <div className="space-y-8">
+                      <AnimatePresence mode="wait">
+                        <motion.div
+                          variants={slideUpAnimation}
+                          initial="initial"
+                          animate="animate"
+                          exit="exit"
+                          className="space-y-8"
+                        >
+                          {/* Date and Time */}
+                          <div className="grid grid-cols-2 gap-6">
+                            <div className="space-y-4">
+                              <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center">
+                                  <Calendar className="h-4 w-4 text-blue-600" />
+                                </div>
+                                Preferred Date
+                              </label>
+                              <Input
+                                type="date"
+                                value={preferredDate}
+                                onChange={(e) => setPreferredDate(e.target.value)}
+                                className={cn(
+                                  "bg-white border-gray-200 focus:border-blue-600 focus:ring-blue-600/10 h-11 rounded-2xl shadow-sm transition-all duration-200 hover:border-gray-300",
+                                  !preferredDate && "border-red-200"
+                                )}
+                              />
+                            </div>
+                            <div className="space-y-4">
+                              <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center">
+                                  <Clock className="h-4 w-4 text-blue-600" />
+                                </div>
+                                Preferred Time
+                              </label>
+                              <Input
+                                type="time"
+                                value={preferredTime}
+                                onChange={(e) => setPreferredTime(e.target.value)}
+                                className={cn(
+                                  "bg-white border-gray-200 focus:border-blue-600 focus:ring-blue-600/10 h-11 rounded-2xl shadow-sm transition-all duration-200 hover:border-gray-300",
+                                  !preferredTime && "border-red-200"
+                                )}
+                              />
+                            </div>
+                          </div>
+
+                          {/* Location */}
+                          <div className="space-y-4">
+                            <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                              <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center">
+                                <MapPin className="h-4 w-4 text-blue-600" />
+                              </div>
+                              Service Location
+                            </label>
+                            <div className="space-y-4">
+                              <Input
+                                type="text"
+                                value={address.street}
+                                onChange={(e) => setAddress({ street: e.target.value })}
+                                placeholder="Street Address"
+                                className={cn(
+                                  "bg-white border-gray-200 focus:border-blue-600 focus:ring-blue-600/10 h-11 rounded-2xl shadow-sm transition-all duration-200 hover:border-gray-300",
+                                  !address.street && "border-red-200"
+                                )}
+                              />
+                              <div className="grid grid-cols-3 gap-4">
+                                {[
+                                  { value: address.city, onChange: (v: string) => setAddress({ city: v }), placeholder: "City" },
+                                  { value: address.state, onChange: (v: string) => setAddress({ state: v }), placeholder: "State" },
+                                  { value: address.zipCode, onChange: (v: string) => setAddress({ zipCode: v }), placeholder: "ZIP Code" }
+                                ].map((field, index) => (
+                                  <Input
+                                    key={field.placeholder}
+                                    type="text"
+                                    value={field.value}
+                                    onChange={(e) => field.onChange(e.target.value)}
+                                    placeholder={field.placeholder}
+                                    className={cn(
+                                      "bg-white border-gray-200 focus:border-blue-600 focus:ring-blue-600/10 h-11 rounded-2xl shadow-sm transition-all duration-200 hover:border-gray-300",
+                                      !field.value && "border-red-200"
+                                    )}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Notes */}
+                          <div className="space-y-4">
+                            <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                              <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center">
+                                <FileText className="h-4 w-4 text-blue-600" />
+                              </div>
+                              Additional Notes
+                            </label>
+                            <Textarea
+                              value={notes}
+                              onChange={(e) => setNotes(e.target.value)}
+                              placeholder="Any specific requirements or preferences..."
+                              className="min-h-[120px] bg-white border-gray-200 focus:border-blue-600 focus:ring-blue-600/10 rounded-2xl resize-none shadow-sm transition-all duration-200 hover:border-gray-300"
+                            />
+                          </div>
+                        </motion.div>
+                      </AnimatePresence>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="sticky bottom-0 bg-white/80 border-t border-gray-200 backdrop-blur-sm">
+                  <div className="max-w-3xl mx-auto px-12 py-6">
+                    <div className="flex items-center justify-end gap-4">
+                      <div /> {/* Spacer */}
+                      <Button
+                        onClick={handleSubmit}
+                        disabled={!isFormValid() || isSubmitting}
+                        className={cn(
+                          "inline-flex items-center justify-center bg-blue-600 text-white gap-2 px-8 h-11 rounded-xl transition-colors",
+                          "hover:bg-blue-700 active:bg-blue-800",
+                          "disabled:opacity-50 disabled:cursor-not-allowed",
+                          "focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
+                        )}
+                      >
+                        {isSubmitting ? (
+                          <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        ) : (
+                          <>
+                            Add to Bundle
+                            <ArrowRight className="h-4 w-4" />
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </motion.div>
         </DialogContent>
       </div>

@@ -14,6 +14,10 @@ import Checkout, { CheckoutFormData } from '@/components/Checkout'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import ServiceModal from "@/components/ui/service-modal"
+import CustomServiceModal from "@/components/ui/custom-service-modal"
+import ProductForm from '@/components/admin/ProductForm'
+import { toast } from 'sonner'
+import { useRouter } from 'next/navigation'
 
 // Category type definitions
 type MainCategory = 'all' | 'Audio Gear' | 'Streaming Gear' | 'Services';
@@ -41,6 +45,13 @@ const CATEGORIES: Record<string, CategoryConfig> = {
       { name: 'IEMS', path: 'Audio Gear/IEMS' },
       { name: 'Stands', path: 'Audio Gear/Stands' }
     ]
+  },
+  'Services': {
+    name: 'Services',
+    subcategories: [
+      { name: 'Custom Services', path: 'Services/Custom' },
+      { name: 'Standard Services', path: 'Services' }
+    ]
   }
 };
 
@@ -53,6 +64,10 @@ const filterByCategory = (product: Product, selectedCategory: CategoryType): boo
   // Main category
   if (selectedCategory === 'Audio Gear') {
     return product.category.startsWith('Audio Gear/');
+  }
+  
+  if (selectedCategory === 'Services') {
+    return product.category === 'Services' || product.category === 'Services/Custom';
   }
   
   // Exact subcategory match
@@ -104,7 +119,7 @@ const getProductImageKey = (title: string): string => {
   return titleToKeyMap[title] || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 };
 
-const productImages = {
+export const productImages = {
   'proco-stagemaster-32-4': [
     '/images/products/proco-stagemaster-32-4/proco-stagemaster-32-4-1.jpg',
     '/images/products/proco-stagemaster-32-4/proco-stagemaster-32-4-2.jpg',
@@ -394,27 +409,59 @@ const productImages = {
 }
 
 interface Product {
-  id: string;
-  title: string;
-  description: string;
-  price: number;
-  category: string;
-  image_url?: string;
-  features?: string[];
-  technical_details?: Record<string, string>;
-  included_items?: string[];
-  warranty_info?: string;
-  installation_available?: boolean;
-  our_price?: number;
-  images?: { image_url: string }[];
+  id: string
+  title: string
+  description: string
+  price: number
+  category: string
+  image_url?: string
+  features?: string[]
+  included_items?: string[]
+  warranty_info?: string
+  installation_available?: boolean
+  technical_details?: Record<string, string>
+  created_at?: string
+  updated_at?: string
+  images?: { image_url: string }[]
+  our_price?: number
+  is_service?: boolean
+  skip_tax?: boolean
+  original_price?: number
+  is_custom?: boolean
 }
 
-interface BundleItem extends Product {
-  quantity: number;
+interface BundleItem {
+  product: Product
+  quantity: number
+  price: number
+  our_price?: number
 }
 
 interface CardQuantityState {
   [key: string]: number;
+}
+
+interface ProductFormData {
+  title: string
+  description: string
+  price: string
+  category: string
+  image_url?: string
+  features: string[]
+  included_items: string[]
+  warranty_info: string
+  installation_available: boolean
+  technical_details: Record<string, string>
+  images: string[]
+}
+
+interface CustomService {
+  title: string
+  description: string
+  price: number
+  features?: string[]
+  category: string
+  quantity?: number
 }
 
 const containerVariants = {
@@ -453,14 +500,37 @@ const calculateTotalWithTax = (price: number): number => {
   return price * (1 + TAX_RATE)
 }
 
-// Add new ServiceCard component after the imports
+// Calculate bundle totals
+const calculateBundleTotals = (items: BundleItem[]) => {
+  let subtotal = 0
+  let taxableSubtotal = 0
+
+  items.forEach(item => {
+    const itemTotal = (item.our_price || item.price) * item.quantity
+    subtotal += itemTotal
+
+    // Only add to taxable subtotal if not a service
+    if (!item.product.category.startsWith('Services') && !item.product.is_service && !item.product.is_custom) {
+      taxableSubtotal += itemTotal
+    }
+  })
+
+  const tax = taxableSubtotal * TAX_RATE
+  const total = subtotal + tax
+
+  return {
+    subtotal: Number(subtotal.toFixed(2)),
+    tax: Number(tax.toFixed(2)),
+    total: Number(total.toFixed(2))
+  }
+}
+
 const ServiceCard = ({ service, onSelect }: { service: Product, onSelect: (service: Product) => void }) => {
   return (
     <motion.div
       variants={itemVariants}
       className="group relative bg-white rounded-xl border border-gray-100 hover:border-blue-100 hover:shadow-xl transition-all duration-300"
     >
-      {/* Service Type Badge */}
       <div className="absolute top-4 right-4 z-10">
         <span className="px-2.5 py-1 bg-blue-50/90 text-blue-600 rounded-full text-xs font-medium border border-blue-100/50 backdrop-blur-sm">
           {service.category}
@@ -468,7 +538,6 @@ const ServiceCard = ({ service, onSelect }: { service: Product, onSelect: (servi
       </div>
 
       <div className="p-6">
-        {/* Icon Section */}
         <div className="mb-6">
           <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100/50 border border-blue-100/50 flex items-center justify-center transform group-hover:scale-105 transition-transform duration-300">
             {service.title.includes('Audio System') && <Speaker className="h-7 w-7 text-blue-600" />}
@@ -484,7 +553,6 @@ const ServiceCard = ({ service, onSelect }: { service: Product, onSelect: (servi
           </div>
         </div>
 
-        {/* Title and Description */}
         <div className="mb-6">
           <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors mb-2.5">
             {service.title}
@@ -494,7 +562,6 @@ const ServiceCard = ({ service, onSelect }: { service: Product, onSelect: (servi
           </p>
         </div>
 
-        {/* Features List */}
         {service.features && (
           <div className="mb-6">
             <div className="space-y-2.5">
@@ -519,7 +586,6 @@ const ServiceCard = ({ service, onSelect }: { service: Product, onSelect: (servi
           </div>
         )}
 
-        {/* Actions */}
         <div className="flex items-center justify-between pt-4 mt-auto border-t border-gray-100">
           <button
             onClick={() => onSelect(service)}
@@ -557,7 +623,12 @@ export default function ProductsPage() {
   const [isServiceModalOpen, setIsServiceModalOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
   const [isCartOpen, setIsCartOpen] = useState(false)
+  const [showForm, setShowForm] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [showCustomServiceModal, setShowCustomServiceModal] = useState(false)
+  const [authToken, setAuthToken] = useState<string | null>(null)
   const productsPerPage = 12
+  const router = useRouter()
 
   useEffect(() => {
     setMounted(true)
@@ -576,6 +647,18 @@ export default function ProductsPage() {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  useEffect(() => {
+    const getAuthToken = () => {
+      const cookies = document.cookie.split(';')
+      const authCookie = cookies.find(c => c.trim().startsWith('auth_token='))
+      if (authCookie) {
+        const token = authCookie.split('=')[1].trim()
+        setAuthToken(token)
+      }
+    }
+    getAuthToken()
+  }, [])
 
   const fetchProducts = async () => {
     try {
@@ -648,14 +731,16 @@ export default function ProductsPage() {
       }
       
       // For other categories, sort by price
-      return (a.our_price || a.price) - (b.our_price || b.price);
+      return (a.price) - (b.price);
     })
     .filter(p => filterByCategory(p, selectedCategory))
     .filter(p => 
       searchQuery === '' || 
       p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.description.toLowerCase().includes(searchQuery.toLowerCase())
+      p.description?.toLowerCase().includes(searchQuery.toLowerCase())
     )
+    // Filter out custom services from display
+    .filter(p => !(p.category === 'Services' && p.is_custom))
 
   const totalPages = Math.ceil(filteredProducts.length / productsPerPage)
   const indexOfLastProduct = currentPage * productsPerPage
@@ -692,61 +777,179 @@ export default function ProductsPage() {
     }))
   }
 
-  const addToBundle = (product: Product) => {
-    setBundleItems(prevItems => {
-      const existingItem = prevItems.find(item => item.id === product.id)
+  const handleAddToBundle = (product: Product) => {
+    console.log('addToBundle called with product:', product);
+    
+    setBundleItems((prev: BundleItem[]) => {
+      console.log('Current bundle items:', prev);
+      
+      // Check if item already exists in bundle
+      const existingItem = prev.find(item => item.product.id === product.id);
+      console.log('Existing item found:', existingItem);
+      
       if (existingItem) {
-        // If item exists, increase its quantity
-        return prevItems.map(item =>
-          item.id === product.id
+        // Update quantity if item exists
+        const updated = prev.map(item =>
+          item.product.id === product.id
             ? { ...item, quantity: item.quantity + 1 }
             : item
-        )
+        );
+        console.log('Updated bundle items:', updated);
+        return updated;
       }
-      // If item doesn't exist, add it with quantity 1
-      return [...prevItems, { ...product, quantity: 1 }]
-    })
-    setIsCartOpen(true)  // Open the cart when adding any item
-  }
+      
+      // Add new item with quantity 1
+      const newItem: BundleItem = {
+        product: product,
+        quantity: 1,
+        price: Number(product.price),
+        our_price: product.our_price || Number(product.price)
+      };
+      
+      console.log('New bundle item:', newItem);
+      const newItems = [...prev, newItem];
+      console.log('New bundle items array:', newItems);
+      return newItems;
+    });
+    
+    // Show success message
+    toast.success(`${product.title} added to bundle`);
+    setIsCartOpen(true);  // Open the cart when adding an item
+  };
 
   const removeFromBundle = (productId: string) => {
-    setBundleItems(prev => prev.filter(item => item.id !== productId))
+    setBundleItems(prev => prev.filter(item => item.product.id !== productId))
   }
 
   const handleBundleQuantityUpdate = (productId: string, newQuantity: number) => {
     setBundleItems(prev => prev.map(item => 
-      item.id === productId ? { ...item, quantity: newQuantity } : item
+      item.product.id === productId ? { ...item, quantity: newQuantity } : item
     ))
   }
 
-  const handleContractCreation = async (formData: CheckoutFormData) => {
+  const handleCheckout = async (formData: any) => {
     try {
-      const response = await fetch('/api/contracts', {
+      const response = await fetch('/api/orders', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           ...formData,
           products: bundleItems.map(item => ({
-            id: item.id,
+            id: item.product.id,
             quantity: item.quantity,
-            title: item.title,
-            price: item.our_price || item.price
+            title: item.product.title,
+            price: item.our_price || item.price,
+            category: item.product.category
           }))
-        }),
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create order');
+      }
+
+      toast.success('Order created successfully');
+      setBundleItems([]);
+      setIsCheckoutOpen(false);
+    } catch (error) {
+      console.error('Error creating order:', error);
+      toast.error('Failed to create order. Please try again.');
+    }
+  };
+
+  const handleAddProduct = async (formData: ProductFormData) => {
+    try {
+      const response = await fetch('/api/admin/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
       })
 
-      const data = await response.json()
-
-      if (data.success) {
-        setBundleItems([])
-      } else {
-        throw new Error(data.error || 'Failed to create contract')
-      }
+      if (!response.ok) throw new Error('Failed to add product')
+      
+      const newProduct = await response.json()
+      setProducts(prev => [...prev, newProduct])
+      setShowForm(false)
+      toast.success('Product added successfully')
     } catch (error) {
-      console.error('Error creating contract:', error)
-      throw error
+      console.error('Error adding product:', error)
+      toast.error('Failed to add product')
+    }
+  }
+
+  const handleEditProduct = async (formData: ProductFormData) => {
+    try {
+      const response = await fetch(`/api/admin/products/${selectedProduct?.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      })
+
+      if (!response.ok) throw new Error('Failed to update product')
+      
+      const updatedProduct = await response.json()
+      setProducts(prev => prev.map(p => p.id === updatedProduct.id ? updatedProduct : p))
+      setShowForm(false)
+      setSelectedProduct(null)
+      toast.success('Product updated successfully')
+    } catch (error) {
+      console.error('Error updating product:', error)
+      toast.error('Failed to update product')
+    }
+  }
+
+  const handleCustomServiceSave = async (serviceData: CustomService) => {
+    try {
+      // First, create the custom service as a product
+      const response = await fetch('/api/custom-services', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: serviceData.title,
+          description: serviceData.description,
+          price: serviceData.price,
+          features: serviceData.features || [],
+          category: 'Services'
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create custom service');
+      }
+
+      if (!data.success || !data.product) {
+        throw new Error('Failed to create custom service');
+      }
+
+      // Create bundle item from the saved product
+      const bundleItem: BundleItem = {
+        product: {
+          id: data.product.id,
+          title: data.product.title,
+          description: data.product.description,
+          price: data.product.price,
+          features: data.product.features,
+          category: data.product.category,
+          is_custom: true,
+          is_service: true
+        },
+        quantity: 1,
+        price: data.product.price,
+        our_price: data.product.price
+      };
+
+      setBundleItems(prev => [...prev, bundleItem]);
+      setShowCustomServiceModal(false);
+      setIsCartOpen(true);
+      
+      toast.success("Custom service created and added to bundle");
+    } catch (error) {
+      console.error('Error saving custom service:', error);
+      toast.error(error instanceof Error ? error.message : "Failed to save custom service");
     }
   }
 
@@ -873,8 +1076,8 @@ export default function ProductsPage() {
                   bundleItems.length > 0 && "ring-2 ring-blue-200"
                 )}
               >
+                <ShoppingBag className="h-4 w-4" />
                 <span className="hidden sm:inline">Bundle</span>
-                <ShoppingBag className="h-4 w-4 sm:hidden" />
                 {bundleItems.length > 0 && (
                   <motion.div
                     initial={{ scale: 0.5 }}
@@ -942,6 +1145,15 @@ export default function ProductsPage() {
                 Showing {indexOfFirstProduct + 1}-{Math.min(indexOfLastProduct, filteredProducts.length)} of {filteredProducts.length} products
               </p>
             </div>
+            {selectedCategory === 'Services' && (
+              <Button
+                onClick={() => setShowCustomServiceModal(true)}
+                className="bg-blue-500 hover:bg-blue-600 text-white"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Create Custom Service
+              </Button>
+            )}
           </div>
 
           {/* No Results */}
@@ -1040,9 +1252,6 @@ export default function ProductsPage() {
                         )}>
                           ${(product.our_price || product.price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
-                        <span className="text-xs text-gray-500 whitespace-nowrap">
-                          + ${calculateTax(product.our_price || product.price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} tax
-                        </span>
                       </div>
                     </div>
                     
@@ -1117,7 +1326,7 @@ export default function ProductsPage() {
                           size="sm"
                           onClick={(e) => {
                             e.stopPropagation();
-                            addToBundle(product);
+                            handleAddToBundle(product);
                           }}
                           className="text-blue-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg font-medium"
                         >
@@ -1176,27 +1385,34 @@ export default function ProductsPage() {
 
         {/* Bundle Component */}
         <Bundle 
-          products={bundleItems}
+          products={bundleItems.map(item => ({
+            ...item.product,
+            quantity: item.quantity,
+            price: item.our_price || item.price
+          }))}
           onRemove={removeFromBundle}
           onUpdateQuantity={handleBundleQuantityUpdate}
           isOpen={isCartOpen}
           setIsOpen={setIsCartOpen}
+          clearCart={() => setBundleItems([])}
         />
       </div>
 
-      {/* Checkout Modal */}
-      <AnimatePresence>
-        {isCheckoutOpen && (
-          <Checkout
-            products={bundleItems.map(item => ({
-              ...item,
-              id: Number(item.id)
-            }))}
-            onClose={() => setIsCheckoutOpen(false)}
-            onSubmit={handleContractCreation}
-          />
-        )}
-      </AnimatePresence>
+      {/* Checkout Component */}
+      {isCheckoutOpen && (
+        <Checkout
+          products={bundleItems.map(item => ({
+            id: Number(item.product.id),
+            title: item.product.title,
+            price: item.our_price || item.price,
+            quantity: item.quantity,
+            category: item.product.category
+          }))}
+          onClose={() => setIsCheckoutOpen(false)}
+          onSubmit={handleCheckout}
+          clearCart={() => setBundleItems([])}
+        />
+      )}
 
       {/* Product Modal */}
       {selectedProduct && (
@@ -1206,7 +1422,7 @@ export default function ProductsPage() {
             setIsModalOpen(false)
             setSelectedProduct(null)
           }}
-          onAddToBundle={(product) => addToBundle({...product, price: Number(product.price)})}
+          onAddToBundle={(product) => handleAddToBundle(product)}
           selectedProduct={{
             ...selectedProduct,
             images: (() => {
@@ -1227,10 +1443,62 @@ export default function ProductsPage() {
             setSelectedService(null);
           }}
           service={selectedService}
-          onAddToBundle={(service) => addToBundle({...service, price: Number(service.price)})}
+          onAddToBundle={(service) => handleAddToBundle(service)}
           setIsCartOpen={setIsCartOpen}
         />
       )}
+
+      {/* Add Product Form */}
+      {showForm && (
+        <div className="mb-8">
+          <h2 className="text-xl font-semibold mb-4">Add New Product</h2>
+          <ProductForm
+            onSubmit={handleAddProduct}
+          />
+          <Button
+            onClick={() => setShowForm(false)}
+            className="mt-4 text-gray-600 hover:text-gray-800"
+          >
+            Cancel
+          </Button>
+        </div>
+      )}
+
+      {/* Edit Product Form */}
+      {selectedProduct && (
+        <div className="mb-8">
+          <h2 className="text-xl font-semibold mb-4">Edit Product</h2>
+          <ProductForm
+            onSubmit={handleEditProduct}
+            initialData={{
+              title: selectedProduct.title,
+              description: selectedProduct.description,
+              price: selectedProduct.price.toString(),
+              category: selectedProduct.category,
+              image_url: selectedProduct.image_url || '',
+              features: selectedProduct.features || [],
+              included_items: selectedProduct.included_items || [],
+              warranty_info: selectedProduct.warranty_info || '',
+              installation_available: selectedProduct.installation_available || false,
+              technical_details: selectedProduct.technical_details || {},
+              images: selectedProduct.images?.map(img => img.image_url) || []
+            }}
+          />
+          <Button
+            onClick={() => setSelectedProduct(null)}
+            className="mt-4 text-gray-600 hover:text-gray-800"
+          >
+            Cancel
+          </Button>
+        </div>
+      )}
+
+      {/* Custom Service Modal */}
+      <CustomServiceModal
+        isOpen={showCustomServiceModal}
+        onClose={() => setShowCustomServiceModal(false)}
+        onSave={handleCustomServiceSave}
+      />
     </div>
   )
 } 

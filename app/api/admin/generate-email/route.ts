@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server'
 import OpenAI from 'openai'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+const openai = new OpenAI()
 
 interface Order {
   id: number;
@@ -21,65 +19,146 @@ interface EmailResponse {
   isNewTemplate: boolean;
 }
 
+// Function to process variables in content
+function processVariables(content: string, order: any) {
+  const customerName = `${order.first_name} ${order.last_name}`.trim()
+  
+  return content
+    // Customer Information
+    .replace(/\{customerName\}/g, customerName)
+    .replace(/\{firstName\}/g, order.first_name)
+    .replace(/\{lastName\}/g, order.last_name)
+    .replace(/\{email\}/g, order.email)
+    .replace(/\{phone\}/g, order.phone || 'Not provided')
+    .replace(/\{organization\}/g, order.organization || 'Not provided')
+
+    // Order Information
+    .replace(/\{orderId\}/g, order.id)
+    .replace(/\#\{orderId\}/g, `#${order.id}`)
+    .replace(/\{orderDate\}/g, new Date(order.created_at).toLocaleDateString())
+    .replace(/\{totalAmount\}/g, `$${Number(order.total_amount).toFixed(2)}`)
+    .replace(/\{status\}/g, order.status)
+
+    // Installation Information
+    .replace(/\{installationDate\}/g, order.installation_date || 'To be scheduled')
+    .replace(/\{installationTime\}/g, order.installation_time || 'To be scheduled')
+    .replace(/\{installationAddress\}/g, order.installation_address || 'Not provided')
+    .replace(/\{installationCity\}/g, order.installation_city || '')
+    .replace(/\{installationState\}/g, order.installation_state || '')
+    .replace(/\{installationZip\}/g, order.installation_zip || '')
+    .replace(/\{installationInstructions\}/g, order.installation_instructions || 'No special instructions provided')
+
+    // Contact Information
+    .replace(/\{contactOnsite\}/g, order.contact_onsite || 'Not provided')
+    .replace(/\{contactOnsitePhone\}/g, order.contact_onsite_phone || 'Not provided')
+}
+
 export async function POST(request: Request) {
   try {
-    const { prompt, order, templateType, viewMode, isTemplateChange } = await request.json()
+    const { prompt, templateType, order, viewMode, variables } = await request.json()
 
-    // If this is just a template change, return empty content
-    if (isTemplateChange) {
-      return NextResponse.json({
-        subject: '',
-        html: '',
-        content: '',
-        isNewTemplate: true
-      })
-    }
+    const systemPrompt = `You are Way of Glory's professional email communication specialist. 
 
-    // Create a system message that explains the context and requirements
-    const systemMessage = `You are an AI assistant helping to generate email content for Way of Glory. Generate a concise, professional email following this structure:
+Key Company Information:
+- Company Name: Way of Glory
+- Industry: Custom Window Treatments and Installation Services
+- Brand Voice: Professional, warm, and customer-focused
+- Core Values: Excellence in craftsmanship, attention to detail, and exceptional customer service
+- Business Model: Mobile service provider, serving customers at their location
 
-    Subject: [Write a clear subject line]
+Payment Options to Include:
+1. Direct Deposit (Preferred Method):
+   - Bank: Chase Bank
+   - Account Name: Way of Glory
+   - Note: Banking details will be provided securely upon request
+   - Fastest and most secure payment method
 
-    [Write your main content here as plain text with each paragraph separated by newlines. Do not include any HTML tags - they will be added automatically. Be specific and factual, do not include any made-up information.]
+2. Digital Payment Options:
+   - Zelle
+   - Venmo
+   - Note: Payment details provided upon request for security
 
-    Order Details:
-    - Customer: ${order.first_name} ${order.last_name}
-    - Order #${order.id}
-    - Amount: $${order.total_amount}
-    - Installation Date: ${order.installation_date}
+3. Check Payment:
+   - Make checks payable to: "Way of Glory"
+   - Mailing address provided upon request
+   - Please include order number on check memo
 
-    USER PROMPT: ${prompt}
+4. Cash Payment:
+   - Can be arranged during installation
+   - Or schedule a convenient meetup
+   - Please request cash payment arrangement in advance
 
-    IMPORTANT: 
-    1. Be concise and factual
-    2. Do not include any made-up information
-    3. Only reference the actual order details provided
-    4. Keep the email focused and professional
-    5. Write content as plain text, not HTML
-    6. Each paragraph should be on a new line`
+Use these variables in your response (replace the placeholders with actual values):
+- {customerName} - Customer's full name
+- {orderId} - Order number (use as #{orderId} for formatting)
+- {orderDate} - Order date
+- {totalAmount} - Total order amount
+- {installationDate} - Installation date
+- {installationTime} - Installation time
+- {installationAddress} - Full installation address
 
-    // Get completion from OpenAI with optimized settings
+For Payment Reminders:
+1. Emphasize the convenience of digital payments and direct deposit
+2. Always mention all payment options but highlight digital methods first
+3. Keep security in mind - never include full payment details in email
+4. Maintain a helpful, understanding tone
+5. Make it clear we're flexible with payment arrangements
+6. Include our contact information for payment details
+7. Never pressure the customer, keep the tone supportive
+
+Email Guidelines:
+1. ALWAYS use the exact variable format: {variableName}
+2. Start emails with "Dear {customerName},"
+3. Always reference order as "#{orderId}"
+4. Include relevant order details using variables
+5. Maintain a professional yet warm tone
+6. End with contact information: (310) 872-9781 and help@wayofglory.com
+
+Example Payment Reminder Format:
+Subject: Payment Options for Your Order #{orderId}
+
+Dear {customerName},
+
+Thank you for choosing Way of Glory. Regarding your order #{orderId} from {orderDate} for {totalAmount}, we offer several convenient payment options to suit your preference:
+
+1. Direct Deposit (Preferred Method)
+   - Secure bank transfer
+   - Details provided upon request
+
+2. Digital Payments
+   - Zelle or Venmo available
+   - Quick and convenient
+
+3. Check Payment
+   - Payable to "Way of Glory"
+   - Mailing address provided upon request
+
+4. Cash Payment
+   - Can be arranged during installation
+   - Or schedule a convenient meetup
+
+For security reasons, specific payment details will be provided when you choose your preferred method. Please contact us at (310) 872-9781 or help@wayofglory.com to arrange your payment. We're here to make this process as convenient as possible for you.
+
+Best regards,
+Way of Glory Team`
+
     const completion = await openai.chat.completions.create({
-      model: "gpt-4-turbo-preview",
+      model: "gpt-4",
       messages: [
-        { 
-          role: "system", 
-          content: "You are a concise email generator. Generate plain text content that will be formatted into HTML later. Never include HTML tags in your response."
+        {
+          role: "system",
+          content: systemPrompt
         },
-        { 
-          role: "user", 
-          content: systemMessage 
+        {
+          role: "user",
+          content: prompt
         }
       ],
-      temperature: 0.3,
-      max_tokens: 500,
-      presence_penalty: -0.5,
     })
 
-    // Extract the generated content
-    const generatedContent = completion.choices[0].message.content
+    let generatedContent = completion.choices[0]?.message?.content || ''
 
-    // Split the content into subject and body
+    // Extract subject and content
     let subject = ''
     let content = ''
 
@@ -89,40 +168,38 @@ export async function POST(request: Request) {
       
       if (subjectLine) {
         subject = subjectLine.replace('Subject:', '').trim()
+        // Process variables in subject
+        subject = processVariables(subject, order)
         
         // Get all content after the subject line
-        content = lines
+        const contentLines = lines
           .slice(lines.indexOf(subjectLine) + 1)
           .map(line => line.trim())
           .filter(line => line)
-          .join('\n')
+        
+        content = contentLines.join('\n\n')
+        // Process variables in content
+        content = processVariables(content, order)
       } else {
         subject = 'Way of Glory - Order Update'
-        content = generatedContent
+        content = processVariables(generatedContent, order)
       }
     }
 
-    // Format the content based on view mode
-    const formattedContent = content
-      .split('\n')
-      .map(line => line.trim())
-      .filter(line => line)
-      .map(line => `${line}\n`)
-      .join('')
-
+    // Format the content for preview
     const previewHtml = formatEmailPreview({ 
       subject, 
-      content: formattedContent, 
+      content, 
       order, 
       baseStyle 
     })
 
+    // Return both raw content and formatted HTML
     return NextResponse.json({
       subject,
-      html: previewHtml,
-      content: formattedContent,
-      isNewTemplate: false,
-      editContent: formattedContent
+      content,  // Raw content for edit mode
+      html: previewHtml, // Formatted HTML for preview mode
+      isNewTemplate: false
     })
   } catch (error) {
     console.error('Error generating email content:', error)

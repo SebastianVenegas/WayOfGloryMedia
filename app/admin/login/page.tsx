@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -10,6 +10,7 @@ import { Lock, Mail } from 'lucide-react'
 
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState(false)
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -18,26 +19,31 @@ export default function LoginPage() {
 
     try {
       const formData = new FormData(event.currentTarget)
+      const email = formData.get('email')
+      const password = formData.get('password')
+
       const response = await fetch('/api/auth/login', {
         method: 'POST',
-        body: JSON.stringify({
-          email: formData.get('email'),
-          password: formData.get('password'),
-        }),
+        body: JSON.stringify({ email, password }),
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
       })
 
       const data = await response.json()
 
-      if (response.ok) {
+      if (response.ok && data.success) {
         toast.success('Logged in successfully')
-        window.location.href = data.redirectTo || '/admin/products'
+        
+        // Get the redirect URL from searchParams or default to /admin/products
+        const from = searchParams.get('from')
+        window.location.href = from || '/admin/products'
       } else {
-        toast.error(data.error || 'Something went wrong')
+        toast.error(data.error || 'Invalid credentials')
       }
     } catch (error) {
+      console.error('Login error:', error)
       toast.error('An error occurred while logging in')
     } finally {
       setIsLoading(false)

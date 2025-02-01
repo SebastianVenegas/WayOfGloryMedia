@@ -12,6 +12,7 @@
   "dependencies": {
     "@neondatabase/serverless": "^0.10.4",
     "@next/env": "^15.1.5",
+    "@prisma/client": "^6.3.0",
     "@radix-ui/react-alert-dialog": "^1.1.5",
     "@radix-ui/react-dialog": "^1.1.5",
     "@radix-ui/react-select": "^2.1.5",
@@ -40,14 +41,17 @@
     "next": "^15.1.5",
     "nodemailer": "^6.10.0",
     "open": "^10.1.0",
-    "openai": "^4.80.1",
+    "openai": "^4.81.0",
+    "prisma": "^6.3.0",
     "react": "^18",
     "react-dom": "^18",
     "react-signature-canvas": "^1.0.7",
     "resend": "^4.1.1",
-    "sonner": "^1.7.2",
+    "sonner": "^1.7.3",
     "tailwind-merge": "^2.6.0",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss-animate": "^1.0.7",
+    "zod": "^3.24.1",
+    "zustand": "^5.0.3"
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.16",

@@ -72,69 +72,175 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const data = await request.json() as ContractData;
+    const data = await request.json();
 
-    // Calculate amounts using our_price for products
-    const subtotal = data.products.reduce((sum, item) => {
-      return sum + (item.our_price * item.quantity);
-    }, 0);
+    // Calculate amounts using our_price for products, falling back to price
+    const { productSubtotal, serviceSubtotal } = data.products.reduce((acc: any, item: any) => {
+      const itemPrice = item.our_price || item.price;
+      const itemTotal = itemPrice * item.quantity;
+      
+      if (item.category === 'Services' || item.category === 'Services/Custom' || item.is_service || item.is_custom) {
+        return {
+          ...acc,
+          serviceSubtotal: acc.serviceSubtotal + itemTotal
+        };
+      }
+      return {
+        ...acc,
+        productSubtotal: acc.productSubtotal + itemTotal
+      };
+    }, { productSubtotal: 0, serviceSubtotal: 0 });
 
-    const tax = subtotal * TAX_RATE;
-    const total = subtotal + tax + (data.installationPrice || 0);
+    // Only calculate tax on products, not on services
+    const tax = productSubtotal * TAX_RATE;
+    const total = productSubtotal + serviceSubtotal + tax + (data.installationPrice || 0);
 
-    // Insert into contracts table
+    // Calculate profits
+    const productProfit = productSubtotal * 0.2155; // 21.55% profit on products
+    const serviceProfit = serviceSubtotal; // 100% profit on services
+    const installationProfit = data.installationPrice || 0; // 100% profit on installation
+    const totalProfit = productProfit + serviceProfit + installationProfit;
+
+    // Insert into orders table
     const { rows } = await sql`
-      INSERT INTO contracts (
-        customer_name,
-        customer_email,
-        contract_type,
+      WITH service_check AS (
+        SELECT EXISTS (
+          SELECT 1 FROM products 
+          WHERE id = ANY(${data.products.map((p: any) => p.id.toString())}::int[])
+          AND (category = 'Services' OR is_service = true)
+        ) as has_services
+      )
+      INSERT INTO orders (
+        first_name,
+        last_name,
+        email,
+        phone,
+        organization,
+        shipping_address,
+        shipping_city,
+        shipping_state,
+        shipping_zip,
+        shipping_instructions,
+        installation_address,
+        installation_city,
+        installation_state,
+        installation_zip,
+        installation_date,
+        installation_time,
+        access_instructions,
+        contact_onsite,
+        contact_onsite_phone,
+        payment_method,
+        total_amount,
+        installation_price,
+        signature_url,
         status,
-        details
+        contains_services,
+        product_subtotal,
+        service_subtotal,
+        tax_amount,
+        total_profit
       ) VALUES (
-        ${data.firstName + ' ' + data.lastName},
+        ${data.firstName},
+        ${data.lastName},
         ${data.email},
-        ${data.contract_type},
-        ${data.status},
-        ${JSON.stringify({
-          firstName: data.firstName,
-          lastName: data.lastName,
-          email: data.email,
-          phone: data.phone,
-          organization: data.organization,
-          shippingAddress: data.shippingAddress,
-          shippingCity: data.shippingCity,
-          shippingState: data.shippingState,
-          shippingZip: data.shippingZip,
-          shippingInstructions: data.shippingInstructions,
-          installationAddress: data.installationAddress,
-          installationCity: data.installationCity,
-          installationState: data.installationState,
-          installationZip: data.installationZip,
-          installationDate: data.installationDate,
-          installationTime: data.installationTime,
-          accessInstructions: data.accessInstructions,
-          contactOnSite: data.contactOnSite,
-          contactOnSitePhone: data.contactOnSitePhone,
-          paymentMethod: data.paymentMethod,
-          signatureUrl: data.signatureUrl,
-          products: data.products,
-          installationPrice: data.installationPrice,
-          subtotal,
-          tax,
-          total
-        })}
-      ) RETURNING *
-    `;
+        ${data.phone},
+        ${data.organization},
+        ${data.shippingAddress},
+        ${data.shippingCity},
+        ${data.shippingState},
+        ${data.shippingZip},
+        ${data.shippingInstructions},
+        ${data.installationAddress},
+        ${data.installationCity},
+        ${data.installationState},
+        ${data.installationZip},
+        ${data.installationDate},
+        ${data.installationTime},
+        ${data.accessInstructions},
+        ${data.contactOnSite},
+        ${data.contactOnSitePhone},
+        ${data.paymentMethod},
+        ${total},
+        ${data.installationPrice},
+        ${data.signature},
+        'pending',
+        (SELECT has_services FROM service_check),
+        ${productSubtotal},
+        ${serviceSubtotal},
+        ${tax},
+        ${totalProfit}
+      ) RETURNING id`;
+
+    const orderId = rows[0].id;
+
+    // Insert order items
+    for (const product of data.products) {
+      const isService = product.category === 'Services' || 
+                       product.category === 'Services/Custom' || 
+                       product.is_service || 
+                       product.is_custom;
+      
+      await sql`
+        INSERT INTO order_items (
+          order_id,
+          product_id,
+          quantity,
+          price_at_time,
+          cost_at_time
+        ) VALUES (
+          ${orderId},
+          ${product.id.toString()},
+          ${product.quantity},
+          ${product.our_price || product.price},
+          ${isService ? 0 : (product.price || product.our_price || 0)}
+        )
+      `;
+    }
+
+    // Send confirmation email
+    await sendContractEmail({
+      firstName: data.firstName,
+      lastName: data.lastName,
+      email: data.email,
+      phone: data.phone,
+      organization: data.organization,
+      orderId,
+      orderItems: data.products.map((p: any) => ({
+        product: { title: p.title },
+        quantity: p.quantity,
+        price_at_time: p.our_price || p.price
+      })),
+      totalAmount: total,
+      installationPrice: data.installationPrice || 0,
+      shippingAddress: data.shippingAddress,
+      shippingCity: data.shippingCity,
+      shippingState: data.shippingState,
+      shippingZip: data.shippingZip,
+      shippingInstructions: data.shippingInstructions,
+      installationAddress: data.installationAddress,
+      installationCity: data.installationCity,
+      installationState: data.installationState,
+      installationZip: data.installationZip,
+      installationDate: data.installationDate,
+      installationTime: data.installationTime,
+      accessInstructions: data.accessInstructions,
+      contactOnSite: data.contactOnSite,
+      contactOnSitePhone: data.contactOnSitePhone,
+      paymentMethod: data.paymentMethod,
+      signature_url: data.signature,
+      taxAmount: tax
+    });
 
     return NextResponse.json({
       success: true,
-      contract: rows[0]
+      orderId
     });
+
   } catch (error) {
-    const dbError = error as ContractError;
-    console.error('Database error:', dbError);
+    console.error('Error creating order:', error);
     return NextResponse.json(
-      { error: dbError.message || 'Failed to create contract' },
+      { error: 'Failed to create order' },
       { status: 500 }
     );
   }

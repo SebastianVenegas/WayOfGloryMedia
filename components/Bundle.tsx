@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { ShoppingBag, X, Plus, Minus, ChevronRight, Package, Trash2, AlertCircle } from 'lucide-react'
+import { ShoppingBag, X, Plus, Minus, ChevronRight, Package, Trash2, AlertCircle, Mic2, Sliders, Cable, Network, Speaker, Headphones, Maximize2, WrenchIcon } from 'lucide-react'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
 import Checkout, { CheckoutFormData } from './Checkout'
@@ -17,6 +17,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { useToast } from "@/components/ui/use-toast"
 import { useRouter } from 'next/navigation'
+import { productImages } from '@/app/admin/products/page'
 
 interface Product {
   id: string;
@@ -32,6 +33,8 @@ interface Product {
   installation_available?: boolean;
   our_price?: number;
   images?: { image_url: string }[];
+  is_custom?: boolean;
+  is_service?: boolean;
 }
 
 interface BundleItem extends Product {
@@ -44,6 +47,7 @@ interface BundleProps {
   onUpdateQuantity?: (productId: string, quantity: number) => void;
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
+  clearCart?: () => void;
 }
 
 const itemVariants = {
@@ -60,10 +64,73 @@ const itemVariants = {
 }
 
 const getProductImageKey = (title: string): string => {
-  return title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  const titleToKeyMap: Record<string, string> = {
+    'PTU-6000-8H 8-Channel UHF Wireless Microphone System': 'ptu-6000-8h',
+    'Shure BLX288/PG58 Dual Wireless Microphone System': 'shure-blx288-pg58',
+    'VocoPro UHF-8800 Professional 8-Channel Wireless System': 'vocopro-uhf-8800',
+    'Drum Microphone Kit - 7-Piece Professional Set': 'drum-mic-kit',
+    'Behringer X32 Compact Digital Mixer': 'behringer-x32-compact',
+    'Allen & Heath SQ-6 48-channel Digital Mixer': 'allen-heath-sq6',
+    'Yamaha MGP32X 32-channel Mixer with Effects': 'yamaha-mgp32x',
+    'XLR Cable - 15ft Professional Microphone Cable': 'xlr-15ft',
+    'XLR Cable - 20ft Professional Microphone Cable': 'xlr-20ft',
+    'XLR Cable - 25ft Professional Microphone Cable': 'xlr-25ft',
+    'XLR Cable - 50ft Professional Microphone Cable': 'xlr-50ft',
+    'XLR Cable - 100ft Professional Microphone Cable': 'xlr-100ft',
+    'Quarter Inch Cable - 15ft Professional Instrument Cable': 'quarter-inch-15ft',
+    'Quarter Inch Cable - 20ft Professional Instrument Cable': 'quarter-inch-20ft',
+    'Cat6 Cable - 10ft Professional Network Cable': 'cat6-10ft',
+    'Cat6 Cable - 50ft Professional Network Cable': 'cat6-50ft',
+    'Cat6 Cable - 100ft Professional Network Cable': 'cat6-100ft',
+    'AC Power Cable - Professional Grade IEC Power Cord': 'ac-power-cable',
+    'QSC K12.2 12" 2000W Powered Speaker': 'qsc-k12-2',
+    'RSG15 15" 3000W Passive Speaker System': 'rsg15-speaker-system',
+    'JBL EON715 15" & EON718S 18" Powered Speaker System': 'jbl-eon715-system',
+    'Mackie THUMP215 15" & THUMP118S 18" Powered System': 'mackie-thump215-system',
+    'On Stage SS7761B Pro Speaker Stand': 'ss7761b-speaker-stand',
+    'On Stage MS7701B Telescoping Boom Stand': 'ms7701b-mic-stand',
+    'Kick Drum Microphone Stand': 'kick-drum-mic-stand',
+    'On Stage MS7701B Microphone Boom Stand': 'ms7701b-mic-stand',
+    'On Stage SS7761B All-Aluminum Speaker Stand': 'ss7761b-speaker-stand',
+    'Allen & Heath DX168 Digital Snake': 'allen-heath-dx168',
+    'Midas DL16/DL32 Digital Stage Box': 'midas-dl16-dl32',
+    'ProCo StageMASTER 32/4 Analog Snake': 'proco-stagemaster-32-4',
+    'Hosa HSS-005X 32-Channel Snake': 'hosa-hss-005x',
+    'Behringer S32 Digital Snake': 'behringer-s32',
+    'Whirlwind M-32/4 Analog Snake': 'whirlwind-m-32-4',
+    'Allen & Heath AB168 Digital Snake': 'allen-heath-ab168',
+    'Behringer Powerplay P16-M 16-Channel Digital Personal Mixer': 'behringer-powerplay-p16m',
+    'Behringer Powerplay P16-I 16-channel Input Module': 'behringer-powerplay-p16i',
+    'Behringer Powerplay P16-D 16-channel Distribution Module': 'behringer-powerplay-p16d',
+    'In-Ear Monitors (IEM)': 'iem-headphones'
+  };
+
+  return titleToKeyMap[title] || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 };
 
-export default function Bundle({ products, onRemove, onUpdateQuantity, isOpen, setIsOpen }: BundleProps) {
+const getProductImage = (product: Product): string => {
+  // First try to get image from our static mapping
+  const key = getProductImageKey(product.title);
+  const staticImages = productImages[key as keyof typeof productImages];
+  if (staticImages && staticImages.length > 0) {
+    return staticImages[0];
+  }
+
+  // Then try product's own images array
+  if (product.images?.length) {
+    return product.images[0].image_url;
+  }
+  
+  // Then try direct image_url
+  if (product.image_url) {
+    return product.image_url;
+  }
+  
+  // Finally fall back to placeholder
+  return '/images/placeholder.jpg';
+};
+
+export default function Bundle({ products, onRemove, onUpdateQuantity, isOpen, setIsOpen, clearCart }: BundleProps) {
   const { toast } = useToast()
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false)
   const [installationSelected, setInstallationSelected] = useState(false)
@@ -184,11 +251,13 @@ export default function Bundle({ products, onRemove, onUpdateQuantity, isOpen, s
           paymentMethod: formData.paymentMethod || 'invoice',
           signature: formData.signature || '',
           products: products.map(product => ({
-            id: parseInt(product.id),
+            id: product.id,
             title: product.title,
             price: product.price,
             our_price: product.our_price,
-            quantity: product.quantity
+            quantity: product.quantity,
+            is_custom: product.is_custom,
+            is_service: product.is_service
           })),
           productSubtotal: productSubtotal,
           tax: tax,
@@ -233,11 +302,6 @@ Total: $${totalAmount.toFixed(2)}`,
       });
       throw error;
     }
-  };
-
-  const getProductImage = (title: string) => {
-    const key = getProductImageKey(title);
-    return `/images/products/${key}/${key}-1.jpg`;
   };
 
   return (
@@ -303,15 +367,23 @@ Total: $${totalAmount.toFixed(2)}`,
                   >
                     <div className="p-3">
                       <div className="flex gap-3">
-                        {/* Image */}
-                        <div className="relative h-16 w-16 rounded-lg bg-white overflow-hidden border border-gray-100">
-                          <Image
-                            src={getProductImage(product.title)}
-                            alt={product.title}
-                            fill
-                            className="object-contain p-2"
-                            sizes="64px"
-                          />
+                        {/* Image/Icon */}
+                        <div className="flex items-center gap-4">
+                          {product.category === 'Services' ? (
+                            <div className="relative w-12 h-12 bg-gray-50 rounded-lg border border-gray-100 flex items-center justify-center flex-shrink-0">
+                              <WrenchIcon className="h-6 w-6 text-gray-500" />
+                            </div>
+                          ) : (
+                            <div className="relative h-12 w-12 rounded-lg bg-white overflow-hidden border border-gray-100">
+                              <Image
+                                src={getProductImage(product)}
+                                alt={product.title}
+                                fill
+                                className="object-contain p-2"
+                                sizes="48px"
+                              />
+                            </div>
+                          )}
                         </div>
 
                         {/* Info */}
@@ -409,7 +481,15 @@ Total: $${totalAmount.toFixed(2)}`,
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">Sales Tax</span>
-                  <span className="text-gray-700">${(totalPrice * 0.0775).toFixed(2)}</span>
+                  <span className="text-gray-700">
+                    ${(products.reduce((sum, item) => {
+                      // Skip tax for services
+                      if (item.category === 'Services' || item.category === 'Services/Custom' || item.is_service || item.is_custom) {
+                        return sum;
+                      }
+                      return sum + ((item.our_price || item.price) * item.quantity);
+                    }, 0) * 0.0775).toFixed(2)}
+                  </span>
                 </div>
                 {installationSelected && installationPrice > 0 && (
                   <div className="flex justify-between text-sm">
@@ -420,7 +500,17 @@ Total: $${totalAmount.toFixed(2)}`,
                 <div className="flex justify-between items-baseline pt-2 border-t border-gray-200">
                   <span className="text-sm font-medium text-gray-600">Total</span>
                   <span className="text-xl font-bold text-gray-800">
-                    ${(totalPrice + (totalPrice * 0.0775) + (installationSelected ? installationPrice : 0)).toFixed(2)}
+                    ${(
+                      totalPrice + 
+                      (products.reduce((sum, item) => {
+                        // Skip tax for services
+                        if (item.category === 'Services' || item.category === 'Services/Custom' || item.is_service || item.is_custom) {
+                          return sum;
+                        }
+                        return sum + ((item.our_price || item.price) * item.quantity);
+                      }, 0) * 0.0775) + 
+                      (installationSelected ? installationPrice : 0)
+                    ).toFixed(2)}
                   </span>
                 </div>
               </div>
@@ -456,7 +546,7 @@ Total: $${totalAmount.toFixed(2)}`,
         {isCheckoutOpen && (
           <Checkout
             products={products.map(product => ({
-              id: parseInt(product.id),
+              id: Number(product.id),
               title: product.title,
               price: product.price,
               our_price: product.our_price,
@@ -466,6 +556,7 @@ Total: $${totalAmount.toFixed(2)}`,
             onClose={() => setIsCheckoutOpen(false)}
             onSubmit={handleCheckout}
             installationPrice={installationSelected ? installationPrice : 0}
+            clearCart={clearCart || (() => {})}
           />
         )}
       </AnimatePresence>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import Editor from '@/components/ui/editor'
@@ -10,18 +10,49 @@ interface EmailComposerProps {
   orderId: string
   onEmailSent?: () => void
   initialContent?: string
+  onContentChange?: (content: string) => void
+  onSubjectChange?: (subject: string) => void
+  subject?: string
 }
 
-export default function EmailComposer({ orderId, onEmailSent, initialContent = '' }: EmailComposerProps) {
-  const [subject, setSubject] = useState('')
+export default function EmailComposer({ 
+  orderId, 
+  onEmailSent, 
+  initialContent = '', 
+  onContentChange,
+  onSubjectChange,
+  subject: externalSubject
+}: EmailComposerProps) {
+  const [subject, setSubject] = useState(externalSubject || '')
   const [content, setContent] = useState(initialContent)
   const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
 
+  useEffect(() => {
+    if (initialContent !== undefined) {
+      setContent(initialContent)
+    }
+  }, [initialContent])
+
+  useEffect(() => {
+    if (externalSubject !== undefined) {
+      setSubject(externalSubject)
+    }
+  }, [externalSubject])
+
   const handleContentChange = (value: string) => {
-    // Remove any HTML tags that might have been pasted
-    const plainText = value.replace(/<[^>]*>/g, '')
-    setContent(plainText)
+    const cleanValue = value.replace(/<p><\/p>/g, '<p><br></p>')
+    setContent(cleanValue)
+    if (onContentChange) {
+      onContentChange(cleanValue)
+    }
+  }
+
+  const handleSubjectChange = (value: string) => {
+    setSubject(value)
+    if (onSubjectChange) {
+      onSubjectChange(value)
+    }
   }
 
   const handleSendEmail = async () => {
@@ -79,45 +110,92 @@ export default function EmailComposer({ orderId, onEmailSent, initialContent = '
   }
 
   return (
-    <div className="space-y-4 p-4 border rounded-lg bg-white">
-      <h3 className="text-lg font-semibold">Compose Custom Email</h3>
-      <div className="space-y-3">
-        <div>
-          <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-1">
-            Subject
+    <div className="space-y-6 p-6 border rounded-xl bg-white shadow-sm">
+      <div className="flex items-center justify-between border-b pb-4">
+        <h3 className="text-lg font-semibold text-gray-900">Compose Email</h3>
+        <div className="text-sm text-gray-500">Order #{orderId}</div>
+      </div>
+
+      <div className="space-y-5">
+        <div className="space-y-2">
+          <label htmlFor="subject" className="block text-sm font-medium text-gray-700">
+            Email Subject
           </label>
           <Input
             id="subject"
             value={subject}
-            onChange={(e) => setSubject(e.target.value)}
-            placeholder="Enter email subject"
+            onChange={(e) => handleSubjectChange(e.target.value)}
+            placeholder="Enter a clear and concise subject line"
+            className="w-full transition-colors focus:border-blue-500"
             disabled={isLoading}
           />
         </div>
-        <div>
-          <label htmlFor="content" className="block text-sm font-medium text-gray-700 mb-1">
-            Content
+
+        <div className="space-y-2">
+          <label htmlFor="content" className="block text-sm font-medium text-gray-700">
+            Email Content
           </label>
-          <div className="border rounded-lg overflow-hidden bg-white">
-            <div className="p-4">
-              <Editor
-                value={content}
-                onChange={handleContentChange}
-                className="min-h-[500px] prose max-w-none"
-              />
-            </div>
+          <div className="border rounded-lg overflow-hidden bg-white shadow-sm transition-all hover:shadow-md">
+            <Editor
+              value={content}
+              onChange={handleContentChange}
+              className="min-h-[400px] prose max-w-none"
+            />
           </div>
-          <p className="text-sm text-gray-500 mt-1">
-            Write your email content here. The content will be automatically formatted when sent.
+          <p className="text-sm text-gray-500 mt-2 flex items-center">
+            <svg
+              className="w-4 h-4 mr-1.5 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            Use the toolbar above to format your email content
           </p>
         </div>
-        <Button
-          onClick={handleSendEmail}
-          disabled={isLoading}
-          className="w-full"
-        >
-          {isLoading ? 'Sending...' : 'Send Custom Email'}
-        </Button>
+
+        <div className="pt-4">
+          <Button
+            onClick={handleSendEmail}
+            disabled={isLoading}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white transition-colors py-5 text-base font-medium"
+          >
+            {isLoading ? (
+              <div className="flex items-center justify-center">
+                <svg
+                  className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  />
+                </svg>
+                Sending Email...
+              </div>
+            ) : (
+              'Send Email'
+            )}
+          </Button>
+        </div>
       </div>
     </div>
   )

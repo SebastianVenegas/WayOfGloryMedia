@@ -10,33 +10,63 @@ async function verifyToken(token: string) {
   try {
     const { payload } = await jose.jwtVerify(token, JWT_SECRET)
     
-    // Strict token validation
+    // Basic token validation
     if (!payload || 
         typeof payload !== 'object' || 
         !payload.email || 
         !payload.role || 
-        !payload.name || 
-        !payload.exp || 
-        Date.now() >= payload.exp * 1000) {
+        !payload.name) {
+      console.error('[Token Validation] Invalid token payload')
       return false
     }
 
     return true
-  } catch {
+  } catch (error) {
+    console.error('[Token Validation] Error:', error)
     return false
   }
 }
 
 export async function middleware(request: NextRequest) {
+  // Get the pathname
   const path = request.nextUrl.pathname
+  
+  // Define protected paths
   const isAdminPath = path.startsWith('/admin') && path !== '/admin/login'
+  const isProtectedApiPath = path.startsWith('/api/admin')
+  const isAuthCheck = path === '/api/auth/check'
 
-  // Get the token from cookies
+  // Skip middleware for OPTIONS requests
+  if (request.method === 'OPTIONS') {
+    return NextResponse.next()
+  }
+
+  // Get token from cookie
   const token = request.cookies.get('auth_token')?.value
 
-  // For admin paths, require valid token
-  if (isAdminPath) {
+  // Handle auth check endpoint
+  if (isAuthCheck) {
     if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const isValidToken = await verifyToken(token)
+    if (!isValidToken) {
+      const response = NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+      response.cookies.delete('auth_token')
+      return response
+    }
+
+    return NextResponse.next()
+  }
+
+  // Handle protected paths
+  if (isAdminPath || isProtectedApiPath) {
+    if (!token) {
+      if (isProtectedApiPath) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      }
+      // Redirect to login for admin pages
       const loginUrl = new URL('/admin/login', request.url)
       loginUrl.searchParams.set('from', request.nextUrl.pathname)
       return NextResponse.redirect(loginUrl)
@@ -44,14 +74,31 @@ export async function middleware(request: NextRequest) {
 
     const isValidToken = await verifyToken(token)
     if (!isValidToken) {
-      // Clear the invalid token and redirect
-      const response = NextResponse.redirect(new URL('/admin/login', request.url))
+      const response = isProtectedApiPath
+        ? NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+        : NextResponse.redirect(new URL('/admin/login', request.url))
+      
       response.cookies.delete('auth_token')
       return response
     }
 
-    // Token is valid, allow access
-    return NextResponse.next()
+    // Clone the response to add headers
+    const response = NextResponse.next()
+    
+    // Set persistent cookie with 3-hour expiration
+    const threeHours = 60 * 60 * 3 // 3 hours in seconds
+    response.cookies.set({
+      name: 'auth_token',
+      value: token,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: threeHours,
+      expires: new Date(Date.now() + threeHours * 1000)
+    })
+
+    return response
   }
 
   return NextResponse.next()
@@ -59,5 +106,9 @@ export async function middleware(request: NextRequest) {
 
 // Configure the paths that middleware will run on
 export const config = {
-  matcher: ['/admin/:path*']
+  matcher: [
+    '/admin/:path*',
+    '/api/admin/:path*', 
+    '/api/auth/check'
+  ]
 } 

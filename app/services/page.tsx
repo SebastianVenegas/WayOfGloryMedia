@@ -35,7 +35,6 @@ interface Service {
   note?: string
   icon: LucideIcon
   featured?: boolean
-  price: number
   category: string
   pricing?: {
     initial: string
@@ -66,11 +65,10 @@ const services: Service[] = [
     ],
     note: "Custom packages available based on your needs",
     icon: Video,
-    price: 250.00,
     category: "Streaming"
   },
   {
-    id: "2",
+    id: "146",
     title: "Audio Equipment Training",
     description: "Comprehensive training sessions for your team on audio equipment operation",
     includes: [
@@ -87,46 +85,78 @@ const services: Service[] = [
       "Recording basics"
     ],
     icon: Headphones,
-    price: 250.00,
     category: "Training"
   },
   {
-    id: "3",
-    title: "Emergency Technical Support",
-    description: "Priority response technical support for urgent audio system issues",
+    id: "148",
+    title: "Sound Optimization",
+    description: "Expert optimization of your sound system for optimal performance",
     includes: [
-      "24/7 emergency response",
-      "Remote troubleshooting",
-      "On-site support when needed",
-      "Post-incident analysis",
-      "Preventive recommendations"
+      "Acoustic environment analysis",
+      "System tuning and calibration",
+      "EQ and processing adjustment",
+      "Coverage pattern optimization",
+      "Sound quality enhancement"
     ],
-    note: "Available for existing clients",
-    icon: Settings,
-    price: 250.00,
+    upgrades: [
+      "Advanced room acoustics treatment",
+      "Digital signal processing setup",
+      "Custom presets creation"
+    ],
+    icon: HeadphonesIcon,
+    category: "Optimization"
+  },
+  {
+    id: "149",
+    title: "Monthly Maintenance",
+    description: "Regular maintenance service to keep your audio system in top condition",
+    includes: [
+      "Monthly system checkups",
+      "Preventive maintenance",
+      "Equipment cleaning",
+      "Performance testing",
+      "Minor repairs and adjustments"
+    ],
+    icon: Wrench,
+    category: "Maintenance"
+  },
+  {
+    id: "150",
+    title: "Live Service Audio Support",
+    description: "Professional audio support during your live services",
+    includes: [
+      "Live sound mixing",
+      "Equipment setup and testing",
+      "Real-time troubleshooting",
+      "Quality monitoring",
+      "Post-service system check"
+    ],
+    upgrades: [
+      "Multi-engineer support",
+      "Recording service",
+      "Custom mix creation"
+    ],
+    icon: Users,
     category: "Support"
   },
   {
-    id: "4",
-    title: "Live Sound System Design",
-    description: "Professional consultation for designing and optimizing your church's sound system",
+    id: "151",
+    title: "Live Service Broadcasting Support",
+    description: "Complete support for live broadcasting of your services",
     includes: [
-      "Complete venue acoustic analysis",
-      "Speaker placement and coverage optimization",
-      "Equipment recommendations",
-      "Budget planning",
-      "Installation supervision"
+      "Stream setup and monitoring",
+      "Audio quality optimization",
+      "Multi-platform streaming",
+      "Technical troubleshooting",
+      "Post-stream analytics"
     ],
     upgrades: [
-      "3D acoustic modeling",
-      "Custom speaker design",
-      "Digital network planning",
-      "Wireless coordination"
+      "Multi-camera integration",
+      "Custom graphics package",
+      "Social media integration"
     ],
-    note: "Includes detailed documentation",
-    icon: HeadphonesIcon,
-    price: 250.00,
-    category: "Design"
+    icon: Video,
+    category: "Broadcasting"
   }
 ]
 
@@ -389,7 +419,8 @@ export default function ServicesPage() {
                 type="fade-up"
                 delay={0.1 * index}
               >
-                <div className="group relative bg-white rounded-xl border border-gray-100 hover:border-blue-100 hover:shadow-lg transition-all duration-300 h-full">
+                <div className="group relative bg-white rounded-xl border border-gray-100 hover:border-blue-100 hover:shadow-lg transition-all duration-300 h-full cursor-pointer"
+                     onClick={(e) => toggleCard(index, e)}>
                   {/* Service Badge */}
                   <div className="absolute top-4 right-4">
                     <div className="px-2.5 py-1 bg-blue-50/80 text-blue-600 rounded-full text-xs font-medium border border-blue-100/50">
@@ -407,9 +438,17 @@ export default function ServicesPage() {
 
                     {/* Title & Description */}
                     <div className="mb-5">
-                      <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors mb-2">
-                        {service.title}
-                      </h3>
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors mb-2">
+                          {service.title}
+                        </h3>
+                        <ChevronDown 
+                          className={cn(
+                            "w-5 h-5 text-gray-500 transition-transform duration-200",
+                            expandedCard === index ? "transform rotate-180" : ""
+                          )}
+                        />
+                      </div>
                       <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed">
                         {service.description}
                       </p>
@@ -417,51 +456,64 @@ export default function ServicesPage() {
 
                     {/* Features */}
                     {service.includes && (
-                      <div className="mb-6">
-                        <div className="space-y-2.5">
-                          {service.includes.slice(0, 3).map((feature, index) => (
-                            <div key={index} className="flex items-start gap-2">
+                      <div className="mb-6 overflow-hidden">
+                        <div className={cn(
+                          "space-y-2.5 transition-all duration-300 ease-in-out",
+                          expandedCard === index ? "opacity-100 transform translate-y-0" : ""
+                        )}>
+                          {(expandedCard === index ? service.includes : service.includes.slice(0, 3)).map((feature, idx) => (
+                            <div key={idx} 
+                                 className={cn(
+                                   "flex items-start gap-2 transition-all duration-300 ease-in-out",
+                                   idx >= 3 && expandedCard === index 
+                                     ? "opacity-100 transform translate-y-0" 
+                                     : idx < 3 
+                                       ? "opacity-100"
+                                       : "opacity-0 transform -translate-y-4"
+                                 )}>
                               <Check className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
                               <span className="text-sm text-gray-600 leading-tight">{feature}</span>
                             </div>
                           ))}
                         </div>
-                        {service.includes.length > 3 && (
-                          <button 
-                            onClick={() => {
-                              setSelectedService(service)
-                              setIsModalOpen(true)
-                            }}
-                            className="mt-3 text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1 group/btn"
-                          >
-                            +{service.includes.length - 3} more features
-                            <ChevronRight className="w-3 h-3 group-hover/btn:translate-x-0.5 transition-transform" />
-                          </button>
-                        )}
+                        
+                        {/* Upgrades Section - Only show when expanded */}
+                        <div className={cn(
+                          "transition-all duration-300 ease-in-out",
+                          expandedCard === index 
+                            ? "opacity-100 transform translate-y-0 mt-4 pt-4 border-t border-gray-100" 
+                            : "opacity-0 transform -translate-y-4 h-0 overflow-hidden"
+                        )}>
+                          {service.upgrades && (
+                            <>
+                              <p className="text-sm font-medium text-gray-900 mb-3">Available Upgrades:</p>
+                              <div className="space-y-2">
+                                {service.upgrades.map((upgrade, idx) => (
+                                  <div key={idx} className="flex items-start gap-2">
+                                    <Plus className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
+                                    <span className="text-sm text-gray-600 leading-tight">{upgrade}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </>
+                          )}
+                        </div>
+                        
+                        {/* Note - Only show when expanded */}
+                        <div className={cn(
+                          "transition-all duration-300 ease-in-out",
+                          expandedCard === index && service.note
+                            ? "opacity-100 transform translate-y-0 mt-4" 
+                            : "opacity-0 transform -translate-y-4 h-0 overflow-hidden"
+                        )}>
+                          {service.note && (
+                            <div className="text-sm text-gray-500 italic">
+                              Note: {service.note}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
-
-                    {/* Price & CTA */}
-                    <div className="pt-4 mt-auto border-t border-gray-100">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <span className="text-2xl font-bold text-blue-600">
-                            ${service.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </span>
-                          <p className="text-xs text-gray-500 mt-0.5">Starting Price</p>
-                        </div>
-                        <button
-                          onClick={() => {
-                            setSelectedService(service)
-                            setIsModalOpen(true)
-                          }}
-                          className="inline-flex items-center justify-center px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 hover:text-blue-700 rounded-lg text-sm font-medium transition-colors gap-1.5 group/btn"
-                        >
-                          Book Now
-                          <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-0.5 transition-transform" />
-                        </button>
-                      </div>
-                    </div>
                   </div>
                 </div>
               </ScrollAnimation>

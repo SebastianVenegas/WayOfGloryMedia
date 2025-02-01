@@ -76,16 +76,19 @@ export default function AdminLayout({
   const pathname = usePathname()
   const router = useRouter()
 
+  // Check authentication on mount and pathname change
   useEffect(() => {
-    // Check for auth token
     const checkAuth = async () => {
       try {
         setIsLoading(true)
-        const response = await fetch('/api/auth/check')
+        const response = await fetch('/api/auth/check', {
+          credentials: 'include'
+        })
         const data = await response.json()
         
         if (!response.ok) {
           setIsAuthenticated(false)
+          localStorage.removeItem('isLoggedIn')
           if (pathname !== '/admin/login') {
             router.push('/admin/login')
           }
@@ -93,12 +96,14 @@ export default function AdminLayout({
         }
         
         setIsAuthenticated(true)
+        localStorage.setItem('isLoggedIn', 'true')
         if (pathname === '/admin/login') {
           router.push('/admin')
         }
       } catch (error) {
         console.error('Auth check error:', error)
         setIsAuthenticated(false)
+        localStorage.removeItem('isLoggedIn')
         if (pathname !== '/admin/login') {
           router.push('/admin/login')
         }
@@ -107,19 +112,39 @@ export default function AdminLayout({
       }
     }
 
+    // Check if we have a stored login state
+    const isLoggedIn = localStorage.getItem('isLoggedIn')
+    if (!isLoggedIn && pathname !== '/admin/login') {
+      router.push('/admin/login')
+      return
+    }
+
     checkAuth()
   }, [pathname, router])
 
+  // Handle browser close/refresh
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (pathname !== '/admin/login') {
+        localStorage.removeItem('isLoggedIn')
+      }
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+    }
+  }, [pathname])
+
   const handleLogout = async () => {
     try {
-      const response = await fetch('/api/auth/logout', {
+      await fetch('/api/auth/logout', {
         method: 'POST',
+        credentials: 'include'
       })
-
-      if (response.ok) {
-        setIsAuthenticated(false)
-        router.push('/admin/login')
-      }
+      setIsAuthenticated(false)
+      localStorage.removeItem('isLoggedIn')
+      router.push('/admin/login')
     } catch (error) {
       console.error('Logout error:', error)
     }

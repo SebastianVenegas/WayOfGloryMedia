@@ -179,12 +179,12 @@ export const sendContractEmail = async ({
     const mailOptions = {
       from: process.env.GMAIL_USER,
       to: email,
-      subject: `Your Santi Sounds Order #${orderId} Confirmation`,
+      subject: `Your Way of Glory Order #${orderId} Confirmation`,
       attachments: signatureBuffer ? [
         {
           filename: 'signature.png',
           content: signatureBuffer,
-          cid: 'signature@santisounds.com'
+          cid: 'signature@wayofglory.com'
         }
       ] : [],
       html: `
@@ -288,7 +288,7 @@ export const sendContractEmail = async ({
             <h3 style="font-size: 16px; color: #1a1a1a; margin-bottom: 12px;">Customer Signature</h3>
             <div style="background-color: #f9fafb; padding: 16px; border-radius: 8px;">
               <img 
-                src="cid:signature@santisounds.com"
+                src="cid:signature@wayofglory.com"
                 alt="Customer Signature" 
                 style="max-width: 100%; height: auto; display: block; margin: 0 auto; background: white;"
               />
@@ -374,14 +374,14 @@ export const sendQuoteEmail = async ({
     const mailOptions = {
       from: process.env.GMAIL_USER,
       to: email,
-      subject: 'Your Santi Sounds Quote',
+      subject: 'Your Way of Glory Quote',
       html: `
         <div style="font-family: 'Segoe UI', system-ui, sans-serif; max-width: 600px; margin: 0 auto; padding: 32px 16px;">
           <!-- Header with Logo -->
           <div style="text-align: center; margin-bottom: 32px;">
-            <img src="${process.env.NEXT_PUBLIC_BASE_URL}/images/logo.png" alt="Santi Sounds" style="height: 40px; margin-bottom: 24px;" />
+            <img src="${process.env.NEXT_PUBLIC_BASE_URL}/images/logo.png" alt="Way of Glory" style="height: 40px; margin-bottom: 24px;" />
             <h1 style="color: #1a1a1a; font-size: 28px; font-weight: 600; margin: 0 0 8px 0;">
-              Your Quote from Santi Sounds
+              Your Quote from Way of Glory
             </h1>
             <p style="color: #666; font-size: 16px; margin: 0;">
               Thank you for your interest in our products.
@@ -467,7 +467,7 @@ export const sendQuoteEmail = async ({
           <!-- Footer -->
           <div style="text-align: center; margin-top: 48px; padding-top: 24px; border-top: 1px solid #e5e7eb;">
             <p style="color: #666; font-size: 14px; margin: 0;">
-              © ${new Date().getFullYear()} Santi Sounds. All rights reserved.
+              © ${new Date().getFullYear()} Way of Glory. All rights reserved.
             </p>
           </div>
         </div>
