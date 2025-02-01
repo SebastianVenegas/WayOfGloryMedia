@@ -2,22 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@vercel/postgres';
 import { verifyAuth } from '@/lib/auth';
 
-// Define a type for the context parameter that Next.js expects.
-// Using Record<string, string> lets us accept any named dynamic segment.
-interface RouteHandlerContext {
-  params: Record<string, string>;
-}
+export const dynamic = 'force-dynamic';
 
 export async function GET(
-  request: NextRequest,
-  { params }: RouteHandlerContext
+  _request: NextRequest,
+  context: { params: { id: string } }
 ) {
-  const id = params.id;
   try {
     const result = await sql`
       SELECT * FROM custom_services 
-      WHERE id = ${id}
+      WHERE id = ${context.params.id}
     `;
+    
     if (result.rows.length === 0) {
       return NextResponse.json(
         { error: 'Custom service not found' },
@@ -36,9 +32,8 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: RouteHandlerContext
+  context: { params: { id: string } }
 ) {
-  const id = params.id;
   try {
     const authResult = await verifyAuth(request);
     if (!authResult.isAuthenticated) {
@@ -47,7 +42,9 @@ export async function PUT(
         { status: 401 }
       );
     }
+
     const { title, description, price, features } = await request.json();
+
     const result = await sql`
       UPDATE custom_services 
       SET 
@@ -56,9 +53,10 @@ export async function PUT(
         price = ${price},
         features = ${features},
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = ${id}
+      WHERE id = ${context.params.id}
       RETURNING *
     `;
+
     if (result.rows.length === 0) {
       return NextResponse.json(
         { error: 'Custom service not found' },
@@ -77,9 +75,8 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: RouteHandlerContext
+  context: { params: { id: string } }
 ) {
-  const id = params.id;
   try {
     const authResult = await verifyAuth(request);
     if (!authResult.isAuthenticated) {
@@ -88,12 +85,14 @@ export async function DELETE(
         { status: 401 }
       );
     }
+
     const result = await sql`
       UPDATE custom_services 
       SET is_active = false 
-      WHERE id = ${id}
+      WHERE id = ${context.params.id}
       RETURNING *
     `;
+
     if (result.rows.length === 0) {
       return NextResponse.json(
         { error: 'Custom service not found' },
