@@ -6,13 +6,13 @@ import type { NextRequest } from 'next/server'
 export const dynamic = 'force-dynamic'
 
 export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
-): Promise<Response | void> {
+  request: NextRequest,
+  context: { params: { id: string } }
+): Promise<NextResponse> {
   try {
     const result = await sql`
       SELECT * FROM custom_services 
-      WHERE id = ${params.id}
+      WHERE id = ${context.params.id}
     `
     
     if (result.rows.length === 0) {
@@ -27,11 +27,11 @@ export async function GET(
 }
 
 export async function PUT(
-  request: Request,
-  { params }: { params: { id: string } }
-): Promise<Response | void> {
+  request: NextRequest,
+  context: { params: { id: string } }
+): Promise<NextResponse> {
   try {
-    const authResult = await verifyAuth(request as NextRequest)
+    const authResult = await verifyAuth(request)
     if (!authResult.isAuthenticated) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -46,7 +46,7 @@ export async function PUT(
         price = ${price},
         features = ${features},
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = ${params.id}
+      WHERE id = ${context.params.id}
       RETURNING *
     `
 
@@ -62,11 +62,11 @@ export async function PUT(
 }
 
 export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
-): Promise<Response | void> {
+  request: NextRequest,
+  context: { params: { id: string } }
+): Promise<NextResponse> {
   try {
-    const authResult = await verifyAuth(request as NextRequest)
+    const authResult = await verifyAuth(request)
     if (!authResult.isAuthenticated) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -74,7 +74,7 @@ export async function DELETE(
     const result = await sql`
       UPDATE custom_services 
       SET is_active = false 
-      WHERE id = ${params.id}
+      WHERE id = ${context.params.id}
       RETURNING *
     `
 
