@@ -1,13 +1,21 @@
 import { NextResponse } from 'next/server'
 import OpenAI from 'openai'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-})
+// Initialize OpenAI with error handling
+const getOpenAIClient = () => {
+  const apiKey = process.env.OPENAI_API_KEY
+  if (!apiKey) {
+    throw new Error('OpenAI API key is not configured')
+  }
+  return new OpenAI({ apiKey })
+}
 
 export async function POST(req: Request) {
   try {
     const { prompt } = await req.json()
+
+    // Initialize OpenAI client with error handling
+    const openai = getOpenAIClient()
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4",
@@ -23,14 +31,37 @@ export async function POST(req: Request) {
       ]
     })
 
-    const response = completion.choices[0].message.content
-    const serviceData = JSON.parse(response || '{}')
+    const response = completion.choices[0]?.message?.content
+    if (!response) {
+      throw new Error('No response from OpenAI')
+    }
 
-    return NextResponse.json(serviceData)
+    try {
+      const serviceData = JSON.parse(response)
+      return NextResponse.json(serviceData)
+    } catch (parseError) {
+      console.error('Error parsing OpenAI response:', parseError)
+      throw new Error('Invalid response format from OpenAI')
+    }
   } catch (error) {
     console.error('Service generation error:', error)
+    
+    // Handle specific error cases
+    if (error instanceof OpenAI.APIError) {
+      if (error.status === 401) {
+        return NextResponse.json(
+          { error: 'OpenAI API key is invalid or expired. Please check your configuration.' },
+          { status: 401 }
+        )
+      }
+      return NextResponse.json(
+        { error: `OpenAI API error: ${error.message}` },
+        { status: error.status }
+      )
+    }
+
     return NextResponse.json(
-      { error: 'Failed to generate service' },
+      { error: error instanceof Error ? error.message : 'Failed to generate service' },
       { status: 500 }
     )
   }

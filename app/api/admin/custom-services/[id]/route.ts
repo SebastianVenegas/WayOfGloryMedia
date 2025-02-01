@@ -1,16 +1,11 @@
-import { NextResponse, NextRequest } from 'next/server'
+import { NextResponse } from 'next/server'
 import { sql } from '@vercel/postgres'
 import { verifyAuth } from '@/lib/auth'
-
-type Props = {
-  params: {
-    id: string
-  }
-}
+import type { NextRequest } from 'next/server'
 
 export async function GET(
   request: NextRequest,
-  { params }: Props
+  { params }: { params: { id: string } }
 ) {
   try {
     const result = await sql`
@@ -31,7 +26,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: Props
+  { params }: { params: { id: string } }
 ) {
   try {
     const authResult = await verifyAuth(request)
@@ -66,7 +61,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: Props
+  { params }: { params: { id: string } }
 ) {
   try {
     const authResult = await verifyAuth(request)

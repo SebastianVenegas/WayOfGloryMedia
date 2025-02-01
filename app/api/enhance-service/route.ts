@@ -1,9 +1,14 @@
 import { NextResponse } from 'next/server'
 import OpenAI from 'openai'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-})
+// Initialize OpenAI with error handling
+const getOpenAIClient = () => {
+  const apiKey = process.env.OPENAI_API_KEY
+  if (!apiKey) {
+    throw new Error('OpenAI API key is not configured')
+  }
+  return new OpenAI({ apiKey })
+}
 
 export async function POST(req: Request) {
   try {
@@ -18,6 +23,9 @@ export async function POST(req: Request) {
       console.error('Missing required fields:', { title, description, features })
       throw new Error('Missing required fields')
     }
+
+    // Initialize OpenAI client with error handling
+    const openai = getOpenAIClient()
 
     console.log('Making OpenAI request...')
     const completion = await openai.chat.completions.create({
@@ -41,24 +49,43 @@ export async function POST(req: Request) {
     })
 
     console.log('OpenAI response received')
-    const response = completion.choices[0].message.content
+    const response = completion.choices[0]?.message?.content
     console.log('Raw response:', response)
 
     if (!response) {
       throw new Error('Empty response from OpenAI')
     }
 
-    const enhancedData = JSON.parse(response)
-    console.log('Parsed response:', enhancedData)
+    try {
+      const enhancedData = JSON.parse(response)
+      console.log('Parsed response:', enhancedData)
 
-    // Validate response data
-    if (!enhancedData.title || !enhancedData.description || !enhancedData.features) {
-      console.error('Invalid response data:', enhancedData)
-      throw new Error('Invalid response data')
+      // Validate response data
+      if (!enhancedData.title || !enhancedData.description || !enhancedData.features) {
+        console.error('Invalid response data:', enhancedData)
+        throw new Error('Invalid response data')
+      }
+
+      return NextResponse.json(enhancedData)
+    } catch (parseError) {
+      console.error('Error parsing OpenAI response:', parseError)
+      throw new Error('Invalid response format from OpenAI')
+    }
+  } catch (error) {
+    // Handle specific error cases
+    if (error instanceof OpenAI.APIError) {
+      if (error.status === 401) {
+        return NextResponse.json(
+          { error: 'OpenAI API key is invalid or expired. Please check your configuration.' },
+          { status: 401 }
+        )
+      }
+      return NextResponse.json(
+        { error: `OpenAI API error: ${error.message}` },
+        { status: error.status }
+      )
     }
 
-    return NextResponse.json(enhancedData)
-  } catch (error) {
     // Log the full error details
     const err = error as Error
     console.error('Service enhancement error:', {
