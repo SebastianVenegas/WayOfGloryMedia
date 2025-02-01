@@ -3,13 +3,14 @@ import { sql } from '@vercel/postgres'
 import { verifyAuth } from '@/lib/auth'
 
 export async function GET(
-  _request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: { id: string | string[] } }
 ) {
+  const id = Array.isArray(params.id) ? params.id[0] : params.id
   try {
     const result = await sql`
       SELECT * FROM custom_services 
-      WHERE id = ${params.id}
+      WHERE id = ${id}
     `
     
     if (result.rows.length === 0) {
@@ -25,8 +26,9 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: { id: string | string[] } }
 ) {
+  const id = Array.isArray(params.id) ? params.id[0] : params.id
   try {
     const authResult = await verifyAuth(request)
     if (!authResult.isAuthenticated) {
@@ -43,7 +45,7 @@ export async function PUT(
         price = ${price},
         features = ${features},
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = ${context.params.id}
+      WHERE id = ${id}
       RETURNING *
     `
 
@@ -60,8 +62,9 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: { id: string | string[] } }
 ) {
+  const id = Array.isArray(params.id) ? params.id[0] : params.id
   try {
     const authResult = await verifyAuth(request)
     if (!authResult.isAuthenticated) {
@@ -71,7 +74,7 @@ export async function DELETE(
     const result = await sql`
       UPDATE custom_services 
       SET is_active = false 
-      WHERE id = ${context.params.id}
+      WHERE id = ${id}
       RETURNING *
     `
 
