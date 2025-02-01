@@ -17,7 +17,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { useToast } from "@/components/ui/use-toast"
 import { useRouter } from 'next/navigation'
-import { productImages } from '@/app/admin/products/page'
+import { productImages } from '@/lib/product-images'
 
 interface Product {
   id: string;

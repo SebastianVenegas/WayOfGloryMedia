@@ -624,9 +624,10 @@ export default function OrdersPage() {
     fetchOrders()
   }, [])
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     filterAndSortOrders()
-  }, [filterAndSortOrders])
+  }, [orders, searchTerm, statusFilter, dateFilter, sortOrder])
 
   const fetchOrders = async () => {
     try {

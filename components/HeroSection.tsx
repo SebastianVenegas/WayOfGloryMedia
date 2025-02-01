@@ -44,12 +44,13 @@ export default function HeroSection() {
     return () => clearInterval(interval)
   }, [])
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const interval = setInterval(() => {
       setTitleIndex(prev => (prev + 1) % titles.length)
     }, 3000)
     return () => clearInterval(interval)
-  }, [titles.length])
+  }, [])
 
   const scrollToQuote = (e: React.MouseEvent) => {
     e.preventDefault()
