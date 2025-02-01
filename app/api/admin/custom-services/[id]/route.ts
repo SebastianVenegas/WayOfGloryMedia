@@ -5,15 +5,9 @@ import type { NextRequest } from 'next/server'
 
 export const dynamic = 'force-dynamic'
 
-type RouteContext = {
-  params: {
-    id: string
-  }
-}
-
 export async function GET(
   request: NextRequest,
-  { params }: RouteContext
+  { params }: { params: { id: string } }
 ): Promise<NextResponse> {
   try {
     const result = await sql`
@@ -34,7 +28,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: RouteContext
+  { params }: { params: { id: string } }
 ): Promise<NextResponse> {
   try {
     const authResult = await verifyAuth(request)
@@ -69,7 +63,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: RouteContext
+  { params }: { params: { id: string } }
 ): Promise<NextResponse> {
   try {
     const authResult = await verifyAuth(request)
