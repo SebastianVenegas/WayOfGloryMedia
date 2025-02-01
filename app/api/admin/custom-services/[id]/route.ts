@@ -3,10 +3,12 @@ import { sql } from '@vercel/postgres'
 import { verifyAuth } from '@/lib/auth'
 import type { NextRequest } from 'next/server'
 
-export const GET = async (
-  request: NextRequest,
+export const dynamic = 'force-dynamic'
+
+export async function GET(
+  request: Request,
   { params }: { params: { id: string } }
-) => {
+): Promise<Response | void> {
   try {
     const result = await sql`
       SELECT * FROM custom_services 
@@ -24,12 +26,12 @@ export const GET = async (
   }
 }
 
-export const PUT = async (
-  request: NextRequest,
+export async function PUT(
+  request: Request,
   { params }: { params: { id: string } }
-) => {
+): Promise<Response | void> {
   try {
-    const authResult = await verifyAuth(request)
+    const authResult = await verifyAuth(request as NextRequest)
     if (!authResult.isAuthenticated) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -59,12 +61,12 @@ export const PUT = async (
   }
 }
 
-export const DELETE = async (
-  request: NextRequest,
+export async function DELETE(
+  request: Request,
   { params }: { params: { id: string } }
-) => {
+): Promise<Response | void> {
   try {
-    const authResult = await verifyAuth(request)
+    const authResult = await verifyAuth(request as NextRequest)
     if (!authResult.isAuthenticated) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -85,4 +87,7 @@ export const DELETE = async (
     console.error('Error deleting custom service:', error)
     return NextResponse.json({ error: 'Failed to delete custom service' }, { status: 500 })
   }
-} 
+}
+
+// Force TypeScript to treat this as a module
+export type {} 
