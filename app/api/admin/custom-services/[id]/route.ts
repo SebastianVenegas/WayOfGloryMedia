@@ -1,21 +1,24 @@
-import type { NextRequest } from 'next/server'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { sql } from '@vercel/postgres'
 import { verifyAuth } from '@/lib/auth'
 
 export const runtime = 'edge'
 export const dynamic = 'force-dynamic'
 
-type Params = { id: string }
+type Context = {
+  params: {
+    id: string
+  }
+}
 
 export async function GET(
-  req: NextRequest,
-  { params }: { params: Params }
+  request: NextRequest,
+  context: Context
 ) {
   try {
     const result = await sql`
       SELECT * FROM custom_services 
-      WHERE id = ${params.id}
+      WHERE id = ${context.params.id}
     `
     
     if (result.rows.length === 0) {
@@ -30,16 +33,16 @@ export async function GET(
 }
 
 export async function PUT(
-  req: NextRequest,
-  { params }: { params: Params }
+  request: NextRequest,
+  context: Context
 ) {
   try {
-    const authResult = await verifyAuth(req)
+    const authResult = await verifyAuth(request)
     if (!authResult.isAuthenticated) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { title, description, price, features } = await req.json()
+    const { title, description, price, features } = await request.json()
 
     const result = await sql`
       UPDATE custom_services 
@@ -49,7 +52,7 @@ export async function PUT(
         price = ${price},
         features = ${JSON.stringify(features)},
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = ${params.id}
+      WHERE id = ${context.params.id}
       RETURNING *
     `
 
@@ -65,11 +68,11 @@ export async function PUT(
 }
 
 export async function DELETE(
-  req: NextRequest,
-  { params }: { params: Params }
+  request: NextRequest,
+  context: Context
 ) {
   try {
-    const authResult = await verifyAuth(req)
+    const authResult = await verifyAuth(request)
     if (!authResult.isAuthenticated) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -77,7 +80,7 @@ export async function DELETE(
     const result = await sql`
       UPDATE custom_services 
       SET is_active = false 
-      WHERE id = ${params.id}
+      WHERE id = ${context.params.id}
       RETURNING *
     `
 
