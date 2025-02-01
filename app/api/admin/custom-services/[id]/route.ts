@@ -1,49 +1,45 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { sql } from '@vercel/postgres';
-import { verifyAuth } from '@/lib/auth';
+import type { NextRequest } from 'next/server'
+import { NextResponse } from 'next/server'
+import { sql } from '@vercel/postgres'
+import { verifyAuth } from '@/lib/auth'
 
-export const dynamic = 'force-dynamic';
+export const runtime = 'edge'
+export const dynamic = 'force-dynamic'
+
+type Params = { id: string }
 
 export async function GET(
-  _request: NextRequest,
-  context: { params: { id: string } }
+  req: NextRequest,
+  { params }: { params: Params }
 ) {
   try {
     const result = await sql`
       SELECT * FROM custom_services 
-      WHERE id = ${context.params.id}
-    `;
+      WHERE id = ${params.id}
+    `
     
     if (result.rows.length === 0) {
-      return NextResponse.json(
-        { error: 'Custom service not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Custom service not found' }, { status: 404 })
     }
-    return NextResponse.json(result.rows[0]);
+
+    return NextResponse.json(result.rows[0])
   } catch (error) {
-    console.error('Error fetching custom service:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch custom service' },
-      { status: 500 }
-    );
+    console.error('Error fetching custom service:', error)
+    return NextResponse.json({ error: 'Failed to fetch custom service' }, { status: 500 })
   }
 }
 
 export async function PUT(
-  request: NextRequest,
-  context: { params: { id: string } }
+  req: NextRequest,
+  { params }: { params: Params }
 ) {
   try {
-    const authResult = await verifyAuth(request);
+    const authResult = await verifyAuth(req)
     if (!authResult.isAuthenticated) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { title, description, price, features } = await request.json();
+    const { title, description, price, features } = await req.json()
 
     const result = await sql`
       UPDATE custom_services 
@@ -51,63 +47,47 @@ export async function PUT(
         title = ${title},
         description = ${description},
         price = ${price},
-        features = ${features},
+        features = ${JSON.stringify(features)},
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = ${context.params.id}
+      WHERE id = ${params.id}
       RETURNING *
-    `;
+    `
 
     if (result.rows.length === 0) {
-      return NextResponse.json(
-        { error: 'Custom service not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Custom service not found' }, { status: 404 })
     }
-    return NextResponse.json(result.rows[0]);
+
+    return NextResponse.json(result.rows[0])
   } catch (error) {
-    console.error('Error updating custom service:', error);
-    return NextResponse.json(
-      { error: 'Failed to update custom service' },
-      { status: 500 }
-    );
+    console.error('Error updating custom service:', error)
+    return NextResponse.json({ error: 'Failed to update custom service' }, { status: 500 })
   }
 }
 
 export async function DELETE(
-  request: NextRequest,
-  context: { params: { id: string } }
+  req: NextRequest,
+  { params }: { params: Params }
 ) {
   try {
-    const authResult = await verifyAuth(request);
+    const authResult = await verifyAuth(req)
     if (!authResult.isAuthenticated) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const result = await sql`
       UPDATE custom_services 
       SET is_active = false 
-      WHERE id = ${context.params.id}
+      WHERE id = ${params.id}
       RETURNING *
-    `;
+    `
 
     if (result.rows.length === 0) {
-      return NextResponse.json(
-        { error: 'Custom service not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Custom service not found' }, { status: 404 })
     }
-    return NextResponse.json(result.rows[0]);
-  } catch (error) {
-    console.error('Error deleting custom service:', error);
-    return NextResponse.json(
-      { error: 'Failed to delete custom service' },
-      { status: 500 }
-    );
-  }
-}
 
-// This empty export ensures that TypeScript treats the file as a module.
-export {};
+    return NextResponse.json(result.rows[0])
+  } catch (error) {
+    console.error('Error deleting custom service:', error)
+    return NextResponse.json({ error: 'Failed to delete custom service' }, { status: 500 })
+  }
+} 
