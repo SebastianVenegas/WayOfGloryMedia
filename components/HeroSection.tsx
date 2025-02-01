@@ -49,7 +49,7 @@ export default function HeroSection() {
       setTitleIndex(prev => (prev + 1) % titles.length)
     }, 3000)
     return () => clearInterval(interval)
-  }, [])
+  }, [titles.length])
 
   const scrollToQuote = (e: React.MouseEvent) => {
     e.preventDefault()

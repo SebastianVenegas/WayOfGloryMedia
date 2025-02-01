@@ -156,7 +156,7 @@ Way of Glory Team`
       ],
     })
 
-    let generatedContent = completion.choices[0]?.message?.content || ''
+    const generatedContent = completion.choices[0]?.message?.content || ''
 
     // Extract subject and content
     let subject = ''

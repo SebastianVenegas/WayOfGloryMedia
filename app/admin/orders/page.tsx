@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   Search,
   SlidersHorizontal,
@@ -557,29 +557,7 @@ export default function OrdersPage() {
     },
   ]
 
-  useEffect(() => {
-    fetchOrders()
-  }, [])
-
-  useEffect(() => {
-    filterAndSortOrders()
-  }, [orders, searchTerm, statusFilter, dateFilter, sortOrder])
-
-  const fetchOrders = async () => {
-    try {
-      const response = await fetch('/api/admin/orders')
-      if (response.ok) {
-        const data = await response.json()
-        setOrders(data)
-      }
-    } catch (error) {
-      console.error('Error fetching orders:', error)
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const filterAndSortOrders = () => {
+  const filterAndSortOrders = useCallback(() => {
     let filtered = [...orders]
 
     // Apply search filter
@@ -640,6 +618,28 @@ export default function OrdersPage() {
     })
 
     setFilteredOrders(filtered)
+  }, [orders, searchTerm, statusFilter, dateFilter, sortOrder])
+
+  useEffect(() => {
+    fetchOrders()
+  }, [])
+
+  useEffect(() => {
+    filterAndSortOrders()
+  }, [filterAndSortOrders])
+
+  const fetchOrders = async () => {
+    try {
+      const response = await fetch('/api/admin/orders')
+      if (response.ok) {
+        const data = await response.json()
+        setOrders(data)
+      }
+    } catch (error) {
+      console.error('Error fetching orders:', error)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const getStatusColor = (status: Order['status']) => {
