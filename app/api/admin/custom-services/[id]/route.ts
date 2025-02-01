@@ -2,9 +2,8 @@ import { NextResponse, NextRequest } from 'next/server'
 import { sql } from '@vercel/postgres'
 import { verifyAuth } from '@/lib/auth'
 
-// GET /api/admin/custom-services/[id]
 export async function GET(
-  request: Request,
+  _request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
@@ -24,10 +23,9 @@ export async function GET(
   }
 }
 
-// PUT /api/admin/custom-services/[id]
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
     const authResult = await verifyAuth(request)
@@ -45,7 +43,7 @@ export async function PUT(
         price = ${price},
         features = ${features},
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = ${params.id}
+      WHERE id = ${context.params.id}
       RETURNING *
     `
 
@@ -60,10 +58,9 @@ export async function PUT(
   }
 }
 
-// DELETE /api/admin/custom-services/[id]
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
     const authResult = await verifyAuth(request)
@@ -74,7 +71,7 @@ export async function DELETE(
     const result = await sql`
       UPDATE custom_services 
       SET is_active = false 
-      WHERE id = ${params.id}
+      WHERE id = ${context.params.id}
       RETURNING *
     `
 
