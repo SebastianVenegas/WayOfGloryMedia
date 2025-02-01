@@ -30,7 +30,7 @@ const backgroundImages = [
 
 export default function HeroSection() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
-  const [titleIndex, setTitleIndex] = useState(0)
+  const [currentTitleIndex, setCurrentTitleIndex] = useState(0)
   
   const titles = ["Sound", "Video"]
 
@@ -44,13 +44,12 @@ export default function HeroSection() {
     return () => clearInterval(interval)
   }, [])
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const interval = setInterval(() => {
-      setTitleIndex(prev => (prev + 1) % titles.length)
+      setCurrentTitleIndex((prevIndex) => (prevIndex + 1) % titles.length)
     }, 3000)
     return () => clearInterval(interval)
-  }, [])
+  }, [titles.length])
 
   const scrollToQuote = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -102,7 +101,7 @@ export default function HeroSection() {
                 <span className="relative inline-block">
                   <AnimatePresence mode="wait">
                     <motion.span
-                      key={titles[titleIndex]}
+                      key={titles[currentTitleIndex]}
                       initial={{ y: 20, opacity: 0 }}
                       animate={{ y: 0, opacity: 1 }}
                       exit={{ y: -20, opacity: 0 }}
@@ -112,7 +111,7 @@ export default function HeroSection() {
                       }}
                       className="inline-block"
                     >
-                      {titles[titleIndex]}
+                      {titles[currentTitleIndex]}
                     </motion.span>
                   </AnimatePresence>
                 </span>
