@@ -715,10 +715,21 @@ export default function ProductsPage() {
   return (
     <div className="min-h-screen bg-gray-50/50">
       {/* Dynamic Header */}
-      <div className={cn(
-        "fixed top-0 left-[80px] right-0 z-[60] transition-all duration-300",
-        isScrolled ? "bg-white/90 backdrop-blur-xl shadow-sm" : "bg-white"
-      )}>
+      <motion.div
+        initial={false}
+        animate={{ 
+          left: isSidebarExpanded ? '288px' : '80px'
+        }}
+        transition={{
+          type: "spring",
+          stiffness: 300,
+          damping: 30
+        }}
+        className={cn(
+          "fixed top-0 right-0 z-[60] transition-colors",
+          isScrolled ? "bg-white/90 backdrop-blur-xl shadow-sm" : "bg-white"
+        )}
+      >
         <div className="max-w-[2000px] mx-auto">
           {/* Main Header */}
           <div className="h-20 px-4 sm:px-6 lg:px-8 flex items-center gap-4 sm:gap-6 lg:gap-8">
@@ -828,10 +839,21 @@ export default function ProductsPage() {
             </motion.div>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Main Content with Bundle */}
-      <div className="flex flex-1 min-h-[calc(100vh-80px)] pt-20 overflow-x-hidden ml-[80px]">
+      <motion.div 
+        initial={false}
+        animate={{ 
+          marginLeft: isSidebarExpanded ? '288px' : '80px'
+        }}
+        transition={{
+          type: "spring",
+          stiffness: 300,
+          damping: 30
+        }}
+        className="flex flex-1 min-h-[calc(100vh-80px)] pt-20 overflow-x-hidden"
+      >
         {/* Products Section */}
         <motion.div
           layout
@@ -1167,7 +1189,7 @@ export default function ProductsPage() {
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
+      </motion.div>
 
       {/* Checkout Component */}
       {isCheckoutOpen && (
