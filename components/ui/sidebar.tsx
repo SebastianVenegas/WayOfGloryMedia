@@ -101,6 +101,13 @@ export function Sidebar({ className }: SidebarProps) {
     fetchUser()
   }, [])
 
+  useEffect(() => {
+    const event = new CustomEvent('sidebarStateChange', { 
+      detail: { expanded: !isCollapsed } 
+    })
+    window.dispatchEvent(event)
+  }, [isCollapsed])
+
   const navigationItems = [
     {
       title: 'Dashboard',

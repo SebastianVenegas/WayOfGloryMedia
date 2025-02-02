@@ -354,6 +354,7 @@ export default function ProductsPage() {
   const [authToken, setAuthToken] = useState<string | null>(null)
   const productsPerPage = 12
   const router = useRouter()
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -383,6 +384,16 @@ export default function ProductsPage() {
       }
     }
     getAuthToken()
+  }, [])
+
+  useEffect(() => {
+    const handleSidebarChange = (e: CustomEvent) => {
+      setIsSidebarExpanded(e.detail.expanded)
+    }
+    window.addEventListener('sidebarStateChange' as any, handleSidebarChange)
+    return () => {
+      window.removeEventListener('sidebarStateChange' as any, handleSidebarChange)
+    }
   }, [])
 
   const fetchProducts = async () => {
