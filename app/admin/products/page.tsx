@@ -705,7 +705,7 @@ export default function ProductsPage() {
     <div className="min-h-screen bg-gray-50/50">
       {/* Dynamic Header */}
       <div className={cn(
-        "fixed top-0 left-0 right-0 z-[60] transition-all duration-300",
+        "fixed top-0 left-0 right-0 z-[60] transition-all duration-300 pl-[80px]",
         isScrolled ? "bg-white/90 backdrop-blur-xl shadow-sm" : "bg-white"
       )}>
         <div className="max-w-[2000px] mx-auto">
@@ -820,7 +820,7 @@ export default function ProductsPage() {
       </div>
 
       {/* Main Content with Bundle */}
-      <div className="flex flex-1 min-h-[calc(100vh-80px)] pt-20 overflow-x-hidden">
+      <div className="flex flex-1 min-h-[calc(100vh-80px)] pt-20 overflow-x-hidden pl-[80px]">
         {/* Products Section */}
         <motion.div
           layout

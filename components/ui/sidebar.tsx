@@ -193,7 +193,7 @@ export function Sidebar({ className }: SidebarProps) {
         initial={false}
         animate={isCollapsed ? 'collapsed' : 'expanded'}
         className={cn(
-          'fixed left-0 top-0 z-40 h-screen bg-white border-r border-gray-200 flex flex-col shadow-sm',
+          'fixed left-0 top-0 z-[70] h-screen bg-white border-r border-gray-200 flex flex-col shadow-sm',
           className
         )}
       >
