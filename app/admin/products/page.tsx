@@ -820,12 +820,12 @@ export default function ProductsPage() {
       </div>
 
       {/* Main Content with Bundle */}
-      <div className="flex flex-1 min-h-[calc(100vh-80px)] pt-20">
+      <div className="flex flex-1 min-h-[calc(100vh-80px)] pt-20 overflow-x-hidden">
         {/* Products Section */}
         <motion.div
           layout
           className={cn(
-            "flex-1 min-w-0 relative",
+            "flex-1 min-w-0 relative overflow-x-hidden",
             isCartOpen && "mr-[450px]"
           )}
           transition={{
@@ -873,7 +873,7 @@ export default function ProductsPage() {
 
           {/* Products Container with Independent Scroll */}
           <div className={cn(
-            "h-[calc(100vh-80px)] overflow-y-auto",
+            "h-[calc(100vh-80px)] overflow-y-auto overflow-x-hidden",
             selectedCategory.startsWith('Audio Gear') && "h-[calc(100vh-133px)]" // Adjust for subcategories bar
           )}>
             {/* Header */}
@@ -1139,7 +1139,7 @@ export default function ProductsPage() {
                 damping: 30,
                 mass: 0.8
               }}
-              className="fixed right-0 top-20 bottom-0 w-[450px] bg-white border-l border-gray-100 shadow-lg overflow-hidden"
+              className="fixed right-0 top-20 bottom-0 w-[450px] bg-white border-l border-gray-100 shadow-lg overflow-hidden z-40"
             >
               <Bundle 
                 products={bundleItems.map(item => ({
