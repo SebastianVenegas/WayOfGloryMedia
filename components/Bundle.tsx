@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { ShoppingBag, X, Plus, Minus, ChevronRight, Package, Trash2, AlertCircle, Mic2, Sliders, Cable, Network, Speaker, Headphones, Maximize2, WrenchIcon, Mail } from 'lucide-react'
+import { ShoppingBag, X, Plus, Minus, ChevronRight, ChevronLeft, Package, Trash2, AlertCircle, Mic2, Sliders, Cable, Network, Speaker, Headphones, Maximize2, WrenchIcon, Mail } from 'lucide-react'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
 import Checkout, { CheckoutFormData } from './Checkout'
@@ -146,6 +146,7 @@ export default function Bundle({ products, onRemove, onUpdateQuantity, isOpen, s
   const cartRef = useRef<HTMLDivElement>(null)
   const [selectedDate, setSelectedDate] = useState<string>('')
   const [selectedTime, setSelectedTime] = useState<string>('')
+  const [isCollapsed, setIsCollapsed] = useState(true)
 
   const totalPrice = products.reduce((sum, product) => 
     sum + (product.our_price || product.price) * product.quantity, 0
@@ -371,238 +372,217 @@ Total: $${totalAmount.toFixed(2)}`,
 
   return (
     <>
-      {/* Cart Sidebar */}
-      <motion.div
-        ref={cartRef}
-        initial={{ x: '100%' }}
-        animate={{ x: isOpen ? '0%' : '100%' }}
-        transition={{ type: "spring", damping: 30, stiffness: 300 }}
-        style={{ width: `${width}px` }}
-        className="fixed top-0 right-0 h-full bg-white text-gray-900 z-40 shadow-lg border-l border-gray-100 overflow-hidden"
-      >
-        {/* Resize Handle - Hidden on touch devices */}
-        <div
-          ref={dragRef}
-          data-dragging="false"
-          className="absolute left-0 top-0 bottom-0 w-1 cursor-ew-resize hover:bg-gray-100 transition-colors md:block hidden"
-        />
-
-        <div className="flex flex-col h-full max-h-screen">
-          {/* Header - Larger touch targets */}
-          <div className="shrink-0 p-5 flex items-center justify-between bg-gray-50/80 backdrop-blur-sm">
-            <div className="flex items-center gap-4">
-              <h2 className="text-xl font-semibold text-gray-700">Bundle</h2>
-              <span className="text-base text-gray-500">
-                {products.length === 0 ? "Empty" : `${products.length} items`}
+      <div className="flex flex-col h-full">
+        {/* Header */}
+        <div className="shrink-0 p-4 flex items-center justify-between bg-gray-50/80 backdrop-blur-sm border-b border-gray-100">
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-semibold text-gray-700">Bundle</h2>
+            {products.length > 0 && (
+              <span className="text-sm bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-medium">
+                {products.length}
               </span>
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsOpen(false)}
-              className="rounded-xl h-10 w-10 hover:bg-gray-100 text-gray-400 hover:text-gray-600"
-            >
-              <X className="h-5 w-5" />
-            </Button>
+            )}
           </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsOpen(false)}
+            className="rounded-xl h-9 w-9 hover:bg-gray-100 text-gray-400 hover:text-gray-600"
+          >
+            <X className="h-5 w-5" />
+          </Button>
+        </div>
 
-          {/* Content - Improved spacing and touch targets */}
-          <div className="flex-1 overflow-y-auto min-h-0">
-            {products.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center p-8 text-center">
-                <div className="w-24 h-24 rounded-2xl bg-gray-50 flex items-center justify-center mb-6">
-                  <Package className="h-12 w-12 text-gray-400" />
-                </div>
-                <h3 className="text-xl font-medium mb-3 text-gray-700">Your bundle is empty</h3>
-                <p className="text-base text-gray-500">Add some products to get started</p>
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto min-h-0">
+          {products.length === 0 ? (
+            <div className="h-full flex flex-col items-center justify-center p-8 text-center">
+              <div className="w-24 h-24 rounded-2xl bg-gray-50 flex items-center justify-center mb-6">
+                <Package className="h-12 w-12 text-gray-400" />
               </div>
-            ) : (
-              <div className="p-5 space-y-4">
-                {products.map((product) => (
-                  <motion.div
-                    key={product.id}
-                    layout
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, x: -10 }}
-                    className={cn(
-                      "group bg-gray-50/50 rounded-xl border border-gray-100 hover:border-gray-200 hover:bg-gray-50 transition-all p-4",
-                      isRemoving === product.id && "opacity-50 scale-95"
-                    )}
-                  >
-                    <div className="flex gap-4">
-                      {/* Image/Icon - Larger size */}
-                      <div className="flex items-center gap-4">
-                        {product.category === 'Services' ? (
-                          <div className="relative w-16 h-16 bg-gray-50 rounded-xl border border-gray-100 flex items-center justify-center flex-shrink-0">
-                            <WrenchIcon className="h-8 w-8 text-gray-500" />
-                          </div>
-                        ) : (
-                          <div className="relative h-16 w-16 rounded-xl bg-white overflow-hidden border border-gray-100">
-                            <Image
-                              src={getProductImage(product)}
-                              alt={product.title}
-                              fill
-                              className="object-contain p-2"
-                              sizes="64px"
-                            />
-                          </div>
-                        )}
+              <h3 className="text-xl font-medium mb-3 text-gray-700">Your bundle is empty</h3>
+              <p className="text-base text-gray-500">Add some products to get started</p>
+            </div>
+          ) : (
+            <div className="p-5 space-y-4">
+              {products.map((product) => (
+                <motion.div
+                  key={product.id}
+                  layout
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, x: -10 }}
+                  className={cn(
+                    "group bg-gray-50/50 rounded-xl border border-gray-100 hover:border-gray-200 hover:bg-gray-50 transition-all p-4",
+                    isRemoving === product.id && "opacity-50 scale-95"
+                  )}
+                >
+                  <div className="flex gap-4">
+                    <div className="flex items-center gap-4">
+                      {product.category === 'Services' ? (
+                        <div className="relative w-16 h-16 bg-gray-50 rounded-xl border border-gray-100 flex items-center justify-center flex-shrink-0">
+                          <WrenchIcon className="h-8 w-8 text-gray-500" />
+                        </div>
+                      ) : (
+                        <div className="relative h-16 w-16 rounded-xl bg-white overflow-hidden border border-gray-100">
+                          <Image
+                            src={getProductImage(product)}
+                            alt={product.title}
+                            fill
+                            className="object-contain p-2"
+                            sizes="64px"
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between">
+                        <h4 className="text-base font-medium line-clamp-2 pr-2">
+                          {product.title}
+                        </h4>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemove(product.id)}
+                          className="text-gray-500 hover:text-red-400 hover:bg-red-400/10 -mr-2 h-9 w-9 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
-
-                      {/* Info - Improved typography and spacing */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between">
-                          <h4 className="text-base font-medium line-clamp-2 pr-2">
-                            {product.title}
-                          </h4>
+                      <div className="mt-2 text-base text-gray-600">
+                        ${(product.our_price || product.price).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      </div>
+                      <div className="mt-3 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
                           <Button
                             variant="ghost"
-                            size="sm"
-                            onClick={() => handleRemove(product.id)}
-                            className="text-gray-500 hover:text-red-400 hover:bg-red-400/10 -mr-2 h-9 w-9 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"
+                            size="icon"
+                            onClick={() => handleQuantityUpdate(product.id, product.quantity - 1)}
+                            disabled={product.quantity <= 1}
+                            className="h-8 w-8 rounded-lg bg-white/5 hover:bg-white/10"
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Minus className="h-4 w-4" />
+                          </Button>
+                          <span className="w-10 text-center text-base">
+                            {product.quantity}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleQuantityUpdate(product.id, product.quantity + 1)}
+                            className="h-8 w-8 rounded-lg bg-white/5 hover:bg-white/10"
+                          >
+                            <Plus className="h-4 w-4" />
                           </Button>
                         </div>
-
-                        <div className="mt-2 text-base text-gray-600">
-                          ${(product.our_price || product.price).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                        </div>
-
-                        {/* Controls - Larger touch targets */}
-                        <div className="mt-3 flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleQuantityUpdate(product.id, product.quantity - 1)}
-                              disabled={product.quantity <= 1}
-                              className="h-8 w-8 rounded-lg bg-white/5 hover:bg-white/10"
-                            >
-                              <Minus className="h-4 w-4" />
-                            </Button>
-                            <span className="w-10 text-center text-base">
-                              {product.quantity}
-                            </span>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleQuantityUpdate(product.id, product.quantity + 1)}
-                              className="h-8 w-8 rounded-lg bg-white/5 hover:bg-white/10"
-                            >
-                              <Plus className="h-4 w-4" />
-                            </Button>
-                          </div>
-                          <div className="text-base font-medium">
-                            ${((product.our_price || product.price) * product.quantity).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                          </div>
+                        <div className="text-base font-medium">
+                          ${((product.our_price || product.price) * product.quantity).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                         </div>
                       </div>
                     </div>
-                  </motion.div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Footer - Improved spacing and touch targets */}
-          {products.length > 0 && (
-            <div className="shrink-0 border-t border-gray-100 bg-gray-50/80 backdrop-blur-sm p-5 space-y-5">
-              {/* Installation Option */}
-              <div className="flex items-center gap-4 bg-white rounded-xl p-4 border border-gray-100">
-                <label className="flex items-center gap-3 text-base flex-1">
-                  <input 
-                    type="checkbox" 
-                    className="rounded-lg border-gray-200 text-gray-700 focus:ring-gray-200 w-5 h-5"
-                    checked={installationSelected}
-                    onChange={(e) => setInstallationSelected(e.target.checked)}
-                  />
-                  <span className="text-gray-600">Installation Service</span>
-                </label>
-                {installationSelected && (
-                  <div className="relative w-32">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
-                    <Input
-                      type="number"
-                      value={installationPrice}
-                      onChange={(e) => setInstallationPrice(parseFloat(e.target.value) || 0)}
-                      className="pl-7 h-9 text-base bg-white border-gray-200 focus:border-gray-300 focus:ring-gray-100 rounded-lg"
-                      placeholder="Price"
-                      step="0.01"
-                      min="0"
-                    />
                   </div>
-                )}
-              </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </div>
 
-              {/* Summary - Improved typography */}
-              <div className="space-y-3">
-                <div className="flex justify-between text-base">
-                  <span className="text-gray-500">Products Subtotal</span>
-                  <span className="text-gray-700">${totalPrice.toFixed(2)}</span>
+        {/* Footer */}
+        {products.length > 0 && (
+          <div className="shrink-0 border-t border-gray-100 bg-gray-50/80 backdrop-blur-sm p-5 space-y-5">
+            {/* Installation Option */}
+            <div className="flex items-center gap-4 bg-white rounded-xl p-4 border border-gray-100">
+              <label className="flex items-center gap-3 text-base flex-1">
+                <input 
+                  type="checkbox" 
+                  className="rounded-lg border-gray-200 text-gray-700 focus:ring-gray-200 w-5 h-5"
+                  checked={installationSelected}
+                  onChange={(e) => setInstallationSelected(e.target.checked)}
+                />
+                <span className="text-gray-600">Installation Service</span>
+              </label>
+              {installationSelected && (
+                <div className="relative w-32">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+                  <Input
+                    type="number"
+                    value={installationPrice}
+                    onChange={(e) => setInstallationPrice(parseFloat(e.target.value) || 0)}
+                    className="pl-7 h-9 text-base bg-white border-gray-200 focus:border-gray-300 focus:ring-gray-100 rounded-lg"
+                    placeholder="Price"
+                    step="0.01"
+                    min="0"
+                  />
                 </div>
+              )}
+            </div>
+
+            {/* Summary - Improved typography */}
+            <div className="space-y-3">
+              <div className="flex justify-between text-base">
+                <span className="text-gray-500">Products Subtotal</span>
+                <span className="text-gray-700">${totalPrice.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-base">
+                <span className="text-gray-500">Sales Tax</span>
+                <span className="text-gray-700">
+                  ${(products.reduce((sum, item) => {
+                    if (item.category === 'Services' || item.category === 'Services/Custom' || item.is_service || item.is_custom) {
+                      return sum;
+                    }
+                    return sum + ((item.our_price || item.price) * item.quantity);
+                  }, 0) * 0.0775).toFixed(2)}
+                </span>
+              </div>
+              {installationSelected && installationPrice > 0 && (
                 <div className="flex justify-between text-base">
-                  <span className="text-gray-500">Sales Tax</span>
-                  <span className="text-gray-700">
-                    ${(products.reduce((sum, item) => {
+                  <span className="text-gray-500">Installation (No Tax)</span>
+                  <span className="text-gray-700">${installationPrice.toFixed(2)}</span>
+                </div>
+              )}
+              <div className="flex justify-between items-baseline pt-3 border-t border-gray-200">
+                <span className="text-base font-medium text-gray-600">Total</span>
+                <span className="text-2xl font-bold text-gray-800">
+                  ${(
+                    totalPrice + 
+                    (products.reduce((sum, item) => {
                       if (item.category === 'Services' || item.category === 'Services/Custom' || item.is_service || item.is_custom) {
                         return sum;
                       }
                       return sum + ((item.our_price || item.price) * item.quantity);
-                    }, 0) * 0.0775).toFixed(2)}
-                  </span>
-                </div>
-                {installationSelected && installationPrice > 0 && (
-                  <div className="flex justify-between text-base">
-                    <span className="text-gray-500">Installation (No Tax)</span>
-                    <span className="text-gray-700">${installationPrice.toFixed(2)}</span>
-                  </div>
-                )}
-                <div className="flex justify-between items-baseline pt-3 border-t border-gray-200">
-                  <span className="text-base font-medium text-gray-600">Total</span>
-                  <span className="text-2xl font-bold text-gray-800">
-                    ${(
-                      totalPrice + 
-                      (products.reduce((sum, item) => {
-                        if (item.category === 'Services' || item.category === 'Services/Custom' || item.is_service || item.is_custom) {
-                          return sum;
-                        }
-                        return sum + ((item.our_price || item.price) * item.quantity);
-                      }, 0) * 0.0775) + 
-                      (installationSelected ? installationPrice : 0)
-                    ).toFixed(2)}
-                  </span>
-                </div>
+                    }, 0) * 0.0775) + 
+                    (installationSelected ? installationPrice : 0)
+                  ).toFixed(2)}
+                </span>
               </div>
-
-              {/* Actions - Larger buttons */}
-              <div className="grid grid-cols-2 gap-3 pt-3">
-                <Button
-                  variant="outline"
-                  className="bg-white border-gray-200 hover:bg-gray-50 text-gray-600 hover:text-gray-700 rounded-xl h-12 text-base"
-                  onClick={() => setIsQuoteDialogOpen(true)}
-                >
-                  Quote
-                </Button>
-                <Button
-                  className="bg-gray-100 hover:bg-gray-200 text-gray-700 hover:text-gray-800 rounded-xl h-12 font-medium text-base"
-                  onClick={() => setIsCheckoutOpen(true)}
-                >
-                  Contract
-                </Button>
-              </div>
-              <p className="text-sm text-center text-gray-500 pt-2">
-                By proceeding, you agree to our terms of service
-              </p>
             </div>
-          )}
-        </div>
-      </motion.div>
 
-      {/* Quote Dialog - Improved for touch */}
+            {/* Actions - Larger buttons */}
+            <div className="grid grid-cols-2 gap-3 pt-3">
+              <Button
+                variant="outline"
+                className="bg-white border-gray-200 hover:bg-gray-50 text-gray-600 hover:text-gray-700 rounded-xl h-12 text-base"
+                onClick={() => setIsQuoteDialogOpen(true)}
+              >
+                Quote
+              </Button>
+              <Button
+                className="bg-gray-100 hover:bg-gray-200 text-gray-700 hover:text-gray-800 rounded-xl h-12 font-medium text-base"
+                onClick={() => setIsCheckoutOpen(true)}
+              >
+                Contract
+              </Button>
+            </div>
+            <p className="text-sm text-center text-gray-500 pt-2">
+              By proceeding, you agree to our terms of service
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Quote Dialog */}
       <Dialog open={isQuoteDialogOpen} onOpenChange={setIsQuoteDialogOpen}>
-        <DialogContent className="sm:max-w-[450px] bg-white">
+        <DialogContent className="sm:max-w-[450px] w-[95vw] bg-white fixed bottom-0 left-1/2 -translate-x-1/2 sm:bottom-auto sm:translate-y-[-50%] rounded-t-3xl sm:rounded-xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3 text-xl">
               <Mail className="h-6 w-6 text-blue-500" />
@@ -619,13 +599,18 @@ Total: $${totalAmount.toFixed(2)}`,
                 value={quoteEmail}
                 onChange={(e) => setQuoteEmail(e.target.value)}
                 placeholder="Enter email address"
-                className="h-12 text-base rounded-xl"
+                className="h-14 text-base rounded-xl"
+                autoFocus={false}
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck="false"
               />
             </div>
             <Button
               onClick={handleGenerateQuote}
               disabled={isGeneratingQuote || !quoteEmail}
-              className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-base"
+              className="w-full h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-base font-medium"
             >
               {isGeneratingQuote ? (
                 <>

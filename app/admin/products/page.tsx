@@ -19,6 +19,7 @@ import ProductForm from '@/components/admin/ProductForm'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { productImages } from '@/lib/product-images'
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 
 // Category type definitions
 type MainCategory = 'all' | 'Audio Gear' | 'Streaming Gear' | 'Services';
@@ -705,39 +706,38 @@ export default function ProductsPage() {
       {/* Dynamic Header */}
       <div className={cn(
         "sticky top-0 z-40 transition-all duration-300",
-        isScrolled ? "bg-white/80 backdrop-blur-xl shadow-sm" : "bg-white",
-        isCartOpen && "cart-push"
+        isScrolled ? "bg-white/90 backdrop-blur-xl shadow-sm" : "bg-white"
       )}>
         <div className="max-w-[2000px] mx-auto">
           {/* Main Header */}
-          <div className="h-16 px-2 sm:px-4 flex items-center gap-2 sm:gap-4 lg:gap-8">
-            {/* Left side - Search with animation */}
+          <div className="h-20 px-4 sm:px-6 lg:px-8 flex items-center gap-4 sm:gap-6 lg:gap-8">
+            {/* Left side - Search */}
             <motion.div 
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              className="w-full max-w-[200px] sm:max-w-[320px] relative group"
+              className="w-full max-w-[240px] sm:max-w-[320px] relative group"
             >
-              <Search className="h-4 w-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 transition-colors group-focus-within:text-blue-500" />
+              <Search className="h-5 w-5 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2 transition-colors group-focus-within:text-blue-500" />
               <Input
                 type="text"
                 placeholder="Search..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 h-9 bg-gray-50/80 border-0 ring-1 ring-gray-200 focus-visible:ring-2 focus-visible:ring-blue-500 transition-all duration-200 rounded-lg text-sm"
+                className="w-full pl-12 h-12 bg-gray-50/80 border-0 ring-1 ring-gray-200 focus-visible:ring-2 focus-visible:ring-blue-500 transition-all duration-200 rounded-xl text-base"
               />
               {searchQuery && (
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 h-8 w-8 text-gray-400 hover:text-gray-600"
                 >
-                  <X className="h-3 w-3" />
+                  <X className="h-4 w-4" />
                 </Button>
               )}
             </motion.div>
 
-            {/* Center - Categories with responsive design */}
+            {/* Center - Categories */}
             <div className="flex-1 flex items-center justify-center overflow-x-auto scrollbar-hide">
               <motion.div 
                 initial={{ opacity: 0, y: -10 }}
@@ -776,37 +776,39 @@ export default function ProductsPage() {
             <motion.div 
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
-              className="flex items-center gap-2 sm:gap-3"
+              className="flex items-center gap-3 sm:gap-4"
             >
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => setIsListView(!isListView)}
-                className="h-9 w-9 text-gray-500 hover:text-gray-900 rounded-lg hidden sm:flex"
+                className="h-12 w-12 text-gray-500 hover:text-gray-900 rounded-xl"
               >
                 <motion.div
                   initial={false}
                   animate={{ rotate: isListView ? 0 : 180 }}
                   transition={{ duration: 0.3 }}
                 >
-                  {isListView ? <LayoutGrid className="h-4 w-4" /> : <List className="h-4 w-4" />}
+                  {isListView ? <LayoutGrid className="h-5 w-5" /> : <List className="h-5 w-5" />}
                 </motion.div>
               </Button>
+
+              {/* Bundle Button */}
               <Button
                 variant="default"
-                onClick={() => setIsCartOpen(true)}
+                onClick={() => setIsCartOpen(!isCartOpen)}
                 className={cn(
-                  "h-9 px-3 sm:px-4 bg-blue-500 hover:bg-blue-600 text-white flex items-center gap-2 rounded-lg transition-all duration-200",
+                  "h-12 px-5 bg-blue-500 hover:bg-blue-600 text-white flex items-center gap-3 rounded-xl transition-all duration-200",
                   bundleItems.length > 0 && "ring-2 ring-blue-200"
                 )}
               >
-                <ShoppingBag className="h-4 w-4" />
-                <span className="hidden sm:inline">Bundle</span>
+                <ShoppingBag className="h-5 w-5" />
+                <span className="hidden sm:inline text-base">Bundle</span>
                 {bundleItems.length > 0 && (
                   <motion.div
                     initial={{ scale: 0.5 }}
                     animate={{ scale: 1 }}
-                    className="bg-white text-blue-500 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold"
+                    className="bg-white text-blue-500 rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold"
                   >
                     {bundleItems.reduce((sum, item) => sum + item.quantity, 0)}
                   </motion.div>
@@ -817,13 +819,21 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="flex h-[calc(100vh-65px)] overflow-hidden">
+      {/* Main Content with Bundle */}
+      <div className="flex flex-1 min-h-[calc(100vh-80px)]">
         {/* Products Section */}
-        <div className={cn(
-          "flex-1 overflow-y-auto transition-all duration-300",
-          isCartOpen && "cart-push"
-        )}>
+        <motion.div
+          layout
+          className={cn(
+            "flex-1 min-w-0",
+            isCartOpen && "mr-[450px]"
+          )}
+          transition={{
+            type: "spring",
+            stiffness: 300,
+            damping: 30
+          }}
+        >
           {/* Subcategories Bar */}
           {selectedCategory.startsWith('Audio Gear') && (
             <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-sm border-b border-gray-200 shadow-sm">
@@ -1105,21 +1115,38 @@ export default function ProductsPage() {
               </Button>
             </div>
           </div>
-        </div>
+        </motion.div>
 
-        {/* Bundle Component */}
-        <Bundle 
-          products={bundleItems.map(item => ({
-            ...item.product,
-            quantity: item.quantity,
-            price: item.our_price || item.price
-          }))}
-          onRemove={removeFromBundle}
-          onUpdateQuantity={handleBundleQuantityUpdate}
-          isOpen={isCartOpen}
-          setIsOpen={setIsCartOpen}
-          clearCart={() => setBundleItems([])}
-        />
+        {/* Bundle Section */}
+        <AnimatePresence mode="wait">
+          {isCartOpen && (
+            <motion.div
+              initial={{ x: 450, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: 450, opacity: 0 }}
+              transition={{
+                type: "spring",
+                stiffness: 300,
+                damping: 30,
+                mass: 0.8
+              }}
+              className="fixed right-0 top-20 bottom-0 w-[450px] bg-white border-l border-gray-100 shadow-lg"
+            >
+              <Bundle 
+                products={bundleItems.map(item => ({
+                  ...item.product,
+                  quantity: item.quantity,
+                  price: item.our_price || item.price
+                }))}
+                onRemove={removeFromBundle}
+                onUpdateQuantity={handleBundleQuantityUpdate}
+                isOpen={isCartOpen}
+                setIsOpen={setIsCartOpen}
+                clearCart={() => setBundleItems([])}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Checkout Component */}
