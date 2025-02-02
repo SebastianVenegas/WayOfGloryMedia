@@ -718,15 +718,15 @@ export default function ProductsPage() {
       <motion.div
         initial={false}
         animate={{ 
-          left: isSidebarExpanded ? '288px' : '80px'
+          left: isSidebarExpanded ? '288px' : '80px',
+          right: 0
         }}
         transition={{
-          type: "spring",
-          stiffness: 300,
-          damping: 30
+          duration: 0.3,
+          ease: [0.4, 0, 0.2, 1]
         }}
         className={cn(
-          "fixed top-0 right-0 z-[60] transition-colors",
+          "fixed top-0 z-[60]",
           isScrolled ? "bg-white/90 backdrop-blur-xl shadow-sm" : "bg-white"
         )}
       >
@@ -848,9 +848,8 @@ export default function ProductsPage() {
           marginLeft: isSidebarExpanded ? '288px' : '80px'
         }}
         transition={{
-          type: "spring",
-          stiffness: 300,
-          damping: 30
+          duration: 0.3,
+          ease: [0.4, 0, 0.2, 1]
         }}
         className="flex flex-1 min-h-[calc(100vh-80px)] pt-20 overflow-x-hidden"
       >
