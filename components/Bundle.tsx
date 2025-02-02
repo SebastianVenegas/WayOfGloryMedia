@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { ShoppingBag, X, Plus, Minus, ChevronRight, Package, Trash2, AlertCircle, Mic2, Sliders, Cable, Network, Speaker, Headphones, Maximize2, WrenchIcon } from 'lucide-react'
+import { ShoppingBag, X, Plus, Minus, ChevronRight, Package, Trash2, AlertCircle, Mic2, Sliders, Cable, Network, Speaker, Headphones, Maximize2, WrenchIcon, Mail } from 'lucide-react'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
 import Checkout, { CheckoutFormData } from './Checkout'
@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/input'
 import { useToast } from "@/components/ui/use-toast"
 import { useRouter } from 'next/navigation'
 import { productImages } from '@/lib/product-images'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog-custom"
 
 interface Product {
   id: string;
@@ -133,6 +134,9 @@ const getProductImage = (product: Product): string => {
 export default function Bundle({ products, onRemove, onUpdateQuantity, isOpen, setIsOpen, clearCart }: BundleProps) {
   const { toast } = useToast()
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false)
+  const [isQuoteDialogOpen, setIsQuoteDialogOpen] = useState(false)
+  const [quoteEmail, setQuoteEmail] = useState('')
+  const [isGeneratingQuote, setIsGeneratingQuote] = useState(false)
   const [installationSelected, setInstallationSelected] = useState(false)
   const [installationPrice, setInstallationPrice] = useState(0)
   const [isRemoving, setIsRemoving] = useState<string | null>(null)
@@ -301,6 +305,67 @@ Total: $${totalAmount.toFixed(2)}`,
         className: "border-red-100",
       });
       throw error;
+    }
+  };
+
+  const handleGenerateQuote = async () => {
+    if (!quoteEmail) {
+      toast({
+        title: "Email Required",
+        description: "Please enter an email address to send the quote to.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setIsGeneratingQuote(true)
+    try {
+      const response = await fetch('/api/generate-quote', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          products: products.map(product => ({
+            id: product.id,
+            title: product.title,
+            price: product.price,
+            our_price: product.our_price,
+            quantity: product.quantity,
+            category: product.category,
+            is_service: product.is_service,
+            is_custom: product.is_custom
+          })),
+          email: quoteEmail,
+          installationPrice: installationSelected ? installationPrice : 0
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to generate quote');
+      }
+
+      toast({
+        title: "Quote Sent Successfully! 📧",
+        description: `A quote has been sent to ${quoteEmail}. Please check your email.`,
+        variant: "default",
+        duration: 5000,
+        className: "bg-white border-green-100 text-green-900",
+      });
+
+      setIsQuoteDialogOpen(false);
+      setQuoteEmail('');
+    } catch (error) {
+      console.error('Error generating quote:', error);
+      toast({
+        title: "Failed to Generate Quote",
+        description: error instanceof Error ? error.message : "An error occurred while generating the quote. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingQuote(false);
     }
   };
 
@@ -520,9 +585,7 @@ Total: $${totalAmount.toFixed(2)}`,
                 <Button
                   variant="outline"
                   className="bg-white border-gray-200 hover:bg-gray-50 text-gray-600 hover:text-gray-700 rounded-lg h-10"
-                  onClick={() => {
-                    // Handle quote creation
-                  }}
+                  onClick={() => setIsQuoteDialogOpen(true)}
                 >
                   Quote
                 </Button>
@@ -560,6 +623,46 @@ Total: $${totalAmount.toFixed(2)}`,
           />
         )}
       </AnimatePresence>
+
+      {/* Quote Dialog */}
+      <Dialog open={isQuoteDialogOpen} onOpenChange={setIsQuoteDialogOpen}>
+        <DialogContent className="sm:max-w-[400px] bg-white">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <Mail className="h-5 w-5 text-blue-500" />
+              Generate Quote
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">
+                Email Address
+              </label>
+              <Input
+                type="email"
+                value={quoteEmail}
+                onChange={(e) => setQuoteEmail(e.target.value)}
+                placeholder="Enter email address"
+                className="h-10"
+              />
+            </div>
+            <Button
+              onClick={handleGenerateQuote}
+              disabled={isGeneratingQuote || !quoteEmail}
+              className="w-full h-10 bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              {isGeneratingQuote ? (
+                <>
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent mr-2" />
+                  Generating...
+                </>
+              ) : (
+                'Send Quote'
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   )
 } 
