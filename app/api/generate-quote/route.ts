@@ -75,7 +75,7 @@ export async function POST(request: Request) {
                 <span>$${productSubtotal.toFixed(2)}</span>
               </div>
               <div class="total-line">
-                <span>Sales Tax (7.75%):</span>
+                <span>Sales Tax:</span>
                 <span>$${tax.toFixed(2)}</span>
               </div>
               ${installationPrice > 0 ? `
