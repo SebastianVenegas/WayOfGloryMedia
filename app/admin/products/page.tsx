@@ -705,7 +705,7 @@ export default function ProductsPage() {
     <div className="min-h-screen bg-gray-50/50">
       {/* Dynamic Header */}
       <div className={cn(
-        "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
+        "fixed top-0 left-0 right-0 z-[60] transition-all duration-300",
         isScrolled ? "bg-white/90 backdrop-blur-xl shadow-sm" : "bg-white"
       )}>
         <div className="max-w-[2000px] mx-auto">
@@ -836,7 +836,7 @@ export default function ProductsPage() {
         >
           {/* Subcategories Bar */}
           {selectedCategory.startsWith('Audio Gear') && (
-            <div className="sticky top-20 z-30 bg-white/95 backdrop-blur-sm border-b border-gray-200 shadow-sm">
+            <div className="sticky top-20 z-[55] bg-white/95 backdrop-blur-sm border-b border-gray-200 shadow-sm">
               <div className="px-2 sm:px-4 lg:px-8">
                 <div className="flex items-center -mb-px overflow-x-auto scrollbar-hide py-2">
                   <Button
@@ -1139,7 +1139,7 @@ export default function ProductsPage() {
                 damping: 30,
                 mass: 0.8
               }}
-              className="fixed right-0 top-20 bottom-0 w-[450px] bg-white border-l border-gray-100 shadow-lg overflow-hidden z-40"
+              className="fixed right-0 top-0 bottom-0 w-[450px] bg-white border-l border-gray-100 shadow-lg overflow-hidden z-[50] pt-20"
             >
               <Bundle 
                 products={bundleItems.map(item => ({
