@@ -387,14 +387,15 @@ export default function ProductsPage() {
   }, [])
 
   useEffect(() => {
-    const handleSidebarChange = (e: CustomEvent) => {
-      setIsSidebarExpanded(e.detail.expanded)
-    }
-    window.addEventListener('sidebarStateChange' as any, handleSidebarChange)
+    const handleSidebarChange = (e: CustomEvent<{ expanded: boolean }>) => {
+      setIsSidebarExpanded(e.detail.expanded);
+    };
+
+    window.addEventListener('sidebarStateChange', handleSidebarChange as EventListener);
     return () => {
-      window.removeEventListener('sidebarStateChange' as any, handleSidebarChange)
-    }
-  }, [])
+      window.removeEventListener('sidebarStateChange', handleSidebarChange as EventListener);
+    };
+  }, []);
 
   const fetchProducts = async () => {
     try {
@@ -715,11 +716,16 @@ export default function ProductsPage() {
   return (
     <div className="min-h-screen bg-gray-50/50">
       {/* Dynamic Header */}
-      <div className={cn(
-        "fixed top-0 left-[80px] right-0 z-[60] transition-all duration-300",
-        isScrolled ? "bg-white/90 backdrop-blur-xl shadow-sm" : "bg-white",
-        isSidebarExpanded && "left-[288px]"
-      )}>
+      <div 
+        style={{
+          left: isSidebarExpanded ? '288px' : '80px',
+          transition: 'left 0.3s ease'
+        }}
+        className={cn(
+          "fixed top-0 right-0 z-[60] bg-white",
+          isScrolled && "bg-white/90 backdrop-blur-xl shadow-sm"
+        )}
+      >
         <div className="max-w-[2000px] mx-auto">
           {/* Main Header */}
           <div className="h-20 px-4 sm:px-6 lg:px-8 flex items-center gap-4 sm:gap-6 lg:gap-8">
@@ -832,10 +838,13 @@ export default function ProductsPage() {
       </div>
 
       {/* Main Content with Bundle */}
-      <div className={cn(
-        "flex flex-1 min-h-[calc(100vh-80px)] pt-20 overflow-x-hidden transition-all duration-300",
-        isSidebarExpanded ? "ml-[288px]" : "ml-[80px]"
-      )}>
+      <div 
+        style={{
+          marginLeft: isSidebarExpanded ? '288px' : '80px',
+          transition: 'margin-left 0.3s ease'
+        }}
+        className="flex flex-1 min-h-[calc(100vh-80px)] pt-20 overflow-x-hidden"
+      >
         {/* Products Section */}
         <motion.div
           layout

@@ -101,12 +101,21 @@ export function Sidebar({ className }: SidebarProps) {
     fetchUser()
   }, [])
 
+  const emitSidebarState = () => {
+    window.dispatchEvent(
+      new CustomEvent('sidebarStateChange', {
+        detail: { expanded: !isCollapsed }
+      })
+    );
+  };
+
   useEffect(() => {
-    const event = new CustomEvent('sidebarStateChange', { 
-      detail: { expanded: !isCollapsed } 
-    })
-    window.dispatchEvent(event)
-  }, [isCollapsed])
+    emitSidebarState();
+  }, [isCollapsed]);
+
+  const handleSidebarToggle = () => {
+    setIsCollapsed(!isCollapsed);
+  };
 
   const navigationItems = [
     {
@@ -197,7 +206,7 @@ export function Sidebar({ className }: SidebarProps) {
 
       <motion.div
         variants={sidebarVariants}
-        initial={false}
+        initial="collapsed"
         animate={isCollapsed ? 'collapsed' : 'expanded'}
         className={cn(
           'fixed left-0 top-0 z-[70] h-screen bg-white border-r border-gray-200 flex flex-col shadow-sm',
@@ -231,7 +240,7 @@ export function Sidebar({ className }: SidebarProps) {
               "rounded-xl hover:bg-gray-100 transition-all duration-200",
               isCollapsed && "rotate-180"
             )}
-            onClick={() => setIsCollapsed(!isCollapsed)}
+            onClick={handleSidebarToggle}
           >
             <ChevronLeft className="h-5 w-5 text-gray-500" />
           </Button>
