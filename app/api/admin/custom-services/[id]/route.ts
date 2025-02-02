@@ -1,24 +1,19 @@
-import { NextRequest, NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
+import { NextResponse } from 'next/server'
 import { sql } from '@vercel/postgres'
 import { verifyAuth } from '@/lib/auth'
 
 export const runtime = 'edge'
 export const dynamic = 'force-dynamic'
 
-type Context = {
-  params: {
-    id: string
-  }
-}
-
 export async function GET(
   request: NextRequest,
-  context: Context
-) {
+  { params }: { params: { id: string } }
+): Promise<NextResponse> {
   try {
     const result = await sql`
       SELECT * FROM custom_services 
-      WHERE id = ${context.params.id}
+      WHERE id = ${params.id}
     `
     
     if (result.rows.length === 0) {
@@ -34,8 +29,8 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  context: Context
-) {
+  { params }: { params: { id: string } }
+): Promise<NextResponse> {
   try {
     const authResult = await verifyAuth(request)
     if (!authResult.isAuthenticated) {
@@ -52,7 +47,7 @@ export async function PUT(
         price = ${price},
         features = ${JSON.stringify(features)},
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = ${context.params.id}
+      WHERE id = ${params.id}
       RETURNING *
     `
 
@@ -69,8 +64,8 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  context: Context
-) {
+  { params }: { params: { id: string } }
+): Promise<NextResponse> {
   try {
     const authResult = await verifyAuth(request)
     if (!authResult.isAuthenticated) {
@@ -80,7 +75,7 @@ export async function DELETE(
     const result = await sql`
       UPDATE custom_services 
       SET is_active = false 
-      WHERE id = ${context.params.id}
+      WHERE id = ${params.id}
       RETURNING *
     `
 
