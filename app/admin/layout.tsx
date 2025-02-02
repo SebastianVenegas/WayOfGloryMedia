@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Button } from "@/components/ui/button"
 import { useRouter, usePathname } from 'next/navigation'
-import { useSidebar } from '@/contexts/SidebarContext'
 import { 
   LayoutGrid, 
   Package, 
@@ -19,7 +18,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
-import Image from 'next/image'
+import { useSidebar } from '@/contexts/SidebarContext'
 
 const navigation = [
   {
