@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import nodemailer from 'nodemailer'
-import { Resend } from 'resend'
 
 interface ContactFormData {
   name: string;
@@ -8,14 +7,6 @@ interface ContactFormData {
   phone: string;
   message: string;
 }
-
-interface ResendError {
-  statusCode: number;
-  message: string;
-  name: string;
-}
-
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(request: Request) {
   // Check environment variables
@@ -97,14 +88,10 @@ export async function POST(request: Request) {
       )
     }
   } catch (error) {
-    const resendError = error as ResendError;
-    console.error('Error sending contact form:', resendError);
+    console.error('Error processing contact form:', error);
     return NextResponse.json(
-      { 
-        error: resendError.message || 'Failed to submit contact form',
-        statusCode: resendError.statusCode || 500
-      },
-      { status: resendError.statusCode || 500 }
+      { error: 'Failed to submit contact form' },
+      { status: 500 }
     );
   }
 } 
