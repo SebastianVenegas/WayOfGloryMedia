@@ -6,16 +6,14 @@ import { verifyAuth } from '@/lib/auth'
 export const runtime = 'edge'
 export const dynamic = 'force-dynamic'
 
-type Params = { id: string }
-
 export async function GET(
-  _request: NextRequest,
-  props: { params: Params }
+  request: Request,
+  { params }: { params: Record<string, string> }
 ) {
   try {
     const result = await sql`
       SELECT * FROM custom_services 
-      WHERE id = ${props.params.id}
+      WHERE id = ${params.id}
     `
     
     if (result.rows.length === 0) {
@@ -30,11 +28,11 @@ export async function GET(
 }
 
 export async function PUT(
-  request: NextRequest,
-  props: { params: Params }
+  request: Request,
+  { params }: { params: Record<string, string> }
 ) {
   try {
-    const authResult = await verifyAuth(request)
+    const authResult = await verifyAuth(request as NextRequest)
     if (!authResult.isAuthenticated) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -49,7 +47,7 @@ export async function PUT(
         price = ${price},
         features = ${JSON.stringify(features)},
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = ${props.params.id}
+      WHERE id = ${params.id}
       RETURNING *
     `
 
@@ -65,11 +63,11 @@ export async function PUT(
 }
 
 export async function DELETE(
-  request: NextRequest,
-  props: { params: Params }
+  request: Request,
+  { params }: { params: Record<string, string> }
 ) {
   try {
-    const authResult = await verifyAuth(request)
+    const authResult = await verifyAuth(request as NextRequest)
     if (!authResult.isAuthenticated) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -77,7 +75,7 @@ export async function DELETE(
     const result = await sql`
       UPDATE custom_services 
       SET is_active = false 
-      WHERE id = ${props.params.id}
+      WHERE id = ${params.id}
       RETURNING *
     `
 
