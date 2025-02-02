@@ -1,10 +1,13 @@
 import { sql } from '@vercel/postgres';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getEmailTemplate, formatEmailPreview } from '@/lib/email-templates';
 import nodemailer from 'nodemailer';
 
-export async function POST(req: Request, { params }: { params: { orderId: string } }) {
+export async function POST(request: NextRequest) {
   try {
+    const url = new URL(request.url);
+    const orderId = url.pathname.split('/').slice(-2, -1)[0]; // Extract ID from URL
+
     // Get order details from database
     const { rows: [order] } = await sql.query(
       `SELECT 
@@ -24,7 +27,7 @@ export async function POST(req: Request, { params }: { params: { orderId: string
         shipping_state,
         shipping_zip
       FROM orders WHERE id = $1`,
-      [params.orderId]
+      [orderId]
     );
 
     if (!order) {
@@ -34,7 +37,7 @@ export async function POST(req: Request, { params }: { params: { orderId: string
       );
     }
 
-    const { templateId, customEmail } = await req.json();
+    const { templateId, customEmail } = await request.json();
 
     // Configure nodemailer with Gmail
     const transporter = nodemailer.createTransport({
@@ -76,7 +79,7 @@ export async function POST(req: Request, { params }: { params: { orderId: string
         content,
         sent_at
       ) VALUES ($1, $2, $3, $4, NOW())`,
-      [params.orderId, templateId, subject, emailContent]
+      [orderId, templateId, subject, emailContent]
     );
 
     return NextResponse.json({
