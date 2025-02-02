@@ -167,21 +167,36 @@ export default function AdminLayout({
   return (
     <div className="min-h-screen bg-gray-50/50">
       {/* Sidebar */}
-      <motion.div 
+      <motion.div
         initial={false}
-        animate={{ width: isExpanded ? 280 : 80 }}
-        className={cn(
-          "fixed inset-y-0 left-0 z-20 flex flex-col bg-white border-r border-gray-200",
-          "bg-gradient-to-b from-gray-50/50 to-white"
-        )}
+        animate={{
+          width: isExpanded ? '280px' : '80px',
+          transition: { duration: 0.3 }
+        }}
+        className="fixed left-0 top-0 bottom-0 z-[50] bg-white/80 backdrop-blur-xl border-r border-gray-200 flex flex-col"
       >
         {/* Header */}
-        <div className="flex items-center justify-end h-16 px-4 border-b border-gray-200 bg-white">
+        <div className="flex items-center h-16 px-4 border-b border-gray-200 bg-white/90 backdrop-blur-sm">
+          <div className="flex items-center gap-3 flex-1">
+            <div className="p-1.5 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-600">
+              <Music className="h-5 w-5 text-white" />
+            </div>
+            {isExpanded && (
+              <motion.span 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="font-semibold text-gray-900"
+              >
+                Way of Glory
+              </motion.span>
+            )}
+          </div>
           <Button
             variant="ghost"
             size="icon"
             onClick={toggleSidebar}
-            className="hover:bg-gray-100"
+            className="hover:bg-gray-100 rounded-lg"
           >
             {isExpanded ? (
               <ChevronLeft className="h-4 w-4" />
@@ -192,7 +207,7 @@ export default function AdminLayout({
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-1">
+        <nav className="flex-1 p-2 space-y-1 overflow-y-auto scrollbar-none">
           {navigation.map((item) => {
             const isActive = pathname === item.href
             return (
@@ -200,25 +215,39 @@ export default function AdminLayout({
                 key={item.name}
                 href={item.href}
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200",
+                  "group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 relative overflow-hidden",
                   isActive 
                     ? "bg-gray-100 text-gray-900" 
                     : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
                 )}
               >
                 <div className={cn(
-                  "p-1.5 rounded-lg transition-colors duration-200",
+                  "relative z-10 p-1.5 rounded-lg transition-colors duration-200",
                   isActive ? `${item.color} bg-white shadow-sm` : "text-gray-400 group-hover:text-gray-500"
                 )}>
                   <item.icon className="h-5 w-5" />
                 </div>
                 {!isExpanded && (
-                  <div className="fixed left-full ml-3 px-2 py-1 bg-gray-900 text-white text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                  <div className="fixed left-[70px] px-2.5 py-1.5 bg-gray-900 text-xs text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
                     {item.name}
                   </div>
                 )}
                 {isExpanded && (
-                  <span className="truncate">{item.name}</span>
+                  <motion.span 
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -10 }}
+                    className="truncate"
+                  >
+                    {item.name}
+                  </motion.span>
+                )}
+                {isActive && (
+                  <motion.div
+                    layoutId="activeNav"
+                    className="absolute inset-0 bg-gradient-to-r from-gray-100 to-gray-50 -z-10"
+                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                  />
                 )}
               </Link>
             )
@@ -226,25 +255,30 @@ export default function AdminLayout({
         </nav>
 
         {/* User Section */}
-        <div className="p-4 border-t border-gray-200">
+        <div className="p-2 border-t border-gray-200 bg-gray-50/80">
           <div className={cn(
-            "flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 transition-colors",
+            "flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/80 transition-colors",
             isExpanded && "cursor-pointer"
           )}>
-            <div className="relative w-8 h-8 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 flex items-center justify-center text-white font-medium">
-              A
+            <div className="relative w-9 h-9 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-medium shadow-sm">
+              W
             </div>
             {isExpanded && (
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">Admin User</p>
-                <p className="text-xs text-gray-500 truncate">admin@santisounds.com</p>
-              </div>
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="flex-1 min-w-0"
+              >
+                <p className="text-sm font-medium text-gray-900 truncate">Staff Account</p>
+                <p className="text-xs text-gray-500 truncate">staff@wayofglory.com</p>
+              </motion.div>
             )}
           </div>
           {isExpanded && (
             <Button
               variant="ghost"
-              className="w-full mt-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 justify-start gap-2"
+              className="w-full mt-2 text-gray-600 hover:text-gray-900 hover:bg-white/80 justify-start gap-2 rounded-xl"
               onClick={handleLogout}
             >
               <LogOut className="h-4 w-4" />
@@ -255,13 +289,10 @@ export default function AdminLayout({
       </motion.div>
 
       {/* Main Content */}
-      <div 
-        className={cn(
-          "transition-all duration-300",
-          isExpanded ? "ml-[280px]" : "ml-20"
-        )}
-      >
-        {children}
+      <div className="fixed top-0 left-[5px] right-0 bottom-0 overflow-auto bg-gray-50/50">
+        <div className="p-0">
+          {children}
+        </div>
       </div>
     </div>
   )
