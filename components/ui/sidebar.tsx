@@ -21,6 +21,7 @@ import {
 import { Button } from './button'
 import { Input } from './input'
 import { toast } from 'sonner'
+import { useSidebar } from '@/contexts/SidebarContext'
 
 interface SidebarProps {
   className?: string
@@ -66,7 +67,7 @@ const fadeInOut = {
 export function Sidebar({ className }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
-  const [isCollapsed, setIsCollapsed] = useState(true)
+  const { isExpanded, toggleSidebar } = useSidebar()
   const [isMobile, setIsMobile] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [user, setUser] = useState<User | null>(null)
@@ -74,9 +75,6 @@ export function Sidebar({ className }: SidebarProps) {
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth < 1024)
-      if (window.innerWidth < 1024) {
-        setIsCollapsed(true)
-      }
     }
     handleResize()
     window.addEventListener('resize', handleResize)
@@ -100,22 +98,6 @@ export function Sidebar({ className }: SidebarProps) {
 
     fetchUser()
   }, [])
-
-  const emitSidebarState = () => {
-    window.dispatchEvent(
-      new CustomEvent('sidebarStateChange', {
-        detail: { expanded: !isCollapsed }
-      })
-    );
-  };
-
-  useEffect(() => {
-    emitSidebarState();
-  }, [isCollapsed]);
-
-  const handleSidebarToggle = () => {
-    setIsCollapsed(!isCollapsed);
-  };
 
   const navigationItems = [
     {
@@ -193,13 +175,13 @@ export function Sidebar({ className }: SidebarProps) {
   return (
     <>
       <AnimatePresence>
-        {!isCollapsed && isMobile && (
+        {isExpanded && isMobile && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/20 backdrop-blur-sm z-30 lg:hidden"
-            onClick={() => setIsCollapsed(true)}
+            onClick={toggleSidebar}
           />
         )}
       </AnimatePresence>
@@ -207,7 +189,7 @@ export function Sidebar({ className }: SidebarProps) {
       <motion.div
         variants={sidebarVariants}
         initial="collapsed"
-        animate={isCollapsed ? 'collapsed' : 'expanded'}
+        animate={isExpanded ? 'expanded' : 'collapsed'}
         className={cn(
           'fixed left-0 top-0 z-[70] h-screen bg-white border-r border-gray-200 flex flex-col shadow-sm',
           className
@@ -216,7 +198,7 @@ export function Sidebar({ className }: SidebarProps) {
         {/* Header */}
         <div className="p-6 flex items-center justify-between border-b">
           <AnimatePresence mode="wait">
-            {!isCollapsed && (
+            {isExpanded && (
               <motion.div
                 key="logo"
                 initial={{ opacity: 0, y: -20 }}
@@ -238,9 +220,9 @@ export function Sidebar({ className }: SidebarProps) {
             size="icon"
             className={cn(
               "rounded-xl hover:bg-gray-100 transition-all duration-200",
-              isCollapsed && "rotate-180"
+              !isExpanded && "rotate-180"
             )}
-            onClick={handleSidebarToggle}
+            onClick={toggleSidebar}
           >
             <ChevronLeft className="h-5 w-5 text-gray-500" />
           </Button>
@@ -249,13 +231,13 @@ export function Sidebar({ className }: SidebarProps) {
         {/* User Profile */}
         <div className={cn(
           "px-4 py-3 border-b",
-          isCollapsed ? "flex justify-center" : "flex items-center gap-3"
+          !isExpanded && "flex justify-center"
         )}>
           <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center flex-shrink-0">
             <span className="text-white font-bold text-xl">{user?.name?.[0] || 'A'}</span>
           </div>
           <AnimatePresence mode="wait">
-            {!isCollapsed && (
+            {!isExpanded && (
               <motion.div
                 variants={itemVariants}
                 initial="collapsed"
@@ -271,7 +253,7 @@ export function Sidebar({ className }: SidebarProps) {
         </div>
 
         {/* Search */}
-        {!isCollapsed && (
+        {!isExpanded && (
           <div className="p-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -307,7 +289,7 @@ export function Sidebar({ className }: SidebarProps) {
                         variant="ghost"
                         className={cn(
                           'w-full relative group',
-                          isCollapsed ? 'justify-center' : 'justify-start gap-3',
+                          !isExpanded ? 'justify-center' : 'justify-start gap-3',
                           isActive ? 'bg-gray-900/5 hover:bg-gray-900/10' : 'hover:bg-gray-900/[0.02]',
                           'py-3 rounded-xl transition-all duration-200'
                         )}
@@ -333,7 +315,7 @@ export function Sidebar({ className }: SidebarProps) {
                         </div>
                         
                         <AnimatePresence mode="wait">
-                          {!isCollapsed && (
+                          {!isExpanded && (
                             <motion.span
                               variants={itemVariants}
                               initial="collapsed"
@@ -362,7 +344,7 @@ export function Sidebar({ className }: SidebarProps) {
                         )}
 
                         {/* Tooltip */}
-                        {isCollapsed && (
+                        {!isExpanded && (
                           <div className="absolute left-full ml-6 hidden group-hover:block">
                             <div className={cn(
                               "px-3 py-2 rounded-lg text-sm text-white whitespace-nowrap",
@@ -396,7 +378,7 @@ export function Sidebar({ className }: SidebarProps) {
             variant="ghost"
             className={cn(
               'w-full relative group',
-              isCollapsed ? 'justify-center' : 'justify-start gap-3',
+              !isExpanded ? 'justify-center' : 'justify-start gap-3',
               'py-3 rounded-xl hover:bg-red-50'
             )}
             onClick={handleSignOut}
@@ -406,7 +388,7 @@ export function Sidebar({ className }: SidebarProps) {
             </div>
             
             <AnimatePresence mode="wait">
-              {!isCollapsed && (
+              {!isExpanded && (
                 <motion.span
                   variants={itemVariants}
                   initial="collapsed"
@@ -419,7 +401,7 @@ export function Sidebar({ className }: SidebarProps) {
               )}
             </AnimatePresence>
             
-            {isCollapsed && (
+            {!isExpanded && (
               <div className="absolute left-full ml-6 hidden group-hover:block">
                 <div className="bg-red-600 text-white px-3 py-2 rounded-lg text-sm whitespace-nowrap">
                   Sign out

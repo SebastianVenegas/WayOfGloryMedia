@@ -7,6 +7,7 @@ import { BundleProvider } from '@/context/BundleContext'
 import TawkToScript from '@/components/TawkToScript'
 import { headers } from 'next/headers'
 import { Toaster } from "@/components/ui/toaster"
+import { SidebarProvider } from '@/contexts/SidebarContext'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -26,13 +27,15 @@ export default async function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className} suppressHydrationWarning>
-        <BundleProvider>
-          <div className="relative min-h-screen">
-            {children}
-            <Analytics />
-            <SpeedInsights />
-          </div>
-        </BundleProvider>
+        <SidebarProvider>
+          <BundleProvider>
+            <div className="relative min-h-screen">
+              {children}
+              <Analytics />
+              <SpeedInsights />
+            </div>
+          </BundleProvider>
+        </SidebarProvider>
         <TawkToScript />
         <Toaster />
       </body>

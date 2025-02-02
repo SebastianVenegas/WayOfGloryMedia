@@ -20,6 +20,7 @@ import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { productImages } from '@/lib/product-images'
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { useSidebar } from '@/contexts/SidebarContext'
 
 // Category type definitions
 type MainCategory = 'all' | 'Audio Gear' | 'Streaming Gear' | 'Services';
@@ -332,6 +333,7 @@ const handleImageError = (url: ImageUrl) => {
 };
 
 export default function ProductsPage() {
+  const { isExpanded } = useSidebar()
   const [mounted, setMounted] = useState(false)
   const [products, setProducts] = useState<Product[]>([])
   const [bundleItems, setBundleItems] = useState<BundleItem[]>([])
@@ -354,7 +356,6 @@ export default function ProductsPage() {
   const [authToken, setAuthToken] = useState<string | null>(null)
   const productsPerPage = 12
   const router = useRouter()
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -385,17 +386,6 @@ export default function ProductsPage() {
     }
     getAuthToken()
   }, [])
-
-  useEffect(() => {
-    const handleSidebarChange = (e: CustomEvent<{ expanded: boolean }>) => {
-      setIsSidebarExpanded(e.detail.expanded);
-    };
-
-    window.addEventListener('sidebarStateChange', handleSidebarChange as EventListener);
-    return () => {
-      window.removeEventListener('sidebarStateChange', handleSidebarChange as EventListener);
-    };
-  }, []);
 
   const fetchProducts = async () => {
     try {
@@ -716,14 +706,18 @@ export default function ProductsPage() {
   return (
     <div className="min-h-screen bg-gray-50/50">
       {/* Dynamic Header */}
-      <div 
-        style={{
-          left: isSidebarExpanded ? '288px' : '80px',
-          transition: 'left 0.3s ease'
+      <motion.div
+        initial={false}
+        animate={{ 
+          left: isExpanded ? '288px' : '80px'
+        }}
+        transition={{
+          duration: 0.3,
+          ease: [0.4, 0, 0.2, 1]
         }}
         className={cn(
-          "fixed top-0 right-0 z-[60] bg-white",
-          isScrolled && "bg-white/90 backdrop-blur-xl shadow-sm"
+          "fixed top-0 right-0 z-[60]",
+          isScrolled ? "bg-white/90 backdrop-blur-xl shadow-sm" : "bg-white"
         )}
       >
         <div className="max-w-[2000px] mx-auto">
@@ -835,13 +829,17 @@ export default function ProductsPage() {
             </motion.div>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Main Content with Bundle */}
-      <div 
-        style={{
-          marginLeft: isSidebarExpanded ? '288px' : '80px',
-          transition: 'margin-left 0.3s ease'
+      <motion.div 
+        initial={false}
+        animate={{ 
+          marginLeft: isExpanded ? '288px' : '80px'
+        }}
+        transition={{
+          duration: 0.3,
+          ease: [0.4, 0, 0.2, 1]
         }}
         className="flex flex-1 min-h-[calc(100vh-80px)] pt-20 overflow-x-hidden"
       >
@@ -1180,7 +1178,7 @@ export default function ProductsPage() {
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
+      </motion.div>
 
       {/* Checkout Component */}
       {isCheckoutOpen && (
