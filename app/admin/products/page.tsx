@@ -877,7 +877,7 @@ export default function ProductsPage() {
             selectedCategory.startsWith('Audio Gear') && "h-[calc(100vh-133px)]" // Adjust for subcategories bar
           )}>
             {/* Header */}
-            <div className="flex items-center justify-between mb-4 sm:mb-8 px-4 sm:px-8 pt-4 sm:pt-6">
+            <div className="flex items-center justify-between mb-4 sm:mb-8 px-6 sm:px-12 pt-4 sm:pt-6 max-w-[2000px] mx-auto">
               <div>
                 <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">Products</h1>
                 <p className="mt-1 text-xs sm:text-sm text-gray-500">
@@ -896,7 +896,7 @@ export default function ProductsPage() {
             </div>
 
             {/* Products Grid/List */}
-            <div className="px-4 sm:px-8 pb-8">
+            <div className="max-w-[2000px] mx-auto px-6 sm:px-12 pb-8">
               {/* No Results */}
               {filteredProducts.length === 0 && (
                 <motion.div 
@@ -921,8 +921,8 @@ export default function ProductsPage() {
                 animate="show"
                 className={cn(
                   isListView 
-                    ? "flex flex-col gap-4 px-4 sm:px-8"
-                    : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4 px-4 sm:px-8",
+                    ? "flex flex-col gap-4"
+                    : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 sm:gap-6",
                   isCartOpen && "xl:grid-cols-3 2xl:grid-cols-4"
                 )}
               >
@@ -1086,7 +1086,7 @@ export default function ProductsPage() {
             </div>
 
             {/* Pagination */}
-            <div className="flex justify-center pb-8 px-4">
+            <div className="flex justify-center pb-8 px-4 max-w-[2000px] mx-auto">
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
