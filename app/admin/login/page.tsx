@@ -17,6 +17,14 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [showPWAPrompt, setShowPWAPrompt] = useState(false)
 
+  // Check if we're coming from a session timeout
+  useEffect(() => {
+    const from = searchParams.get('from')
+    if (from) {
+      toast.error('Session expired. Please log in again.')
+    }
+  }, [searchParams])
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
@@ -35,10 +43,20 @@ export default function LoginPage() {
       const data = await res.json()
 
       if (data.success) {
-        // Show PWA installation prompt after successful login
-        setShowPWAPrompt(true)
+        // Check if we're in PWA mode
+        const isPWA = window.matchMedia('(display-mode: standalone)').matches
+        
+        if (isPWA && !window.localStorage.getItem('pwa_installed')) {
+          // First time PWA login - show installation prompt
+          setShowPWAPrompt(true)
+          window.localStorage.setItem('pwa_installed', 'true')
+        } else {
+          // Regular login or PWA already installed
+          const from = searchParams.get('from')
+          router.push(from || '/admin/products')
+        }
       } else {
-        router.push('/admin/products')
+        throw new Error('Login failed')
       }
     } catch (error) {
       toast.error('Invalid email or password')

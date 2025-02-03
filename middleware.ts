@@ -38,15 +38,13 @@ export async function middleware(request: NextRequest) {
   // Get token from cookie
   const token = request.cookies.get('auth_token')?.value
 
+  // Always redirect to login if trying to access root in PWA mode
+  if (isPWA && pathname === '/') {
+    return NextResponse.redirect(new URL('/admin/login', request.url))
+  }
+
   // If no token and trying to access admin routes (except login)
   if (!token && pathname.startsWith('/admin') && pathname !== '/admin/login') {
-    // If it's a PWA request, redirect to login with PWA flag
-    if (isPWA) {
-      const loginUrl = new URL('/admin/login', request.url)
-      loginUrl.searchParams.set('pwa', 'true')
-      return NextResponse.redirect(loginUrl)
-    }
-    // Otherwise, regular login redirect
     const loginUrl = new URL('/admin/login', request.url)
     loginUrl.searchParams.set('from', pathname)
     return NextResponse.redirect(loginUrl)
@@ -56,28 +54,22 @@ export async function middleware(request: NextRequest) {
   if (token) {
     const isValidToken = await verifyToken(token)
     if (!isValidToken) {
+      // Clear invalid token and redirect to login
       const response = NextResponse.redirect(new URL('/admin/login', request.url))
       response.cookies.delete('auth_token')
       return response
     }
 
-    // If it's a valid token and a PWA request to /admin, redirect to products
-    if (isPWA && pathname === '/admin') {
-      return NextResponse.redirect(new URL('/admin/products', request.url))
-    }
-
-    // Set persistent cookie with 3-hour expiration
-    const threeHours = 60 * 60 * 3
+    // Set short-lived cookie (30 minutes) to enforce frequent re-authentication
     const response = NextResponse.next()
     response.cookies.set({
       name: 'auth_token',
       value: token,
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: 'strict',
       path: '/',
-      maxAge: threeHours,
-      expires: new Date(Date.now() + threeHours * 1000)
+      maxAge: 30 * 60, // 30 minutes
     })
 
     return response
@@ -88,5 +80,8 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*']
+  matcher: [
+    '/',
+    '/admin/:path*'
+  ]
 } 
