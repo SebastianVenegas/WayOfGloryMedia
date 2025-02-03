@@ -1,28 +1,4 @@
 {
-  "redirects": [
-    {
-      "source": "/",
-      "has": [
-        {
-          "type": "header",
-          "key": "sec-fetch-mode",
-          "value": "navigate"
-        },
-        {
-          "type": "header",
-          "key": "sec-fetch-dest",
-          "value": "document"
-        },
-        {
-          "type": "header",
-          "key": "sec-fetch-site",
-          "value": "none"
-        }
-      ],
-      "destination": "/admin/products",
-      "permanent": false
-    }
-  ],
   "headers": [
     {
       "source": "/(.*)",
@@ -42,4 +18,4 @@
       ]
     }
   ]
-} 
+}
