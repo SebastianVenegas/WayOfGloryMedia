@@ -11,30 +11,41 @@ const transporter = nodemailer.createTransport({
   }
 });
 
+const wrapEmailContent = (content: string) => `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Way of Glory Email</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f4f4f5;">
+  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f4f4f5; padding: 20px;">
+    <tr>
+      <td align="center">
+        ${content}
+        <div style="text-align: center; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 14px;">
+          <p style="margin: 4px 0;">© ${new Date().getFullYear()} Way of Glory. All rights reserved.</p>
+          <p style="margin: 4px 0;">123 ABC Street, City, State, ZIP</p>
+          <p style="margin: 4px 0;">
+            <a href="tel:+13108729781" style="color: #2563eb; text-decoration: none;">(310) 872-9781</a> |
+            <a href="mailto:help@wayofglory.com" style="color: #2563eb; text-decoration: none;">help@wayofglory.com</a>
+          </p>
+        </div>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+`.trim();
+
 export async function POST(request: NextRequest) {
   try {
     const url = new URL(request.url);
-    const orderId = url.pathname.split('/').slice(-2, -1)[0]; // Extract ID from URL
+    const orderId = url.pathname.split('/').slice(-2, -1)[0];
 
-    // Get order details from database
     const { rows: [order] } = await sql.query(
-      `SELECT 
-        id, 
-        first_name, 
-        last_name, 
-        email,
-        total_amount,
-        installation_date,
-        installation_time,
-        installation_address,
-        installation_city,
-        installation_state,
-        installation_zip,
-        shipping_address,
-        shipping_city,
-        shipping_state,
-        shipping_zip
-      FROM orders WHERE id = $1`,
+      `SELECT * FROM orders WHERE id = $1`,
       [orderId]
     );
 
@@ -45,7 +56,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { templateId, customEmail } = await request.json();
+    let body;
+    try {
+      body = await request.json();
+    } catch (error) {
+      return NextResponse.json(
+        { error: 'Invalid JSON in request body' },
+        { status: 400 }
+      );
+    }
+
+    const { templateId, customEmail } = body;
 
     if (!templateId) {
       return NextResponse.json(
@@ -65,7 +86,7 @@ export async function POST(request: NextRequest) {
         );
       }
       subject = customEmail.subject;
-      emailContent = customEmail.html;
+      emailContent = wrapEmailContent(customEmail.html);
     } else {
       const template = getEmailTemplate(templateId, order);
       if (!template) {
@@ -78,7 +99,6 @@ export async function POST(request: NextRequest) {
       emailContent = template.html;
     }
 
-    // Send email
     try {
       await transporter.sendMail({
         from: process.env.GMAIL_USER,
@@ -94,7 +114,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Log the email in the database
     await sql.query(
       `INSERT INTO email_logs (
         order_id,

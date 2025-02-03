@@ -67,45 +67,20 @@ export default function EmailComposer({
 
     setIsLoading(true)
     try {
-      // Sanitize and format the HTML content
-      const sanitizedContent = content
+      // Clean and prepare the content
+      const cleanContent = content
         .trim()
-        .replace(/\n/g, '<br>')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
+        .replace(/\n/g, '')
+        .replace(/<p><br><\/p>/g, '<br>')
+        .replace(/<p><\/p>/g, '')
+        .replace(/\s+/g, ' ');
 
-      // Format the HTML content with proper structure
+      // Create a simple and clean HTML structure
       const formattedHtml = `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <style>
-              .email-content {
-                font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-                max-width: 600px;
-                margin: 0 auto;
-                padding: 32px;
-                background-color: #ffffff;
-                line-height: 1.6;
-              }
-              p {
-                margin: 16px 0;
-                color: #374151;
-              }
-            </style>
-          </head>
-          <body>
-            <div class="email-content">
-              ${sanitizedContent}
-            </div>
-          </body>
-        </html>
-      `;
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #374151;">
+          ${cleanContent}
+        </div>
+      `.trim();
 
       const response = await fetch(`/api/admin/orders/${orderId}/send-template`, {
         method: 'POST',
@@ -118,12 +93,13 @@ export default function EmailComposer({
             subject: subject.trim(),
             html: formattedHtml,
           },
-        }),
-      })
+        }, null, 0), // Use null and 0 to prevent JSON formatting issues
+      });
+
+      const responseData = await response.json();
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to send email')
+        throw new Error(responseData.error || 'Failed to send email');
       }
 
       toast({
