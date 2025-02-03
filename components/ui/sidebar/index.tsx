@@ -1,9 +1,10 @@
 'use client'
 
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from "../button"
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
+import { useRouter } from 'next/navigation'
 import { 
   LayoutGrid, 
   Package, 
@@ -71,6 +72,13 @@ interface SidebarProps {
 }
 
 export function Sidebar({ isExpanded, toggleSidebar, pathname, handleLogout }: SidebarProps) {
+  const router = useRouter()
+
+  const handleNavigation = (e: React.MouseEvent | React.TouchEvent, href: string) => {
+    e.preventDefault()
+    router.push(href)
+  }
+
   return (
     <motion.div
       initial={false}
@@ -78,7 +86,7 @@ export function Sidebar({ isExpanded, toggleSidebar, pathname, handleLogout }: S
         width: isExpanded ? '280px' : '80px',
         transition: { duration: 0.3 }
       }}
-      className="fixed left-0 top-0 bottom-0 z-[40] bg-white/90 backdrop-blur-md border-r border-gray-100 flex flex-col shadow-sm"
+      className="fixed left-0 top-0 bottom-0 z-[40] bg-white/90 backdrop-blur-md border-r border-gray-100 flex flex-col shadow-sm touch-manipulation"
     >
       {/* Header */}
       <div className="flex items-center h-20 px-4 border-b border-gray-100 bg-white/80">
@@ -86,22 +94,25 @@ export function Sidebar({ isExpanded, toggleSidebar, pathname, handleLogout }: S
           <div className="p-2.5 rounded-xl bg-gradient-to-tr from-blue-600 to-blue-700 shadow-sm ring-1 ring-white/20">
             <Speaker className="h-5 w-5 text-white" />
           </div>
-          {isExpanded && (
-            <motion.span 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="font-semibold text-gray-900 text-lg tracking-tight"
-            >
-              Way of Glory
-            </motion.span>
-          )}
+          <AnimatePresence mode="wait">
+            {isExpanded && (
+              <motion.span 
+                key="title"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="font-semibold text-gray-900 text-lg tracking-tight"
+              >
+                Way of Glory
+              </motion.span>
+            )}
+          </AnimatePresence>
         </div>
         <Button
           variant="ghost"
           size="icon"
           onClick={toggleSidebar}
-          className="h-10 w-10 hover:bg-gray-100/80 rounded-xl text-gray-500"
+          className="h-10 w-10 hover:bg-gray-100/80 rounded-xl text-gray-500 touch-manipulation"
         >
           {isExpanded ? (
             <ChevronLeft className="h-5 w-5" />
@@ -116,11 +127,11 @@ export function Sidebar({ isExpanded, toggleSidebar, pathname, handleLogout }: S
         {navigation.map((item) => {
           const isActive = pathname === item.href
           return (
-            <Link
+            <button
               key={item.name}
-              href={item.href}
+              onClick={(e) => handleNavigation(e, item.href)}
               className={cn(
-                "group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 relative overflow-hidden hover:shadow-sm",
+                "w-full group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 relative overflow-hidden hover:shadow-sm touch-manipulation",
                 isActive 
                   ? "bg-white text-gray-900 shadow-sm" 
                   : "text-gray-600 hover:text-gray-900 hover:bg-white"
@@ -139,16 +150,19 @@ export function Sidebar({ isExpanded, toggleSidebar, pathname, handleLogout }: S
                   {item.name}
                 </div>
               )}
-              {isExpanded && (
-                <motion.span 
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -10 }}
-                  className="truncate"
-                >
-                  {item.name}
-                </motion.span>
-              )}
+              <AnimatePresence mode="wait">
+                {isExpanded && (
+                  <motion.span 
+                    key={item.name}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -10 }}
+                    className="truncate"
+                  >
+                    {item.name}
+                  </motion.span>
+                )}
+              </AnimatePresence>
               {isActive && (
                 <motion.div
                   layoutId="activeNav"
@@ -156,7 +170,7 @@ export function Sidebar({ isExpanded, toggleSidebar, pathname, handleLogout }: S
                   transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                 />
               )}
-            </Link>
+            </button>
           )
         })}
       </nav>
@@ -170,28 +184,40 @@ export function Sidebar({ isExpanded, toggleSidebar, pathname, handleLogout }: S
           <div className="relative w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-blue-700 flex items-center justify-center text-white font-medium shadow-sm ring-1 ring-white/20">
             W
           </div>
+          <AnimatePresence mode="wait">
+            {isExpanded && (
+              <motion.div 
+                key="user-info"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="flex-1 min-w-0"
+              >
+                <p className="text-sm font-medium text-gray-900 truncate">Staff Account</p>
+                <p className="text-xs text-gray-500 truncate">staff@wayofglory.com</p>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+        <AnimatePresence mode="wait">
           {isExpanded && (
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="flex-1 min-w-0"
+            <motion.div
+              key="logout-button"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
             >
-              <p className="text-sm font-medium text-gray-900 truncate">Staff Account</p>
-              <p className="text-xs text-gray-500 truncate">staff@wayofglory.com</p>
+              <Button
+                variant="ghost"
+                className="w-full mt-2 text-gray-600 hover:text-gray-900 hover:bg-white justify-start gap-2 rounded-xl h-11 touch-manipulation"
+                onClick={handleLogout}
+              >
+                <LogOut className="h-4 w-4" />
+                Sign out
+              </Button>
             </motion.div>
           )}
-        </div>
-        {isExpanded && (
-          <Button
-            variant="ghost"
-            className="w-full mt-2 text-gray-600 hover:text-gray-900 hover:bg-white justify-start gap-2 rounded-xl h-11"
-            onClick={handleLogout}
-          >
-            <LogOut className="h-4 w-4" />
-            Sign out
-          </Button>
-        )}
+        </AnimatePresence>
       </div>
     </motion.div>
   )
