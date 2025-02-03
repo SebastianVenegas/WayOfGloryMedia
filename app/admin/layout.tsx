@@ -2,13 +2,16 @@
 
 import { useState } from 'react'
 import { usePathname } from 'next/navigation'
+import { SidebarProvider } from "@/contexts/SidebarContext"
 import { Sidebar } from '@/components/ui/sidebar'
+import { Toaster } from "sonner"
+import { cn } from "@/lib/utils"
 
-export default function AdminLayout({
-  children,
-}: {
+interface AdminLayoutProps {
   children: React.ReactNode
-}) {
+}
+
+export default function AdminLayout({ children }: AdminLayoutProps) {
   const [isExpanded, setIsExpanded] = useState(true)
   const pathname = usePathname()
 
@@ -21,16 +24,28 @@ export default function AdminLayout({
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Sidebar 
-        isExpanded={isExpanded}
-        toggleSidebar={toggleSidebar}
-        pathname={pathname}
-        handleLogout={handleLogout}
-      />
-      <main className={`transition-all duration-300 ${isExpanded ? 'ml-[280px]' : 'ml-[80px]'}`}>
-        {children}
-      </main>
-    </div>
+    <SidebarProvider>
+      <div className="min-h-screen bg-gray-50/50">
+        <Sidebar 
+          isExpanded={isExpanded}
+          toggleSidebar={toggleSidebar}
+          pathname={pathname}
+          handleLogout={handleLogout}
+        />
+        <main className={cn(
+          "relative transition-all duration-300",
+          isExpanded ? 'ml-[280px]' : 'ml-[80px]'
+        )}>
+          {children}
+        </main>
+        <Toaster 
+          position="bottom-center"
+          duration={2000}
+          className="mb-4"
+          closeButton
+          richColors
+        />
+      </div>
+    </SidebarProvider>
   )
 } 
