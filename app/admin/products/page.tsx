@@ -848,14 +848,14 @@ export default function ProductsPage() {
       </div>
 
       {/* Main Content with Cart */}
-      <div className="flex min-h-[calc(100vh-5rem)]">
+      <div className="flex min-h-[calc(100vh-5rem)] relative">
         {/* Products Grid */}
         <motion.div 
           data-main-content
           layout
           className={cn(
             "flex-1 p-6 transition-all duration-300",
-            isCartOpen ? "mr-[350px]" : ""
+            isCartOpen ? "lg:mr-[350px]" : ""
           )}
         >
           <motion.div
@@ -868,7 +868,7 @@ export default function ProductsPage() {
               isListView 
                 ? 'grid-cols-1' 
                 : isCartOpen
-                  ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+                  ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
                   : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5'
             )}
           >
@@ -1087,28 +1087,50 @@ export default function ProductsPage() {
         <AnimatePresence mode="wait">
           {isCartOpen && (
             <motion.div
-              initial={{ width: 0, opacity: 0 }}
+              initial={{ 
+                width: 0, 
+                opacity: 0,
+                x: "100%"
+              }}
               animate={{ 
-                width: 350,
+                width: "100%",
                 opacity: 1,
+                x: 0,
                 transition: {
-                  width: { type: "spring", stiffness: 300, damping: 30 },
-                  opacity: { duration: 0.2 }
+                  type: "spring",
+                  stiffness: 300,
+                  damping: 30
                 }
               }}
               exit={{ 
                 width: 0,
                 opacity: 0,
+                x: "100%",
                 transition: {
-                  width: { type: "spring", stiffness: 300, damping: 30 },
-                  opacity: { duration: 0.2 }
+                  type: "spring",
+                  stiffness: 300,
+                  damping: 30
                 }
               }}
-              className="fixed right-0 top-0 bottom-0 bg-white border-l border-gray-100 shadow-lg overflow-hidden z-[45] pt-20"
+              className={cn(
+                "fixed inset-y-0 right-0 bg-white border-l border-gray-100 shadow-lg overflow-hidden pt-20",
+                "w-full sm:w-[400px] lg:w-[350px]",
+                "z-[45]"
+              )}
             >
-              {/* Drag Handle */}
+              {/* Close button for mobile */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsCartOpen(false)}
+                className="absolute top-24 right-4 lg:hidden"
+              >
+                <X className="h-5 w-5" />
+              </Button>
+
+              {/* Drag Handle - Only show on larger screens */}
               <div
-                className="absolute left-0 top-0 bottom-0 w-1 cursor-ew-resize hover:bg-blue-500/20 transition-colors z-50"
+                className="absolute left-0 top-0 bottom-0 w-1 cursor-ew-resize hover:bg-blue-500/20 transition-colors z-50 hidden lg:block"
                 onMouseDown={(e: React.MouseEvent<HTMLDivElement>) => {
                   const handle = e.currentTarget;
                   const cart = handle.parentElement as HTMLDivElement;
