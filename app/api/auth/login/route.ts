@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
 
     console.log('[Login] Token created successfully')
 
-    // Create the response
+    // Create the response with CORS headers
     const response = NextResponse.json({
       success: true,
       user: {
@@ -82,16 +82,27 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    console.log('[Login] Setting auth cookie')
-    // Set simple httpOnly cookie
+    // Get domain from request for cookie settings
+    const domain = request.headers.get('host')?.split(':')[0] || undefined
+
+    console.log('[Login] Setting auth cookie with domain:', domain)
+    // Set cookie with production-friendly settings
     response.cookies.set({
       name: 'auth_token',
       value: token,
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      path: '/'
+      path: '/',
+      domain: domain === 'localhost' ? undefined : domain,
+      maxAge: 60 * 60 * 3 // 3 hours
     })
+
+    // Set CORS headers
+    response.headers.set('Access-Control-Allow-Credentials', 'true')
+    response.headers.set('Access-Control-Allow-Origin', request.headers.get('origin') || '*')
+    response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+    response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
 
     console.log('[Login] Login successful')
     return response

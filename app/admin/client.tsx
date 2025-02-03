@@ -1,6 +1,6 @@
 'use client'
 
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { Sidebar } from "@/components/ui/sidebar/index"
 import { SidebarProvider, useSidebar } from "@/contexts/SidebarContext"
 import { Toaster } from "sonner"
@@ -13,10 +13,28 @@ interface AdminClientProps {
 
 function AdminContent({ children }: AdminClientProps) {
   const pathname = usePathname()
+  const router = useRouter()
   const { isExpanded, toggleSidebar } = useSidebar()
 
-  const handleLogout = () => {
-    // Implement logout logic
+  const handleLogout = async () => {
+    try {
+      // Call logout API
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include'
+      })
+      
+      // Clear any local storage
+      localStorage.removeItem('auth_token')
+      localStorage.removeItem('user')
+      
+      // Redirect to login
+      router.push('/admin/login')
+    } catch (error) {
+      console.error('Logout failed:', error)
+      // Still redirect to login even if API call fails
+      router.push('/admin/login')
+    }
   }
 
   return (
