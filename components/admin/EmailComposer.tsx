@@ -67,11 +67,44 @@ export default function EmailComposer({
 
     setIsLoading(true)
     try {
+      // Sanitize and format the HTML content
+      const sanitizedContent = content
+        .trim()
+        .replace(/\n/g, '<br>')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+
       // Format the HTML content with proper structure
       const formattedHtml = `
-        <div class="email-content">
-          ${content.trim()}
-        </div>
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+              .email-content {
+                font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+                max-width: 600px;
+                margin: 0 auto;
+                padding: 32px;
+                background-color: #ffffff;
+                line-height: 1.6;
+              }
+              p {
+                margin: 16px 0;
+                color: #374151;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="email-content">
+              ${sanitizedContent}
+            </div>
+          </body>
+        </html>
       `;
 
       const response = await fetch(`/api/admin/orders/${orderId}/send-template`, {
@@ -90,7 +123,7 @@ export default function EmailComposer({
 
       if (!response.ok) {
         const errorData = await response.json()
-        throw new Error(errorData.message || 'Failed to send email')
+        throw new Error(errorData.error || 'Failed to send email')
       }
 
       toast({

@@ -47,25 +47,52 @@ export async function POST(request: NextRequest) {
 
     const { templateId, customEmail } = await request.json();
 
+    if (!templateId) {
+      return NextResponse.json(
+        { error: 'Template ID is required' },
+        { status: 400 }
+      );
+    }
+
     let emailContent;
     let subject;
 
     if (templateId === 'custom' && customEmail) {
+      if (!customEmail.subject || !customEmail.html) {
+        return NextResponse.json(
+          { error: 'Custom email requires both subject and HTML content' },
+          { status: 400 }
+        );
+      }
       subject = customEmail.subject;
       emailContent = customEmail.html;
     } else {
       const template = getEmailTemplate(templateId, order);
+      if (!template) {
+        return NextResponse.json(
+          { error: 'Invalid template ID' },
+          { status: 400 }
+        );
+      }
       subject = template.subject;
       emailContent = template.html;
     }
 
     // Send email
-    await transporter.sendMail({
-      from: process.env.GMAIL_USER,
-      to: order.email,
-      subject: subject,
-      html: emailContent,
-    });
+    try {
+      await transporter.sendMail({
+        from: process.env.GMAIL_USER,
+        to: order.email,
+        subject: subject,
+        html: emailContent,
+      });
+    } catch (emailError) {
+      console.error('Nodemailer error:', emailError);
+      return NextResponse.json(
+        { error: 'Failed to send email: ' + (emailError instanceof Error ? emailError.message : 'Unknown error') },
+        { status: 500 }
+      );
+    }
 
     // Log the email in the database
     await sql.query(
@@ -84,9 +111,9 @@ export async function POST(request: NextRequest) {
       message: 'Email sent successfully'
     });
   } catch (error) {
-    console.error('Error sending email:', error);
+    console.error('Error in send-template:', error);
     return NextResponse.json(
-      { error: 'Failed to send email' },
+      { error: error instanceof Error ? error.message : 'Failed to send email' },
       { status: 500 }
     );
   }
