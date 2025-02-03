@@ -1,6 +1,6 @@
 'use client'
 
-import { Search, X, ShoppingBag, LayoutGrid, List } from 'lucide-react'
+import { Search, X, ShoppingBag, LayoutGrid, List, Mic2, Sliders, Cable, Network, Speaker, Headphones, MoveUpRight } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
@@ -10,13 +10,13 @@ const CATEGORIES = {
   'Audio Gear': {
     name: 'Audio Gear',
     subcategories: [
-      { name: 'Microphones', path: 'Audio Gear/Mics' },
-      { name: 'Mixers', path: 'Audio Gear/Mixers' },
-      { name: 'Cables', path: 'Audio Gear/Cables' },
-      { name: 'Snakes', path: 'Audio Gear/Snakes' },
-      { name: 'Speakers', path: 'Audio Gear/Speakers' },
-      { name: 'IEMS', path: 'Audio Gear/IEMS' },
-      { name: 'Stands', path: 'Audio Gear/Stands' }
+      { name: 'Microphones', path: 'Audio Gear/Mics', icon: Mic2 },
+      { name: 'Mixers', path: 'Audio Gear/Mixers', icon: Sliders },
+      { name: 'Cables', path: 'Audio Gear/Cables', icon: Cable },
+      { name: 'Snakes', path: 'Audio Gear/Snakes', icon: Network },
+      { name: 'Speakers', path: 'Audio Gear/Speakers', icon: Speaker },
+      { name: 'IEMS', path: 'Audio Gear/IEMS', icon: Headphones },
+      { name: 'Stands', path: 'Audio Gear/Stands', icon: MoveUpRight }
     ]
   },
   'Services': {
@@ -54,6 +54,7 @@ export default function ProductsHeader({
   isCheckoutOpen
 }: ProductsHeaderProps) {
   const { isExpanded } = useSidebar()
+  const isAudioCategory = selectedCategory === 'Audio Gear' || selectedCategory.startsWith('Audio Gear/')
 
   return (
     <div 
@@ -152,24 +153,28 @@ export default function ProductsHeader({
         </div>
 
         {/* Subcategories */}
-        {selectedCategory === 'Audio Gear' && (
-          <div className="flex items-center justify-center border-b border-gray-100 bg-white/50 backdrop-blur-sm transition-all duration-300">
-            <div className="flex items-center gap-1 py-3 px-4 overflow-x-auto max-w-full no-scrollbar">
-              {CATEGORIES['Audio Gear'].subcategories.map((subcat) => (
-                <Button
-                  key={subcat.path}
-                  variant={selectedCategory === subcat.path ? 'default' : 'ghost'}
-                  onClick={() => setSelectedCategory(subcat.path)}
-                  className={cn(
-                    "h-8 px-4 text-sm font-medium rounded-lg whitespace-nowrap transition-all duration-200",
-                    selectedCategory === subcat.path
-                      ? "bg-blue-50 text-blue-600 shadow-sm ring-1 ring-blue-100" 
-                      : "text-gray-600 hover:text-blue-500 hover:bg-blue-50"
-                  )}
-                >
-                  {subcat.name}
-                </Button>
-              ))}
+        {isAudioCategory && (
+          <div className="flex items-center justify-center bg-gradient-to-b from-white to-white/95 border-b border-gray-100 shadow-sm transition-all duration-300">
+            <div className="flex items-center gap-2 py-3 px-6 overflow-x-auto max-w-full no-scrollbar">
+              {CATEGORIES['Audio Gear'].subcategories.map((subcat) => {
+                const Icon = subcat.icon;
+                return (
+                  <Button
+                    key={subcat.path}
+                    variant={selectedCategory === subcat.path ? 'default' : 'ghost'}
+                    onClick={() => setSelectedCategory(subcat.path)}
+                    className={cn(
+                      "h-10 px-4 text-sm font-medium rounded-xl whitespace-nowrap transition-all duration-200 flex items-center gap-2",
+                      selectedCategory === subcat.path
+                        ? "bg-blue-600 text-white shadow-md" 
+                        : "text-gray-600 hover:text-blue-600 hover:bg-blue-50/80"
+                    )}
+                  >
+                    {Icon && <Icon className="h-4 w-4" />}
+                    {subcat.name}
+                  </Button>
+                );
+              })}
             </div>
           </div>
         )}
