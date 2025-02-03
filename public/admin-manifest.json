@@ -1,13 +1,13 @@
 {
-  "name": "WoG Media Admin",
+  "name": "Way of Glory Media Admin",
   "short_name": "WoG Admin",
   "description": "Way of Glory Media Admin Dashboard",
-  "start_url": "/admin/products",
+  "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",
   "display_override": ["standalone", "fullscreen"],
   "background_color": "#ffffff",
-  "theme_color": "#3b82f6",
+  "theme_color": "#000000",
   "orientation": "any",
   "prefer_related_applications": false,
   "launch_handler": {

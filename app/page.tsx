@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Header from '../components/Header'
 import HeroSection from '../components/HeroSection'
 import AboutUs from '../components/AboutUs'
@@ -13,33 +13,28 @@ import Footer from '../components/Footer'
 
 export default function Home() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    const checkPWA = () => {
-      // Multiple checks for PWA mode
-      const isStandalone = window.matchMedia('(display-mode: standalone)').matches
-      const isFullscreen = window.matchMedia('(display-mode: fullscreen)').matches
-      const hasManifest = !!document.querySelector('link[rel="manifest"]')
-      // @ts-ignore iOS specific property
-      const isIOS = navigator.standalone || false
-      
-      return isStandalone || isFullscreen || (hasManifest && isIOS)
-    }
-
+    const isFromPWA = searchParams.get('source') === 'pwa'
     const isWayOfGloryMedia = window.location.hostname === 'wayofglorymedia.com'
-    const isPWA = checkPWA()
 
-    console.log('PWA Status:', { isPWA, isWayOfGloryMedia, hostname: window.location.hostname })
+    console.log('Navigation Status:', { 
+      isFromPWA, 
+      isWayOfGloryMedia, 
+      hostname: window.location.hostname,
+      source: searchParams.get('source')
+    })
 
-    if (isPWA && isWayOfGloryMedia) {
-      // If in PWA mode, redirect to admin
+    if (isFromPWA && isWayOfGloryMedia) {
+      // If launched from PWA, redirect to admin
       router.replace('/admin/products')
     } else {
       // If in browser, show the main site
       setIsLoading(false)
     }
-  }, [router])
+  }, [router, searchParams])
 
   if (isLoading) {
     return (
