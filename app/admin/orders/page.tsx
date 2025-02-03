@@ -1,5 +1,4 @@
 'use client'
-
 import { useState, useEffect, useCallback } from 'react'
 import {
   Search,
@@ -57,8 +56,6 @@ import { toast } from 'sonner'
 import dynamic from 'next/dynamic'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import EmailComposer from '@/components/admin/EmailComposer'
-import { motion } from 'framer-motion'
-import { cn } from "@/lib/utils"
 
 const Editor = dynamic(() => import('@/components/ui/editor'), { ssr: false })
 
@@ -495,38 +492,6 @@ const calculateTotalProfit = (orders: Order[]): { products: number, installation
   }, { products: 0, installation: 0 });
 };
 
-// Add new status color function
-const getStatusColor = (status: Order['status']) => {
-  switch (status) {
-    case 'pending':
-      return 'bg-yellow-500/10 text-yellow-700 border-yellow-300'
-    case 'confirmed':
-      return 'bg-blue-500/10 text-blue-700 border-blue-300'
-    case 'completed':
-      return 'bg-green-500/10 text-green-700 border-green-300'
-    case 'cancelled':
-      return 'bg-red-500/10 text-red-700 border-red-300'
-    default:
-      return 'bg-gray-100 text-gray-800 border-gray-200'
-  }
-}
-
-// Add status icon function
-const getStatusIcon = (status: Order['status']) => {
-  switch (status) {
-    case 'pending':
-      return Clock
-    case 'confirmed':
-      return CheckCircle2
-    case 'completed':
-      return CheckCircle2
-    case 'cancelled':
-      return XCircle
-    default:
-      return Clock
-  }
-}
-
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([])
@@ -680,13 +645,13 @@ export default function OrdersPage() {
   const getStatusColor = (status: Order['status']) => {
     switch (status) {
       case 'pending':
-        return 'bg-yellow-500/10 text-yellow-700 border-yellow-300'
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200'
       case 'confirmed':
-        return 'bg-blue-500/10 text-blue-700 border-blue-300'
+        return 'bg-blue-100 text-blue-800 border-blue-200'
       case 'completed':
-        return 'bg-green-500/10 text-green-700 border-green-300'
+        return 'bg-green-100 text-green-800 border-green-200'
       case 'cancelled':
-        return 'bg-red-500/10 text-red-700 border-red-300'
+        return 'bg-red-100 text-red-800 border-red-200'
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200'
     }
@@ -1156,11 +1121,11 @@ export default function OrdersPage() {
 
   return (
     <div className="max-w-[1600px] mx-auto p-8 space-y-8">
-      {/* Header Section - Enhanced */}
+      {/* Header Section */}
       <div className="mb-10">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-blue-800">
+            <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-600">
               Sales & Orders
             </h1>
             <p className="mt-3 text-gray-600 text-lg">
@@ -1168,18 +1133,6 @@ export default function OrdersPage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <Button 
-              variant="outline" 
-              className="gap-2 hover:bg-gray-100 transition-colors border-gray-200"
-              onClick={() => {
-                // Add export functionality
-                toast.success("Exporting orders...");
-              }}
-            >
-              <FileText className="h-4 w-4" />
-              Export Orders
-            </Button>
-            <Button 
             <Button variant="outline" className="gap-2 hover:bg-gray-100 transition-colors">
               <FileText className="h-4 w-4" />
               Export Orders
