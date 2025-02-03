@@ -18,13 +18,49 @@ interface Order {
 
 const baseStyle = `
   <style>
+    /* Reset styles for email clients */
+    body, p, div, h1, h2, h3, h4, h5, h6 {
+      margin: 0;
+      padding: 0;
+    }
+    
+    /* Base container */
     .email-container {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
       max-width: 600px;
       margin: 0 auto;
       padding: 32px;
       background-color: #ffffff;
+      line-height: 1.6;
     }
+
+    /* Header styles */
+    .header {
+      text-align: center;
+      margin-bottom: 32px;
+      padding-bottom: 32px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .logo {
+      width: 150px;
+      height: auto;
+      margin-bottom: 16px;
+    }
+
+    .company-name {
+      font-size: 24px;
+      font-weight: 600;
+      color: #111827;
+      margin-bottom: 8px;
+    }
+
+    .company-tagline {
+      color: #6b7280;
+      font-size: 16px;
+    }
+
+    /* Content area */
     .content {
       background-color: #ffffff;
       border-radius: 12px;
@@ -32,12 +68,47 @@ const baseStyle = `
       margin-bottom: 32px;
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     }
+
+    /* Typography */
     p {
       color: #4b5563;
       font-size: 16px;
       line-height: 1.6;
       margin: 16px 0;
     }
+
+    h1, h2, h3 {
+      color: #111827;
+      margin-bottom: 16px;
+    }
+
+    /* Details box */
+    .details {
+      background-color: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
+    }
+
+    .details p {
+      margin: 8px 0;
+    }
+
+    /* Call to action button */
+    .cta-button {
+      display: inline-block;
+      background-color: #2563eb;
+      color: #ffffff !important;
+      text-decoration: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      font-weight: 500;
+      margin: 16px 0;
+      text-align: center;
+    }
+
+    /* Footer */
     .footer {
       text-align: center;
       color: #6b7280;
@@ -46,7 +117,75 @@ const baseStyle = `
       padding-top: 32px;
       border-top: 1px solid #e5e7eb;
     }
+
+    .footer p {
+      margin: 4px 0;
+      color: #6b7280;
+      font-size: 14px;
+    }
+
+    .contact-info {
+      margin: 16px 0;
+    }
+
+    .contact-info a {
+      color: #2563eb;
+      text-decoration: none;
+    }
+
+    .social-links {
+      margin-top: 16px;
+    }
+
+    .social-links a {
+      color: #2563eb;
+      text-decoration: none;
+      margin: 0 8px;
+    }
+
+    /* Responsive design */
+    @media screen and (max-width: 600px) {
+      .email-container {
+        padding: 16px;
+      }
+      
+      .content {
+        padding: 24px;
+      }
+    }
   </style>
+`;
+
+const createEmailWrapper = (content: string) => `
+  <div class="email-container">
+    <div class="header">
+      <div class="company-name">Way of Glory Media</div>
+      <div class="company-tagline">Professional Audio & Visual Solutions</div>
+    </div>
+    <div class="content">
+      ${content}
+    </div>
+    <div class="footer">
+      <p>© ${new Date().getFullYear()} Way of Glory Media</p>
+      <div class="contact-info">
+        <p>
+          <strong>Contact Us:</strong><br>
+          <a href="tel:+13108729781">(310) 872-9781</a> |
+          <a href="mailto:help@wayofglory.com">help@wayofglory.com</a>
+        </p>
+        <p>Los Angeles, California</p>
+      </div>
+      <div class="social-links">
+        <a href="https://www.instagram.com/wayofglorymedia">Instagram</a> |
+        <a href="https://www.facebook.com/wayofglorymedia">Facebook</a> |
+        <a href="https://www.linkedin.com/company/wayofglorymedia">LinkedIn</a>
+      </div>
+      <p style="margin-top: 16px; font-size: 12px;">
+        This email was sent to you as a customer of Way of Glory Media.
+        Please do not reply to this email as it is automatically generated.
+      </p>
+    </div>
+  </div>
 `;
 
 export const getEmailTemplate = (templateId: string, order: Order, customEmail?: { subject: string; html: string }) => {
@@ -56,18 +195,7 @@ export const getEmailTemplate = (templateId: string, order: Order, customEmail?:
       subject: customEmail.subject,
       html: `
         ${baseStyle}
-        <div class="email-container">
-          <div class="content">
-            ${customEmail.html}
-          </div>
-          <div class="footer">
-            <p>© ${new Date().getFullYear()} Way of Glory</p>
-            <p>
-              <a href="tel:+13108729781" style="color: #2563eb; text-decoration: none;">(310) 872-9781</a> |
-              <a href="mailto:help@wayofglory.com" style="color: #2563eb; text-decoration: none;">help@wayofglory.com</a>
-            </p>
-          </div>
-        </div>
+        ${createEmailWrapper(customEmail.html)}
       `
     };
   }
@@ -77,100 +205,75 @@ export const getEmailTemplate = (templateId: string, order: Order, customEmail?:
       subject: 'Payment Reminder for Your Way of Glory Order',
       html: `
         ${baseStyle}
-        <div class="email-container">
-          <div class="content">
-            <p>Dear ${order.first_name} ${order.last_name},</p>
-            <p>This is a friendly reminder about your pending payment for order #${order.id}.</p>
-            <div class="details">
-              <p style="margin: 0;"><strong>Total Amount Due:</strong> $${order.total_amount}</p>
-            </div>
-            <p>Please complete your payment to proceed with your order. If you've already made the payment, please disregard this reminder.</p>
+        ${createEmailWrapper(`
+          <h2>Payment Reminder</h2>
+          <p>Dear ${order.first_name} ${order.last_name},</p>
+          <p>This is a friendly reminder about your pending payment for order #${order.id}.</p>
+          <div class="details">
+            <p><strong>Total Amount Due:</strong> $${order.total_amount}</p>
+            <p><strong>Payment Methods:</strong></p>
+            <ul>
+              <li>Cash (in person at our office)</li>
+              <li>Check (payable to Way of Glory Media)</li>
+              <li>Direct Deposit/Bank Transfer</li>
+            </ul>
           </div>
-          <div class="footer">
-            <p>© ${new Date().getFullYear()} Way of Glory</p>
-            <p>
-              <a href="tel:+13108729781" style="color: #2563eb; text-decoration: none;">(310) 872-9781</a> |
-              <a href="mailto:help@wayofglory.com" style="color: #2563eb; text-decoration: none;">help@wayofglory.com</a>
-            </p>
-          </div>
-        </div>
+          <p>Please complete your payment to proceed with your order. If you've already made the payment, please disregard this reminder.</p>
+          <a href="#" class="cta-button">Complete Payment</a>
+        `)}
       `
     },
     installation_confirmation: {
       subject: 'Installation Details for Your Way of Glory Order',
       html: `
         ${baseStyle}
-        <div class="email-container">
-          <div class="content">
-            <p>Dear ${order.first_name} ${order.last_name},</p>
-            <p>Your installation for order #${order.id} has been scheduled. Here are the details:</p>
-            <div class="details">
-              <p style="margin: 0 0 8px 0;"><strong>Installation Address:</strong><br>
-                ${order.installation_address}, ${order.installation_city}, ${order.installation_state} ${order.installation_zip}
-              </p>
-              <p style="margin: 0 0 8px 0;"><strong>Date & Time:</strong><br>
-                ${order.installation_date} at ${order.installation_time}
-              </p>
-            </div>
-            <p>Our installation team will arrive within the scheduled time window. Please ensure someone is available to provide access to the installation area.</p>
-          </div>
-          <div class="footer">
-            <p>© ${new Date().getFullYear()} Way of Glory</p>
-            <p>
-              <a href="tel:+13108729781" style="color: #2563eb; text-decoration: none;">(310) 872-9781</a> |
-              <a href="mailto:help@wayofglory.com" style="color: #2563eb; text-decoration: none;">help@wayofglory.com</a>
+        ${createEmailWrapper(`
+          <h2>Installation Details</h2>
+          <p>Dear ${order.first_name} ${order.last_name},</p>
+          <p>Your installation for order #${order.id} has been scheduled. Here are the details:</p>
+          <div class="details">
+            <p><strong>Installation Address:</strong><br>
+              ${order.installation_address}, ${order.installation_city}, ${order.installation_state} ${order.installation_zip}
+            </p>
+            <p><strong>Date & Time:</strong><br>
+              ${order.installation_date} at ${order.installation_time}
             </p>
           </div>
-        </div>
+          <p>Our installation team will arrive within the scheduled time window. Please ensure someone is available to provide access to the installation area.</p>
+        `)}
       `
     },
     shipping_update: {
       subject: 'Shipping Update for Your Way of Glory Order',
       html: `
         ${baseStyle}
-        <div class="email-container">
-          <div class="content">
-            <p>Dear ${order.first_name} ${order.last_name},</p>
-            <p>Great news! Your order #${order.id} has been shipped and is on its way to you.</p>
-            <div class="details">
-              <p style="margin: 0;"><strong>Delivery Address:</strong><br>
-                ${order.shipping_address}, ${order.shipping_city}, ${order.shipping_state} ${order.shipping_zip}
-              </p>
-            </div>
-            <p>We'll notify you once your order has been delivered. If you have any special delivery instructions, please contact us.</p>
-          </div>
-          <div class="footer">
-            <p>© ${new Date().getFullYear()} Way of Glory</p>
-            <p>
-              <a href="tel:+13108729781" style="color: #2563eb; text-decoration: none;">(310) 872-9781</a> |
-              <a href="mailto:help@wayofglory.com" style="color: #2563eb; text-decoration: none;">help@wayofglory.com</a>
+        ${createEmailWrapper(`
+          <h2>Shipping Update</h2>
+          <p>Dear ${order.first_name} ${order.last_name},</p>
+          <p>Great news! Your order #${order.id} has been shipped and is on its way to you.</p>
+          <div class="details">
+            <p><strong>Delivery Address:</strong><br>
+              ${order.shipping_address}, ${order.shipping_city}, ${order.shipping_state} ${order.shipping_zip}
             </p>
           </div>
-        </div>
+          <p>We'll notify you once your order has been delivered. If you have any special delivery instructions, please contact us.</p>
+        `)}
       `
     },
     thank_you: {
       subject: 'Thank You for Your Way of Glory Order',
       html: `
         ${baseStyle}
-        <div class="email-container">
-          <div class="content">
-            <p>Dear ${order.first_name} ${order.last_name},</p>
-            <p>Thank you for choosing Way of Glory. We truly appreciate your business and trust in our services.</p>
-            <div class="details">
-              <p style="margin: 0 0 8px 0;"><strong>Order Number:</strong> #${order.id}</p>
-              <p style="margin: 0;"><strong>Total Amount:</strong> $${order.total_amount}</p>
-            </div>
-            <p>We hope you're completely satisfied with your purchase. If you have any questions or need assistance, please don't hesitate to reach out.</p>
+        ${createEmailWrapper(`
+          <h2>Thank You!</h2>
+          <p>Dear ${order.first_name} ${order.last_name},</p>
+          <p>Thank you for choosing Way of Glory. We truly appreciate your business and trust in our services.</p>
+          <div class="details">
+            <p><strong>Order Number:</strong> #${order.id}</p>
+            <p><strong>Total Amount:</strong> $${order.total_amount}</p>
           </div>
-          <div class="footer">
-            <p>© ${new Date().getFullYear()} Way of Glory</p>
-            <p>
-              <a href="tel:+13108729781" style="color: #2563eb; text-decoration: none;">(310) 872-9781</a> |
-              <a href="mailto:help@wayofglory.com" style="color: #2563eb; text-decoration: none;">help@wayofglory.com</a>
-            </p>
-          </div>
-        </div>
+          <p>We hope you're completely satisfied with your purchase. If you have any questions or need assistance, please don't hesitate to reach out.</p>
+        `)}
       `
     }
   };
@@ -181,17 +284,6 @@ export const getEmailTemplate = (templateId: string, order: Order, customEmail?:
 export const formatEmailPreview = async (content: string, order: Order): Promise<string> => {
   return `
     ${baseStyle}
-    <div class="email-container">
-      <div class="content">
-        ${content}
-      </div>
-      <div class="footer">
-        <p>© ${new Date().getFullYear()} Way of Glory</p>
-        <p>
-          <a href="tel:+13108729781" style="color: #2563eb; text-decoration: none;">(310) 872-9781</a> |
-          <a href="mailto:help@wayofglory.com" style="color: #2563eb; text-decoration: none;">help@wayofglory.com</a>
-        </p>
-      </div>
-    </div>
+    ${createEmailWrapper(content)}
   `;
 }; 
