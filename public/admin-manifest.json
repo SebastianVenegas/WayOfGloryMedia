@@ -2,7 +2,7 @@
   "name": "Way of Glory Media Admin",
   "short_name": "WoG Admin",
   "description": "Way of Glory Media Admin Dashboard",
-  "start_url": "/?source=pwa",
+  "start_url": "/admin/products",
   "scope": "/",
   "display": "standalone",
   "display_override": ["standalone", "fullscreen"],

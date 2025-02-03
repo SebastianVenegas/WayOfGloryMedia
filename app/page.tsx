@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import Header from '../components/Header'
 import HeroSection from '../components/HeroSection'
 import AboutUs from '../components/AboutUs'
@@ -13,28 +13,54 @@ import Footer from '../components/Footer'
 
 export default function Home() {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    const isFromPWA = searchParams.get('source') === 'pwa'
+    const detectPWA = () => {
+      if (typeof window === 'undefined') return false
+
+      // iOS detection
+      if (window.navigator && 'standalone' in window.navigator) {
+        // @ts-ignore - iOS specific
+        return window.navigator.standalone === true
+      }
+
+      // Modern PWA detection
+      if (window.matchMedia('(display-mode: standalone)').matches) return true
+      if (window.matchMedia('(display-mode: fullscreen)').matches) return true
+      if (window.matchMedia('(display-mode: minimal-ui)').matches) return true
+
+      // Check if installed
+      if ('BeforeInstallPromptEvent' in window) {
+        // @ts-ignore
+        return window.BeforeInstallPromptEvent === null
+      }
+
+      return false
+    }
+
+    const isPWA = detectPWA()
     const isWayOfGloryMedia = window.location.hostname === 'wayofglorymedia.com'
 
-    console.log('Navigation Status:', { 
-      isFromPWA, 
-      isWayOfGloryMedia, 
+    console.log('PWA Detection:', {
+      isPWA,
+      isWayOfGloryMedia,
       hostname: window.location.hostname,
-      source: searchParams.get('source')
+      userAgent: window.navigator.userAgent,
+      standalone: 'standalone' in window.navigator,
+      displayMode: {
+        standalone: window.matchMedia('(display-mode: standalone)').matches,
+        fullscreen: window.matchMedia('(display-mode: fullscreen)').matches,
+        minimalUi: window.matchMedia('(display-mode: minimal-ui)').matches
+      }
     })
 
-    if (isFromPWA && isWayOfGloryMedia) {
-      // If launched from PWA, redirect to admin
+    if (isPWA && isWayOfGloryMedia) {
       router.replace('/admin/products')
     } else {
-      // If in browser, show the main site
       setIsLoading(false)
     }
-  }, [router, searchParams])
+  }, [router])
 
   if (isLoading) {
     return (
