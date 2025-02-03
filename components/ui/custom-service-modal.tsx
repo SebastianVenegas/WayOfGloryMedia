@@ -123,87 +123,109 @@ export default function CustomServiceModal({ isOpen, onClose, onSave }: CustomSe
   })
 
   useEffect(() => {
-    // Initialize speech recognition
-    if (typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
-      const recognition = new SpeechRecognition()
-      
-      // Configure for better speech recognition
-      recognition.continuous = false // Change to false for more reliable results
-      recognition.interimResults = false // Change to false for final results only
-      recognition.lang = 'en-US'
-      
-      recognition.onstart = () => {
-        setIsRecording(true)
-        setAiPrompt('') // Clear existing text
-      }
-      
-      recognition.onresult = (event: SpeechRecognitionEvent) => {
-        const last = event.results.length - 1
-        const transcript = event.results[last][0].transcript
-        
-        setAiPrompt(prev => {
-          const newText = prev + ' ' + transcript
-          return newText.trim()
-        })
-      }
+    let recognitionInstance: SpeechRecognition | null = null;
 
-      recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-        console.error('Speech recognition error:', event.error)
-        setIsRecording(false)
-        toast({
-          title: "Voice Input Error",
-          description: event.error === 'not-allowed' 
-            ? "Please allow microphone access to use voice input."
-            : "There was an error with voice input. Please try again.",
-          variant: "destructive",
-        })
-      }
+    try {
+      // Initialize speech recognition
+      if (typeof window !== 'undefined') {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SpeechRecognition) {
+          recognitionInstance = new SpeechRecognition();
+          recognitionInstance.continuous = true;  // Changed to true to keep listening
+          recognitionInstance.interimResults = true;  // Changed to true to get real-time results
+          recognitionInstance.lang = 'en-US';
 
-      recognition.onend = () => {
-        setIsRecording(false)
-        // Automatically restart if still recording
-        if (isRecording) {
-          recognition.start()
+          // Event handlers
+          recognitionInstance.onstart = () => {
+            console.log('Speech recognition started');
+            setIsRecording(true);
+          };
+
+          recognitionInstance.onresult = (event) => {
+            console.log('Speech recognition result received');
+            let finalTranscript = '';
+            
+            for (let i = 0; i < event.results.length; i++) {
+              const result = event.results[i];
+              if (result.isFinal) {
+                finalTranscript += result[0].transcript;
+              }
+            }
+
+            if (finalTranscript) {
+              console.log('Final transcript:', finalTranscript);
+              setAiPrompt(prev => {
+                const newText = prev ? `${prev} ${finalTranscript}` : finalTranscript;
+                return newText.trim();
+              });
+            }
+          };
+
+          recognitionInstance.onerror = (event) => {
+            console.error('Speech recognition error:', event.error);
+            setIsRecording(false);
+            toast({
+              title: "Voice Input Error",
+              description: event.error === 'not-allowed' 
+                ? "Please allow microphone access to use voice input."
+                : `Error: ${event.error}. Please try again.`,
+              variant: "destructive",
+            });
+          };
+
+          recognitionInstance.onend = () => {
+            console.log('Speech recognition ended');
+            setIsRecording(false);
+          };
+
+          setRecognition(recognitionInstance);
         }
       }
-
-      setRecognition(recognition)
+    } catch (error) {
+      console.error('Failed to initialize speech recognition:', error);
     }
 
     return () => {
-      if (recognition) {
-        recognition.stop()
+      if (recognitionInstance) {
+        recognitionInstance.stop();
       }
-    }
-  }, [toast, isRecording])
+    };
+  }, [toast]);
 
-  const toggleRecording = () => {
+  const toggleRecording = async () => {
     if (!recognition) {
       toast({
         title: "Not Supported",
-        description: "Voice input is not supported in your browser. Please use Chrome or Edge.",
+        description: "Voice input is not supported in your browser. Please use Chrome.",
         variant: "destructive",
-      })
-      return
+      });
+      return;
     }
 
-    if (isRecording) {
-      recognition.stop()
-      setIsRecording(false)
-    } else {
-      try {
-        recognition.start()
-      } catch (error) {
-        console.error('Failed to start recognition:', error)
+    try {
+      if (isRecording) {
+        console.log('Stopping recording...');
+        recognition.stop();
+        setIsRecording(false);
+      } else {
+        console.log('Starting recording...');
+        await navigator.mediaDevices.getUserMedia({ audio: true });
+        setAiPrompt(''); // Clear existing text
+        recognition.start();
         toast({
-          title: "Error",
-          description: "Failed to start voice input. Please try again.",
-          variant: "destructive",
-        })
+          title: "Listening",
+          description: "Speak now to describe your service...",
+        });
       }
+    } catch (error) {
+      console.error('Error toggling recording:', error);
+      toast({
+        title: "Error",
+        description: "Please allow microphone access to use voice input.",
+        variant: "destructive",
+      });
     }
-  }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
