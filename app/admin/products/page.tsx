@@ -685,6 +685,8 @@ export default function ProductsPage() {
     }
   }
 
+  const isAudioCategory = selectedCategory === 'Audio Gear' || selectedCategory.startsWith('Audio Gear/')
+
   // Early return while not mounted to prevent hydration mismatch
   if (!mounted) {
   return (
@@ -731,7 +733,8 @@ export default function ProductsPage() {
           layout
           className={cn(
             "flex-1 p-6 pt-24 transition-all duration-300",
-            isCartOpen ? "mr-[350px]" : ""
+            isCartOpen ? "mr-[350px]" : "",
+            isAudioCategory ? "ml-[240px]" : ""
           )}
         >
           {selectedCategory === 'Services' && (
