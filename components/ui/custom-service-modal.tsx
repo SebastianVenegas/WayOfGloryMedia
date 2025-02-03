@@ -2,57 +2,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Package, FileText, X, ArrowRight, DollarSign, Wand2, Edit, Eye, Plus, Mic, MicOff } from "lucide-react"
+import { Package, FileText, X, ArrowRight, DollarSign, Wand2, Edit, Eye, Plus } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { cn } from "@/lib/utils"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/components/ui/use-toast"
-
-interface SpeechRecognitionErrorEvent extends Event {
-  error: string;
-}
-
-interface SpeechRecognitionResult {
-  isFinal: boolean;
-  0: {
-    transcript: string;
-  };
-  item(index: number): {
-    transcript: string;
-  };
-}
-
-interface SpeechRecognitionEvent extends Event {
-  results: {
-    [index: number]: SpeechRecognitionResult;
-    item(index: number): SpeechRecognitionResult;
-    length: number;
-  };
-}
-
-interface SpeechRecognition extends EventTarget {
-  continuous: boolean;
-  interimResults: boolean;
-  lang: string;
-  onstart: () => void;
-  onresult: (event: SpeechRecognitionEvent) => void;
-  onerror: (event: SpeechRecognitionErrorEvent) => void;
-  onend: () => void;
-  start: () => void;
-  stop: () => void;
-}
-
-declare global {
-  interface Window {
-    SpeechRecognition: {
-      new(): SpeechRecognition;
-    };
-    webkitSpeechRecognition: {
-      new(): SpeechRecognition;
-    };
-  }
-}
 
 interface CustomServiceModalProps {
   isOpen: boolean
@@ -110,8 +65,6 @@ export default function CustomServiceModal({ isOpen, onClose, onSave }: CustomSe
   const [isGenerating, setIsGenerating] = useState(false)
   const [isImproving, setIsImproving] = useState(false)
   const [aiPrompt, setAiPrompt] = useState('')
-  const [isRecording, setIsRecording] = useState(false)
-  const [recognition, setRecognition] = useState<SpeechRecognition | null>(null)
   const { toast } = useToast()
   
   const [formData, setFormData] = useState<CustomService>({
@@ -121,120 +74,6 @@ export default function CustomServiceModal({ isOpen, onClose, onSave }: CustomSe
     features: [""],
     category: "Services"
   })
-
-  useEffect(() => {
-    // Initialize speech recognition
-    if (typeof window !== 'undefined') {
-      try {
-        // Check for browser support
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SpeechRecognition) {
-          console.error('Speech recognition not supported');
-          return;
-        }
-
-        const recognitionInstance = new SpeechRecognition();
-        
-        // Configure recognition
-        recognitionInstance.continuous = false; // Set to false for more reliable results
-        recognitionInstance.interimResults = false; // Set to false for final results only
-        recognitionInstance.lang = 'en-US';
-
-        // Event handlers
-        recognitionInstance.onstart = () => {
-          console.log('Started recording');
-          setIsRecording(true);
-          toast({
-            title: "Recording Started",
-            description: "Speak now...",
-          });
-        };
-
-        recognitionInstance.onresult = (event) => {
-          const transcript = event.results[0][0].transcript;
-          console.log('Got result:', transcript);
-          
-          setAiPrompt(prev => {
-            const newText = prev ? `${prev} ${transcript}` : transcript;
-            return newText.trim();
-          });
-        };
-
-        recognitionInstance.onerror = (event) => {
-          console.error('Recognition error:', event.error);
-          setIsRecording(false);
-          
-          let errorMessage = "An error occurred with voice input.";
-          if (event.error === 'not-allowed') {
-            errorMessage = "Microphone access was denied. Please allow microphone access and try again.";
-          } else if (event.error === 'no-speech') {
-            errorMessage = "No speech was detected. Please try again.";
-          }
-          
-          toast({
-            title: "Error",
-            description: errorMessage,
-            variant: "destructive",
-          });
-        };
-
-        recognitionInstance.onend = () => {
-          console.log('Recognition ended');
-          setIsRecording(false);
-          toast({
-            title: "Recording Ended",
-            description: "Click the microphone to record again",
-          });
-        };
-
-        setRecognition(recognitionInstance);
-      } catch (error) {
-        console.error('Failed to initialize speech recognition:', error);
-        toast({
-          title: "Error",
-          description: "Failed to initialize speech recognition. Please use Chrome browser.",
-          variant: "destructive",
-        });
-      }
-    }
-  }, []); // Only run once on mount
-
-  const toggleRecording = async () => {
-    if (!recognition) {
-      toast({
-        title: "Not Available",
-        description: "Speech recognition is not available. Please use Chrome browser.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      if (isRecording) {
-        recognition.stop();
-        setIsRecording(false);
-      } else {
-        // Request microphone permission first
-        await navigator.mediaDevices.getUserMedia({ audio: true });
-        
-        // Clear previous text when starting new recording
-        setAiPrompt('');
-        
-        // Start recognition
-        recognition.start();
-        
-        console.log('Starting recording...');
-      }
-    } catch (error) {
-      console.error('Error toggling recording:', error);
-      setIsRecording(false);
-      toast({
-        title: "Error",
-        description: "Failed to access microphone. Please ensure microphone permissions are granted.",
-        variant: "destructive",
-      });
-    }
-  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -439,36 +278,14 @@ export default function CustomServiceModal({ isOpen, onClose, onSave }: CustomSe
                 transition={{ duration: 0.2 }}
               >
                 <TabsContent value="ai" className="mt-0 space-y-4">
-                  {/* Voice Input Section */}
+                  {/* AI Input Section */}
                   <div className="relative bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4">
-                    <div className="flex items-center gap-4">
-                      <motion.button
-                        onClick={toggleRecording}
-                        className={cn(
-                          "flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center",
-                          "shadow-md transition-all duration-200",
-                          isRecording 
-                            ? "bg-red-500 text-white animate-pulse" 
-                            : "bg-blue-500 text-white hover:bg-blue-600"
-                        )}
-                        whileTap={{ scale: 0.95 }}
-                      >
-                        {isRecording ? (
-                          <MicOff className="h-5 w-5" />
-                        ) : (
-                          <Mic className="h-5 w-5" />
-                        )}
-                      </motion.button>
-                      
-                      <div className="flex-grow">
-                        <Textarea
-                          value={aiPrompt}
-                          onChange={(e) => setAiPrompt(e.target.value)}
-                          placeholder="Click the microphone and start speaking, or type your service description here..."
-                          className="min-h-[80px] resize-none bg-white/80 backdrop-blur-sm border-0 focus:ring-1 rounded-lg"
-                        />
-                      </div>
-                    </div>
+                    <Textarea
+                      value={aiPrompt}
+                      onChange={(e) => setAiPrompt(e.target.value)}
+                      placeholder="Describe the service you want to create..."
+                      className="min-h-[120px] resize-none bg-white/80 backdrop-blur-sm border-0 focus:ring-1 rounded-lg"
+                    />
                   </div>
 
                   {/* Generate Button */}
