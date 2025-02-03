@@ -38,13 +38,18 @@ export async function middleware(request: NextRequest) {
   // Get token from cookie
   const token = request.cookies.get('auth_token')?.value
 
-  // Always redirect to login if trying to access root in PWA mode
+  // If it's a PWA request to the root, redirect to admin login
   if (isPWA && pathname === '/') {
     return NextResponse.redirect(new URL('/admin/login', request.url))
   }
 
+  // If not an admin route and not a PWA request, skip middleware
+  if (!pathname.startsWith('/admin')) {
+    return NextResponse.next()
+  }
+
   // If no token and trying to access admin routes (except login)
-  if (!token && pathname.startsWith('/admin') && pathname !== '/admin/login') {
+  if (!token && pathname !== '/admin/login') {
     const loginUrl = new URL('/admin/login', request.url)
     loginUrl.searchParams.set('from', pathname)
     return NextResponse.redirect(loginUrl)
