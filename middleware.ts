@@ -28,13 +28,23 @@ async function verifyToken(token: string) {
 }
 
 export async function middleware(request: NextRequest) {
+  // Check if it's a PWA by looking for display-mode header
+  const isPWA = request.headers.get('sec-fetch-mode') === 'navigate' && 
+                request.headers.get('sec-fetch-dest') === 'document' &&
+                request.headers.get('sec-fetch-site') === 'none'
+
   // Get the pathname
-  const path = request.nextUrl.pathname
-  
+  const pathname = request.nextUrl.pathname
+
+  // If it's a PWA request to /admin, redirect to /admin/products
+  if (isPWA && pathname === '/admin') {
+    return NextResponse.redirect(new URL('/admin/products', request.url))
+  }
+
   // Define protected paths
-  const isAdminPath = path.startsWith('/admin') && path !== '/admin/login'
-  const isProtectedApiPath = path.startsWith('/api/admin')
-  const isAuthCheck = path === '/api/auth/check'
+  const isAdminPath = pathname.startsWith('/admin') && pathname !== '/admin/login'
+  const isProtectedApiPath = pathname.startsWith('/api/admin')
+  const isAuthCheck = pathname === '/api/auth/check'
 
   // Skip middleware for OPTIONS requests
   if (request.method === 'OPTIONS') {
