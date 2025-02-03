@@ -732,9 +732,9 @@ export default function ProductsPage() {
           data-main-content
           layout
           className={cn(
-            "flex-1 p-6 pt-24 transition-all duration-300",
+            "flex-1 p-6 transition-all duration-300",
             isCartOpen ? "mr-[350px]" : "",
-            isAudioCategory ? "ml-[240px]" : ""
+            isAudioCategory ? "pt-[8.5rem]" : "pt-24"
           )}
         >
           {selectedCategory === 'Services' && (

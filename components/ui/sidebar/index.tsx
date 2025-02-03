@@ -13,8 +13,9 @@ import {
   Users,
   ClipboardList,
   BarChart,
-  Music,
-  LogOut
+  Speaker,
+  LogOut,
+  Mic2
 } from 'lucide-react'
 
 const navigation = [
@@ -22,7 +23,7 @@ const navigation = [
     name: 'Dashboard',
     href: '/admin',
     icon: LayoutGrid,
-    color: 'text-indigo-500'
+    color: 'text-blue-500'
   },
   {
     name: 'Products',
@@ -33,32 +34,32 @@ const navigation = [
   {
     name: 'Services',
     href: '/admin/services',
-    icon: Music,
-    color: 'text-pink-500'
+    icon: Mic2,
+    color: 'text-blue-500'
   },
   {
     name: 'Orders',
     href: '/admin/orders',
     icon: ClipboardList,
-    color: 'text-green-500'
+    color: 'text-blue-500'
   },
   {
     name: 'Customers',
     href: '/admin/customers',
     icon: Users,
-    color: 'text-orange-500'
+    color: 'text-blue-500'
   },
   {
     name: 'Analytics',
     href: '/admin/analytics',
     icon: BarChart,
-    color: 'text-purple-500'
+    color: 'text-blue-500'
   },
   {
     name: 'Settings',
     href: '/admin/settings',
     icon: Settings,
-    color: 'text-gray-500'
+    color: 'text-blue-500'
   }
 ]
 
@@ -77,20 +78,20 @@ export function Sidebar({ isExpanded, toggleSidebar, pathname, handleLogout }: S
         width: isExpanded ? '280px' : '80px',
         transition: { duration: 0.3 }
       }}
-      className="fixed left-0 top-0 bottom-0 z-[40] bg-white/80 border-r border-gray-200 flex flex-col"
+      className="fixed left-0 top-0 bottom-0 z-[40] bg-white/90 backdrop-blur-md border-r border-gray-100 flex flex-col shadow-sm"
     >
       {/* Header */}
-      <div className="flex items-center h-16 px-4 border-b border-gray-200 bg-white/90">
+      <div className="flex items-center h-20 px-4 border-b border-gray-100 bg-white/80">
         <div className="flex items-center gap-3 flex-1">
-          <div className="p-1.5 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-600">
-            <Music className="h-5 w-5 text-white" />
+          <div className="p-2.5 rounded-xl bg-gradient-to-tr from-blue-600 to-blue-700 shadow-sm ring-1 ring-white/20">
+            <Speaker className="h-5 w-5 text-white" />
           </div>
           {isExpanded && (
             <motion.span 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="font-semibold text-gray-900"
+              className="font-semibold text-gray-900 text-lg tracking-tight"
             >
               Way of Glory
             </motion.span>
@@ -100,18 +101,18 @@ export function Sidebar({ isExpanded, toggleSidebar, pathname, handleLogout }: S
           variant="ghost"
           size="icon"
           onClick={toggleSidebar}
-          className="hover:bg-gray-100/80 rounded-lg"
+          className="h-10 w-10 hover:bg-gray-100/80 rounded-xl text-gray-500"
         >
           {isExpanded ? (
-            <ChevronLeft className="h-4 w-4" />
+            <ChevronLeft className="h-5 w-5" />
           ) : (
-            <ChevronRight className="h-4 w-4" />
+            <ChevronRight className="h-5 w-5" />
           )}
         </Button>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-2 space-y-1 overflow-y-auto scrollbar-none">
+      <nav className="flex-1 p-3 space-y-1.5 overflow-y-auto scrollbar-none">
         {navigation.map((item) => {
           const isActive = pathname === item.href
           return (
@@ -119,20 +120,22 @@ export function Sidebar({ isExpanded, toggleSidebar, pathname, handleLogout }: S
               key={item.name}
               href={item.href}
               className={cn(
-                "group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 relative overflow-hidden",
+                "group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 relative overflow-hidden hover:shadow-sm",
                 isActive 
-                  ? "bg-white/80 text-gray-900" 
-                  : "text-gray-600 hover:text-gray-900 hover:bg-white/60"
+                  ? "bg-white text-gray-900 shadow-sm" 
+                  : "text-gray-600 hover:text-gray-900 hover:bg-white"
               )}
             >
               <div className={cn(
-                "relative z-10 p-1.5 rounded-lg transition-colors duration-200",
-                isActive ? `${item.color} bg-white/80 shadow-sm` : "text-gray-400 group-hover:text-gray-500"
+                "relative z-10 p-2 rounded-lg transition-colors duration-200",
+                isActive 
+                  ? "bg-blue-50 text-blue-600 shadow-sm ring-1 ring-blue-100/50" 
+                  : "text-gray-500 group-hover:text-blue-600 bg-gray-50/80 group-hover:bg-blue-50/80"
               )}>
                 <item.icon className="h-5 w-5" />
               </div>
               {!isExpanded && (
-                <div className="fixed left-[70px] px-2.5 py-1.5 bg-gray-900/90 text-xs text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+                <div className="fixed left-[70px] px-3 py-2 bg-gray-900 text-xs font-medium text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-lg">
                   {item.name}
                 </div>
               )}
@@ -149,7 +152,7 @@ export function Sidebar({ isExpanded, toggleSidebar, pathname, handleLogout }: S
               {isActive && (
                 <motion.div
                   layoutId="activeNav"
-                  className="absolute inset-0 bg-gradient-to-r from-white/80 to-white/60 -z-10"
+                  className="absolute inset-0 bg-gradient-to-r from-white to-white/95 -z-10"
                   transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                 />
               )}
@@ -159,12 +162,12 @@ export function Sidebar({ isExpanded, toggleSidebar, pathname, handleLogout }: S
       </nav>
 
       {/* User Section */}
-      <div className="p-2 border-t border-gray-200 bg-gray-50/80">
+      <div className="p-3 border-t border-gray-100 bg-white/80 backdrop-blur-sm">
         <div className={cn(
-          "flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/60 transition-colors",
+          "flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white hover:shadow-sm transition-all",
           isExpanded && "cursor-pointer"
         )}>
-          <div className="relative w-9 h-9 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-medium shadow-sm">
+          <div className="relative w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-blue-700 flex items-center justify-center text-white font-medium shadow-sm ring-1 ring-white/20">
             W
           </div>
           {isExpanded && (
@@ -182,7 +185,7 @@ export function Sidebar({ isExpanded, toggleSidebar, pathname, handleLogout }: S
         {isExpanded && (
           <Button
             variant="ghost"
-            className="w-full mt-2 text-gray-600 hover:text-gray-900 hover:bg-white/60 justify-start gap-2 rounded-xl"
+            className="w-full mt-2 text-gray-600 hover:text-gray-900 hover:bg-white justify-start gap-2 rounded-xl h-11"
             onClick={handleLogout}
           >
             <LogOut className="h-4 w-4" />
