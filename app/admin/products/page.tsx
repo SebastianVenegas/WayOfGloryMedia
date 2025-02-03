@@ -709,7 +709,7 @@ export default function ProductsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50/50">
+    <div className="min-h-screen bg-gray-50/50 pt-20">
       <ProductsHeader 
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}

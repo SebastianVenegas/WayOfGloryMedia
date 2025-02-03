@@ -34,7 +34,7 @@ export default function ProductsHeader({
   return (
     <div 
       className={cn(
-        "sticky top-0 transition-all duration-300",
+        "fixed top-0 left-0 right-0 w-full transition-all duration-300",
         isCheckoutOpen 
           ? "z-[40] bg-white/40 backdrop-blur-xl border-transparent opacity-50 pointer-events-none"
           : "z-[44] bg-white/80 backdrop-blur-md border-b border-gray-200"
