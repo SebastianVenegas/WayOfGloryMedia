@@ -568,7 +568,7 @@ export default function ProductsPage() {
         body: JSON.stringify({
           ...formData,
           products: bundleItems.map(item => ({
-            id: item.product.id,
+            id: Number(item.product.id),
             quantity: item.quantity,
             title: item.product.title,
             price: item.our_price || item.price,
@@ -1088,12 +1088,10 @@ export default function ProductsPage() {
           {isCartOpen && (
             <motion.div
               initial={{ 
-                width: 0, 
                 opacity: 0,
                 x: "100%"
               }}
               animate={{ 
-                width: "100%",
                 opacity: 1,
                 x: 0,
                 transition: {
@@ -1103,7 +1101,6 @@ export default function ProductsPage() {
                 }
               }}
               exit={{ 
-                width: 0,
                 opacity: 0,
                 x: "100%",
                 transition: {
@@ -1113,10 +1110,8 @@ export default function ProductsPage() {
                 }
               }}
               className={cn(
-                "bg-white border-l border-gray-100 shadow-lg overflow-hidden",
-                "lg:fixed lg:inset-y-0 lg:right-0 lg:pt-20",
-                "w-full lg:w-[350px]",
-                "lg:z-[45]"
+                "fixed inset-y-0 right-0 w-[350px] bg-white border-l border-gray-100 shadow-lg",
+                "pt-20 z-[45]"
               )}
             >
               {/* Close button for mobile */}
@@ -1158,10 +1153,11 @@ export default function ProductsPage() {
                   document.body.style.cursor = 'ew-resize';
                 }}
               />
-              <div className="h-full pt-14 lg:pt-0">
+              <div className="h-full">
                 <Bundle 
                   products={bundleItems.map(item => ({
                     ...item.product,
+                    id: Number(item.product.id),
                     quantity: item.quantity,
                     price: item.our_price || item.price
                   }))}

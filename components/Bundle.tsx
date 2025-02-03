@@ -8,10 +8,10 @@ import Image from 'next/image'
 import { cn } from '@/lib/utils'
 import Checkout, { CheckoutFormData } from './Checkout'
 import { Input } from '@/components/ui/input'
-import { useToast } from "@/components/ui/use-toast"
 import { useRouter } from 'next/navigation'
 import { productImages } from '@/lib/product-images'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog-custom"
+import { toast } from 'sonner'
 
 interface Product {
   id: string;
@@ -35,13 +35,24 @@ interface BundleItem extends Product {
   quantity: number;
 }
 
+interface CheckoutProduct {
+  id: number
+  title: string
+  price: number
+  quantity: number
+  category: string
+  our_price?: number
+  is_service?: boolean
+  is_custom?: boolean
+}
+
 interface BundleProps {
-  products: BundleItem[];
-  onRemove: (productId: string) => void;
-  onUpdateQuantity?: (productId: string, quantity: number) => void;
-  isOpen: boolean;
-  setIsOpen: (isOpen: boolean) => void;
-  clearCart?: () => void;
+  products: CheckoutProduct[]
+  onRemove: (id: string) => void
+  onUpdateQuantity: (id: string, quantity: number) => void
+  isOpen: boolean
+  setIsOpen: (isOpen: boolean) => void
+  clearCart: () => void
 }
 
 const itemVariants = {
@@ -124,527 +135,229 @@ const getProductImage = (product: Product): string => {
   return '/images/placeholder.jpg';
 };
 
+const calculateBundleTotals = (products: CheckoutProduct[]): { subtotal: number; tax: number; total: number } => {
+  let subtotal = 0
+  let taxableSubtotal = 0
+
+  products.forEach(product => {
+    const itemTotal = (product.our_price || product.price) * product.quantity
+    subtotal += itemTotal
+
+    if (!product.category.startsWith('Services') && !product.is_service && !product.is_custom) {
+      taxableSubtotal += itemTotal
+    }
+  })
+
+  const tax = taxableSubtotal * 0.0775 // 7.75% tax
+  const total = subtotal + tax
+
+  return {
+    subtotal: Number(subtotal.toFixed(2)),
+    tax: Number(tax.toFixed(2)),
+    total: Number(total.toFixed(2))
+  }
+}
+
 export default function Bundle({ products, onRemove, onUpdateQuantity, isOpen, setIsOpen, clearCart }: BundleProps) {
-  const { toast } = useToast()
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false)
-  const [isQuoteDialogOpen, setIsQuoteDialogOpen] = useState(false)
-  const [quoteEmail, setQuoteEmail] = useState('')
-  const [isGeneratingQuote, setIsGeneratingQuote] = useState(false)
-  const [installationSelected, setInstallationSelected] = useState(false)
-  const [installationPrice, setInstallationPrice] = useState(0)
-  const [isRemoving, setIsRemoving] = useState<string | null>(null)
-  const [showConfetti, setShowConfetti] = useState(false)
-  const [width, setWidth] = useState(280)
-  const dragRef = useRef<HTMLDivElement>(null)
-  const cartRef = useRef<HTMLDivElement>(null)
-  const [selectedDate, setSelectedDate] = useState<string>('')
-  const [selectedTime, setSelectedTime] = useState<string>('')
-
-  const totalPrice = products.reduce((sum, product) => 
-    sum + (product.our_price || product.price) * product.quantity, 0
-  )
-
-  useEffect(() => {
-    document.documentElement.style.setProperty('--cart-width', `${width}px`)
-  }, [])
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (dragRef.current && dragRef.current.dataset.dragging === 'true') {
-        const newWidth = window.innerWidth - e.clientX
-        if (newWidth >= 280 && newWidth <= 500) {
-          setWidth(newWidth)
-          document.documentElement.style.setProperty('--cart-width', `${newWidth}px`)
-        }
-      }
-    }
-
-    const handleMouseUp = () => {
-      if (dragRef.current) {
-        dragRef.current.dataset.dragging = 'false'
-      }
-      document.body.style.cursor = 'default'
-      window.removeEventListener('mousemove', handleMouseMove)
-      window.removeEventListener('mouseup', handleMouseUp)
-    }
-
-    const handleMouseDown = (e: MouseEvent) => {
-      if (dragRef.current) {
-        dragRef.current.dataset.dragging = 'true'
-        document.body.style.cursor = 'ew-resize'
-        window.addEventListener('mousemove', handleMouseMove)
-        window.addEventListener('mouseup', handleMouseUp)
-      }
-    }
-
-    const dragHandle = dragRef.current
-    if (dragHandle) {
-      dragHandle.addEventListener('mousedown', handleMouseDown)
-    }
-
-    return () => {
-      if (dragHandle) {
-        dragHandle.removeEventListener('mousedown', handleMouseDown)
-      }
-      window.removeEventListener('mousemove', handleMouseMove)
-      window.removeEventListener('mouseup', handleMouseUp)
-    }
-  }, [])
-
-  const handleRemove = async (productId: string) => {
-    setIsRemoving(productId)
-    await new Promise(resolve => setTimeout(resolve, 300))
-    onRemove(productId)
-    setIsRemoving(null)
-  }
-
-  const handleQuantityUpdate = (productId: string, newQuantity: number) => {
-    if (onUpdateQuantity) {
-      if (newQuantity >= 1) {
-        onUpdateQuantity(productId, newQuantity)
-      }
-    }
-  }
-
-  const handleAddToBundle = () => {
-    setShowConfetti(true)
-    setTimeout(() => setShowConfetti(false), 2000)
-  }
+  const totals = calculateBundleTotals(products)
 
   const handleCheckout = async (formData: any) => {
     try {
-      // Validate required fields
-      if (!formData.firstName || !formData.lastName || !formData.email || !formData.phone) {
-        throw new Error('Please fill in all required fields');
-      }
-
-      // Calculate amounts
-      const productSubtotal = totalPrice;
-      const tax = productSubtotal * 0.0775; // 7.75% tax on products only
-      const installationAmount = installationSelected ? installationPrice : 0;
-      const totalAmount = productSubtotal + tax + installationAmount;
-
-      const response = await fetch('/api/contracts', {
+      const response = await fetch('/api/orders', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          email: formData.email,
-          phone: formData.phone,
-          organization: formData.organization || '',
-          shippingAddress: formData.shippingAddress || '',
-          shippingCity: formData.shippingCity || '',
-          shippingState: formData.shippingState || '',
-          shippingZip: formData.shippingZip || '',
-          shippingInstructions: formData.shippingInstructions || '',
-          installationAddress: formData.installationAddress || '',
-          installationCity: formData.installationCity || '',
-          installationState: formData.installationState || '',
-          installationZip: formData.installationZip || '',
-          installationDate: formData.installationDate || '',
-          installationTime: formData.installationTime || '',
-          accessInstructions: formData.accessInstructions || '',
-          contactOnSite: formData.contactOnSite || '',
-          contactOnSitePhone: formData.contactOnSitePhone || '',
-          paymentMethod: formData.paymentMethod || 'invoice',
-          signature: formData.signature || '',
-          products: products.map(product => ({
-            id: product.id,
-            title: product.title,
-            price: product.price,
-            our_price: product.our_price,
-            quantity: product.quantity,
-            is_custom: product.is_custom,
-            is_service: product.is_service
-          })),
-          productSubtotal: productSubtotal,
-          tax: tax,
-          installationPrice: installationAmount,
-          totalAmount: totalAmount
-        })
+          ...formData,
+          products: products.map(p => ({
+            id: Number(p.id),
+            quantity: p.quantity,
+            title: p.title,
+            price: p.price
+          }))
+        }),
       });
-
-      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to create contract');
+        throw new Error('Failed to create order');
       }
 
-      // Success toast
-      toast({
-        title: "Contract Created Successfully! 🎉",
-        description: `Order #${data.orderId} has been generated and sent for processing.
-Products: $${productSubtotal.toFixed(2)}
-Sales Tax: $${tax.toFixed(2)}
-${installationAmount > 0 ? `Installation (No Tax): $${installationAmount.toFixed(2)}\n` : ''}
-Total: $${totalAmount.toFixed(2)}`,
-        variant: "default",
-        duration: 5000,
-        className: "bg-white border-green-100 text-green-900",
-      });
-
-      // Clear the cart and close modals
+      toast('Order created successfully');
+      clearCart();
       setIsCheckoutOpen(false);
-      setIsOpen(false);
-      return data;
     } catch (error) {
-      console.error('Error creating contract:', error);
-      
-      // Error toast
-      toast({
-        title: "Error Creating Contract",
-        description: error instanceof Error ? error.message : "Failed to create contract. Please try again or contact support if the issue persists.",
-        variant: "destructive",
-        duration: 7000,
-        className: "border-red-100",
-      });
-      throw error;
-    }
-  };
-
-  const handleGenerateQuote = async () => {
-    if (!quoteEmail) {
-      toast({
-        title: "Email Required",
-        description: "Please enter an email address to send the quote to.",
-        variant: "destructive",
-      })
-      return
-    }
-
-    setIsGeneratingQuote(true)
-    try {
-      const response = await fetch('/api/generate-quote', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          products: products.map(product => ({
-            id: product.id,
-            title: product.title,
-            price: product.price,
-            our_price: product.our_price,
-            quantity: product.quantity,
-            category: product.category,
-            is_service: product.is_service,
-            is_custom: product.is_custom
-          })),
-          email: quoteEmail,
-          installationPrice: installationSelected ? installationPrice : 0
-        })
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to generate quote');
-      }
-
-      toast({
-        title: "Quote Sent Successfully! 📧",
-        description: `A quote has been sent to ${quoteEmail}. Please check your email.`,
-        variant: "default",
-        duration: 5000,
-        className: "bg-white border-green-100 text-green-900",
-      });
-
-      setIsQuoteDialogOpen(false);
-      setQuoteEmail('');
-    } catch (error) {
-      console.error('Error generating quote:', error);
-      toast({
-        title: "Failed to Generate Quote",
-        description: error instanceof Error ? error.message : "An error occurred while generating the quote. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsGeneratingQuote(false);
+      console.error('Error creating order:', error);
+      toast('Failed to create order');
     }
   };
 
   return (
-    <>
-      <div className="h-full flex flex-col">
-        {/* Header */}
-        <div className="shrink-0 p-4 flex items-center justify-between border-b border-gray-100">
-          <div className="flex items-center gap-2">
-            <h2 className="text-base font-semibold text-gray-700">Bundle</h2>
-            {products.length > 0 && (
-              <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-medium">
-                {products.length}
-              </span>
-            )}
-          </div>
+    <div className="h-full flex flex-col bg-white">
+      <div className="flex items-center justify-between p-4 border-b">
+        <div className="flex items-center gap-3">
+          <ShoppingBag className="h-5 w-5 text-gray-500" />
+          <h2 className="text-lg font-semibold">Bundle</h2>
+          {products.length > 0 && (
+            <span className="bg-blue-100 text-blue-600 text-sm font-medium px-2.5 py-0.5 rounded-full">
+              {products.length}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          {products.length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearCart}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              Clear
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setIsOpen(false)}
-            className="rounded-lg h-8 w-8 hover:bg-gray-100 text-gray-400 hover:text-gray-600"
+            className="lg:hidden"
           >
-            <X className="h-4 w-4" />
+            <X className="h-5 w-5" />
           </Button>
         </div>
+      </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto">
-          {products.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center p-6 text-center bg-gray-50/50">
-              <div className="w-16 h-16 rounded-xl bg-white flex items-center justify-center mb-4">
-                <Package className="h-8 w-8 text-gray-400" />
-              </div>
-              <h3 className="text-base font-medium mb-2 text-gray-700">Your bundle is empty</h3>
-              <p className="text-sm text-gray-500">Add some products to get started</p>
-            </div>
-          ) : (
-            <div className="p-4 space-y-4">
+      {products.length === 0 ? (
+        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+          <div className="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center mb-4">
+            <Package className="h-8 w-8 text-gray-400" />
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-1">Your bundle is empty</h3>
+          <p className="text-sm text-gray-500">Add some products to get started</p>
+        </div>
+      ) : (
+        <>
+          <div className="flex-1 overflow-y-auto p-4">
+            <div className="space-y-4">
               {products.map((product) => (
-                <motion.div
+                <div
                   key={product.id}
-                  layout
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, x: -10 }}
-                  className={cn(
-                    "group bg-gray-50/50 rounded-lg border border-gray-100 hover:border-gray-200 hover:bg-gray-50 transition-all p-3",
-                    isRemoving === product.id && "opacity-50 scale-95"
-                  )}
+                  className="flex gap-4 p-3 bg-gray-50 rounded-lg relative group"
                 >
-                  <div className="flex gap-2">
-                    {product.category === 'Services' ? (
-                      <div className="relative w-12 h-12 bg-gray-50 rounded-lg border border-gray-100 flex items-center justify-center flex-shrink-0">
-                        <WrenchIcon className="h-6 w-6 text-gray-500" />
-                      </div>
-                    ) : (
-                      <div className="relative h-12 w-12 rounded-lg bg-white overflow-hidden border border-gray-100 flex-shrink-0">
-                        <Image
-                          src={getProductImage(product)}
-                          alt={product.title}
-                          fill
-                          className="object-contain p-1"
-                          sizes="48px"
-                        />
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between">
-                        <h4 className="text-sm font-medium line-clamp-2 pr-2">
-                          {product.title}
-                        </h4>
+                  <div className="w-16 h-16 rounded-lg bg-white border border-gray-200 flex items-center justify-center flex-shrink-0">
+                    {(() => {
+                      const key = getProductImageKey(product.title);
+                      const images = productImages[key as keyof typeof productImages];
+                      if (images && images.length > 0) {
+                        return (
+                          <div className="relative w-full h-full">
+                            <Image
+                              src={images[0]}
+                              alt={product.title}
+                              fill
+                              className="object-contain p-2"
+                            />
+                          </div>
+                        );
+                      }
+                      return <Package className="h-6 w-6 text-gray-400" />;
+                    })()}
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-sm font-medium text-gray-900 truncate">
+                      {product.title}
+                    </h4>
+                    <p className="mt-1 text-sm text-gray-500 truncate">
+                      ${(product.price).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                    </p>
+                    <div className="mt-2 flex items-center gap-2">
+                      <div className="flex items-center gap-1 bg-white rounded-md border border-gray-200">
                         <Button
                           variant="ghost"
-                          size="sm"
-                          onClick={() => onRemove(product.id)}
-                          className="text-gray-500 hover:text-red-400 hover:bg-red-400/10 -mr-1 h-7 w-7 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                          size="icon"
+                          onClick={() => onUpdateQuantity(product.id.toString(), Math.max(1, product.quantity - 1))}
+                          disabled={product.quantity <= 1}
+                          className="h-7 w-7"
                         >
-                          <Trash2 className="h-3 w-3" />
+                          <Minus className="h-3 w-3" />
+                        </Button>
+                        <span className="w-8 text-center text-sm">
+                          {product.quantity}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => onUpdateQuantity(product.id.toString(), product.quantity + 1)}
+                          className="h-7 w-7"
+                        >
+                          <Plus className="h-3 w-3" />
                         </Button>
                       </div>
-                      <div className="mt-1 text-sm text-gray-600">
-                        ${(product.our_price || product.price).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                      </div>
-                      <div className="mt-2 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => onUpdateQuantity && onUpdateQuantity(product.id, product.quantity - 1)}
-                            disabled={product.quantity <= 1}
-                            className="h-6 w-6 rounded-md bg-white/5 hover:bg-white/10 flex-shrink-0"
-                          >
-                            <Minus className="h-3 w-3" />
-                          </Button>
-                          <span className="w-8 text-center text-sm">
-                            {product.quantity}
-                          </span>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => onUpdateQuantity && onUpdateQuantity(product.id, product.quantity + 1)}
-                            className="h-6 w-6 rounded-md bg-white/5 hover:bg-white/10 flex-shrink-0"
-                          >
-                            <Plus className="h-3 w-3" />
-                          </Button>
-                        </div>
-                        <div className="text-sm font-medium">
-                          ${((product.our_price || product.price) * product.quantity).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                        </div>
-                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onRemove(product.id.toString())}
+                        className="h-7 w-7 text-gray-400 hover:text-red-500"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
-                </motion.div>
+                </div>
               ))}
             </div>
-          )}
-        </div>
+          </div>
 
-        {/* Footer */}
-        {products.length > 0 && (
-          <div className="shrink-0 border-t border-gray-100 p-4 space-y-4">
-            {/* Installation Option */}
-            <div className="flex items-center gap-3 bg-white rounded-lg p-3 border border-gray-100">
-              <label className="flex items-center gap-2 text-sm flex-1">
-                <input 
-                  type="checkbox" 
-                  className="rounded-md border-gray-200 text-gray-700 focus:ring-gray-200 w-4 h-4"
-                  checked={installationSelected}
-                  onChange={(e) => setInstallationSelected(e.target.checked)}
-                />
-                <span className="text-gray-600">Installation Service</span>
-              </label>
-              {installationSelected && (
-                <div className="relative w-24">
-                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400">$</span>
-                  <Input
-                    type="number"
-                    value={installationPrice}
-                    onChange={(e) => setInstallationPrice(parseFloat(e.target.value) || 0)}
-                    className="pl-6 h-8 text-sm bg-white border-gray-200 focus:border-gray-300 focus:ring-gray-100 rounded-md"
-                    placeholder="Price"
-                    step="0.01"
-                    min="0"
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* Summary */}
+          <div className="border-t border-gray-200 p-4 space-y-4">
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">Subtotal</span>
-                <span className="text-gray-700">${totalPrice.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Sales Tax</span>
-                <span className="text-gray-700">
-                  ${(products.reduce((sum, item) => {
-                    if (item.category === 'Services' || item.category === 'Services/Custom' || item.is_service || item.is_custom) {
-                      return sum;
-                    }
-                    return sum + ((item.our_price || item.price) * item.quantity);
-                  }, 0) * 0.0775).toFixed(2)}
+                <span className="font-medium text-gray-900">
+                  ${totals.subtotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                 </span>
               </div>
-              {installationSelected && installationPrice > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Installation</span>
-                  <span className="text-gray-700">${installationPrice.toFixed(2)}</span>
-                </div>
-              )}
-              <div className="flex justify-between items-baseline pt-2 border-t border-gray-200">
-                <span className="text-sm font-medium text-gray-900">Total</span>
-                <span className="text-lg font-bold text-blue-600">
-                  ${(
-                    totalPrice + 
-                    (products.reduce((sum, item) => {
-                      if (item.category === 'Services' || item.category === 'Services/Custom' || item.is_service || item.is_custom) {
-                        return sum;
-                      }
-                      return sum + ((item.our_price || item.price) * item.quantity);
-                    }, 0) * 0.0775) + 
-                    (installationSelected ? installationPrice : 0)
-                  ).toFixed(2)}
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Tax</span>
+                <span className="font-medium text-gray-900">
+                  ${totals.tax.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm font-medium">
+                <span className="text-gray-900">Total</span>
+                <span className="text-blue-600">
+                  ${totals.total.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                 </span>
               </div>
             </div>
 
-            {/* Actions */}
-            <div className="grid grid-cols-2 gap-2 pt-2">
+            <div className="grid gap-2">
               <Button
-                variant="outline"
-                className="bg-white border-gray-200 hover:bg-gray-50 text-gray-600 hover:text-gray-700 rounded-lg h-9 text-sm"
-                onClick={() => setIsQuoteDialogOpen(true)}
-              >
-                Get Quote
-              </Button>
-              <Button
-                className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg h-9 text-sm"
                 onClick={() => setIsCheckoutOpen(true)}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white"
               >
                 Checkout
               </Button>
-            </div>
-            <p className="text-xs text-center text-gray-500 pt-1">
-              Tax will be calculated based on your location
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Quote Dialog */}
-      {isQuoteDialogOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="bg-white rounded-xl shadow-lg w-full max-w-[450px] mx-4">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                  <Mail className="h-6 w-6 text-blue-500" />
-                  <h2 className="text-xl font-semibold">Generate Quote</h2>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setIsQuoteDialogOpen(false)}
-                  className="rounded-full h-8 w-8 hover:bg-gray-100"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-              <div className="space-y-5">
-                <div className="space-y-3">
-                  <label className="text-base font-medium text-gray-700">
-                    Email Address
-                  </label>
-                  <Input
-                    type="email"
-                    value={quoteEmail}
-                    onChange={(e) => setQuoteEmail(e.target.value)}
-                    placeholder="Enter email address"
-                    className="h-14 text-base rounded-xl"
-                  />
-                </div>
-                <Button
-                  onClick={handleGenerateQuote}
-                  disabled={isGeneratingQuote || !quoteEmail}
-                  className="w-full h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-base font-medium"
-                >
-                  {isGeneratingQuote ? (
-                    <>
-                      <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent mr-3" />
-                      Generating...
-                    </>
-                  ) : (
-                    'Send Quote'
-                  )}
-                </Button>
-              </div>
+              <Button
+                variant="outline"
+                onClick={() => setIsOpen(false)}
+                className="w-full"
+              >
+                Continue Shopping
+              </Button>
             </div>
           </div>
-        </div>
+        </>
       )}
 
-      {/* Checkout Modal */}
-      <AnimatePresence>
-        {isCheckoutOpen && (
-          <Checkout
-            products={products.map(product => ({
-              id: Number(product.id),
-              title: product.title,
-              price: product.price,
-              our_price: product.our_price,
-              category: product.category,
-              quantity: product.quantity
-            }))}
-            onClose={() => setIsCheckoutOpen(false)}
-            onSubmit={handleCheckout}
-            installationPrice={installationSelected ? installationPrice : 0}
-            clearCart={clearCart || (() => {})}
-          />
-        )}
-      </AnimatePresence>
-    </>
+      {isCheckoutOpen && (
+        <Checkout
+          products={products as CheckoutProduct[]}
+          onClose={() => setIsCheckoutOpen(false)}
+          onSubmit={handleCheckout}
+          clearCart={clearCart}
+        />
+      )}
+    </div>
   )
 } 
