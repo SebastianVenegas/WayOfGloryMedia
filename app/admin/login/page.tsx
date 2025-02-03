@@ -70,7 +70,7 @@ export default function LoginPage() {
       <div className="min-h-screen bg-white flex items-center justify-center p-4">
         <div className="w-full max-w-md p-8 rounded-2xl shadow-lg space-y-8 border border-gray-100">
           <div className="text-center space-y-2">
-            <h1 className="text-4xl font-bold text-blue-600 mb-2">World Of Glory</h1>
+            <h1 className="text-4xl font-bold text-blue-600 mb-2">Way Of Glory</h1>
             <h2 className="text-2xl font-semibold text-gray-900">Welcome Back</h2>
             <p className="text-gray-600">Sign in to access the admin panel</p>
           </div>

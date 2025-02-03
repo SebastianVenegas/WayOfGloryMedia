@@ -6,6 +6,7 @@ import { SidebarProvider, useSidebar } from "@/contexts/SidebarContext"
 import { Toaster } from "sonner"
 import { cn } from "@/lib/utils"
 import { AdminPWARegister } from './pwa'
+import { useEffect } from 'react'
 
 interface AdminClientProps {
   children: React.ReactNode
@@ -15,24 +16,42 @@ function AdminContent({ children }: AdminClientProps) {
   const pathname = usePathname()
   const router = useRouter()
   const { isExpanded, toggleSidebar } = useSidebar()
+  const isLoginPage = pathname === '/admin/login'
+
+  // Check authentication on mount and route change
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const res = await fetch('/api/auth/check', {
+          credentials: 'include'
+        })
+        
+        if (!res.ok && !isLoginPage) {
+          router.push('/admin/login')
+        }
+      } catch (error) {
+        console.error('Auth check failed:', error)
+        if (!isLoginPage) {
+          router.push('/admin/login')
+        }
+      }
+    }
+
+    checkAuth()
+  }, [pathname, router, isLoginPage])
 
   const handleLogout = async () => {
     try {
-      // Call logout API
       await fetch('/api/auth/logout', {
         method: 'POST',
         credentials: 'include'
       })
       
-      // Clear any local storage
       localStorage.removeItem('auth_token')
       localStorage.removeItem('user')
-      
-      // Redirect to login
       router.push('/admin/login')
     } catch (error) {
       console.error('Logout failed:', error)
-      // Still redirect to login even if API call fails
       router.push('/admin/login')
     }
   }
@@ -40,15 +59,17 @@ function AdminContent({ children }: AdminClientProps) {
   return (
     <div className="min-h-screen bg-gray-50/50">
       <AdminPWARegister />
-      <Sidebar 
-        isExpanded={isExpanded}
-        toggleSidebar={toggleSidebar}
-        pathname={pathname}
-        handleLogout={handleLogout}
-      />
+      {!isLoginPage && (
+        <Sidebar 
+          isExpanded={isExpanded}
+          toggleSidebar={toggleSidebar}
+          pathname={pathname}
+          handleLogout={handleLogout}
+        />
+      )}
       <main className={cn(
         "relative transition-all duration-300",
-        isExpanded ? 'ml-[280px]' : 'ml-[80px]'
+        !isLoginPage && (isExpanded ? 'ml-[280px]' : 'ml-[80px]')
       )}>
         {children}
       </main>
