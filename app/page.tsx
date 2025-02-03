@@ -16,15 +16,15 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // Check if we're in PWA mode and on the correct domain
+    // Check if we're in PWA mode
     const isPWA = window.matchMedia('(display-mode: standalone)').matches
-    const isCorrectDomain = window.location.hostname === 'santi-sounds.vercel.app'
+    const isWayOfGloryMedia = window.location.hostname === 'wayofglorymedia.com'
 
-    if (isPWA && isCorrectDomain) {
-      // If in PWA mode and on correct domain, redirect to admin
+    if (isPWA && isWayOfGloryMedia) {
+      // If in PWA mode, redirect to admin
       router.replace('/admin/products')
     } else {
-      // If in browser or on wayofglorymedia.com, show the main site
+      // If in browser, show the main site
       setIsLoading(false)
     }
   }, [router])
