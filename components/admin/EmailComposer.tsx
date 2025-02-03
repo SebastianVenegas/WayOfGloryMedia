@@ -15,10 +15,46 @@ interface EmailComposerProps {
   subject?: string
 }
 
+const emailPlaceholder = `
+<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; line-height: 1.6;">
+  <p>Dear [Customer Name],</p>
+
+  <p>[Start with a warm greeting and clear purpose for the email]</p>
+
+  <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin: 16px 0;">
+    <p style="margin: 8px 0;"><strong>Key Information:</strong></p>
+    <ul style="margin: 8px 0;">
+      <li>Order details or important points</li>
+      <li>Relevant dates or deadlines</li>
+      <li>Any action items required</li>
+    </ul>
+  </div>
+
+  <p>[Additional context or instructions if needed]</p>
+
+  <p>If you have any questions or need assistance, please don't hesitate to contact us:</p>
+  <ul>
+    <li>Phone: (310) 872-9781</li>
+    <li>Email: help@wayofglory.com</li>
+  </ul>
+
+  <p>Best regards,<br>
+  Way of Glory Media Team</p>
+</div>
+`.trim();
+
+const subjectPlaceholders = [
+  "Order #[Number] Update - Way of Glory Media",
+  "Your Installation Details - Way of Glory Media",
+  "Important Information About Your Order - Way of Glory Media",
+  "Thank You for Choosing Way of Glory Media",
+  "Way of Glory Media - Service Update"
+];
+
 export default function EmailComposer({ 
   orderId, 
   onEmailSent, 
-  initialContent = '', 
+  initialContent = emailPlaceholder, 
   onContentChange,
   onSubjectChange,
   subject: externalSubject
@@ -67,8 +103,13 @@ export default function EmailComposer({
 
     setIsLoading(true)
     try {
-      // Simplify content cleaning - just remove extra whitespace
-      const cleanContent = content.replace(/\s+/g, ' ').trim();
+      // Clean and prepare the content
+      const cleanContent = content
+        .trim()
+        .replace(/\n/g, '')
+        .replace(/<p><br><\/p>/g, '<br>')
+        .replace(/<p><\/p>/g, '')
+        .replace(/\s+/g, ' ');
 
       const payload = {
         templateId: 'custom',
@@ -78,9 +119,6 @@ export default function EmailComposer({
         }
       };
 
-      // Log the payload for debugging
-      console.log('Sending email payload:', payload);
-
       const response = await fetch(`/api/admin/orders/${orderId}/send-template`, {
         method: 'POST',
         headers: {
@@ -89,13 +127,9 @@ export default function EmailComposer({
         body: JSON.stringify(payload)
       });
 
-      // Log the raw response for debugging
-      console.log('Raw response status:', response.status);
-      
       let responseData;
       try {
         const textData = await response.text();
-        console.log('Raw response text:', textData);
         responseData = JSON.parse(textData);
       } catch (parseError) {
         console.error('Error parsing response:', parseError);
@@ -113,7 +147,7 @@ export default function EmailComposer({
 
       // Reset form
       setSubject('')
-      setContent('')
+      setContent(emailPlaceholder)
       
       // Notify parent component
       if (onEmailSent) {
@@ -134,7 +168,7 @@ export default function EmailComposer({
   return (
     <div className="space-y-6 p-6 border rounded-xl bg-white shadow-sm">
       <div className="flex items-center justify-between border-b pb-4">
-        <h3 className="text-lg font-semibold text-gray-900">Compose Email</h3>
+        <h3 className="text-lg font-semibold text-gray-900">Compose Professional Email</h3>
         <div className="text-sm text-gray-500">Order #{orderId}</div>
       </div>
 
@@ -147,10 +181,13 @@ export default function EmailComposer({
             id="subject"
             value={subject}
             onChange={(e) => handleSubjectChange(e.target.value)}
-            placeholder="Enter a clear and concise subject line"
+            placeholder={subjectPlaceholders[Math.floor(Math.random() * subjectPlaceholders.length)]}
             className="w-full transition-colors focus:border-blue-500"
             disabled={isLoading}
           />
+          <p className="text-sm text-gray-500 mt-1">
+            A clear, professional subject line helps recipients understand the email's purpose
+          </p>
         </div>
 
         <div className="space-y-2">
@@ -164,23 +201,32 @@ export default function EmailComposer({
               className="min-h-[400px] prose max-w-none"
             />
           </div>
-          <p className="text-sm text-gray-500 mt-2 flex items-center">
-            <svg
-              className="w-4 h-4 mr-1.5 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-            Use the toolbar above to format your email content
-          </p>
+          <div className="text-sm text-gray-500 mt-2 space-y-2">
+            <div className="flex items-center">
+              <svg
+                className="w-4 h-4 mr-1.5 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              Professional Email Tips:
+            </div>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>Start with a clear greeting and purpose</li>
+              <li>Keep content concise and well-organized</li>
+              <li>Use professional language and tone</li>
+              <li>Include all relevant details and contact information</li>
+              <li>End with a clear call-to-action if needed</li>
+            </ul>
+          </div>
         </div>
 
         <div className="pt-4">
@@ -214,7 +260,7 @@ export default function EmailComposer({
                 Sending Email...
               </div>
             ) : (
-              'Send Email'
+              'Send Professional Email'
             )}
           </Button>
         </div>
