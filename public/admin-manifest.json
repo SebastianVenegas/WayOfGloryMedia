@@ -11,23 +11,45 @@
   "orientation": "any",
   "prefer_related_applications": false,
   "launch_handler": {
-    "client_mode": ["navigate-existing", "auto"]
+    "client_mode": ["navigate-existing", "auto"],
+    "route_to": "/admin"
   },
   "shortcuts": [
     {
       "name": "Dashboard",
       "url": "/admin",
-      "description": "Go to Dashboard"
+      "description": "Go to Dashboard",
+      "icons": [
+        {
+          "src": "/icons/admin-icon-96x96.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
     },
     {
       "name": "Products",
       "url": "/admin/products",
-      "description": "Manage Products"
+      "description": "Manage Products",
+      "icons": [
+        {
+          "src": "/icons/admin-icon-96x96.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
     },
     {
       "name": "Orders",
       "url": "/admin/orders",
-      "description": "View Orders"
+      "description": "View Orders",
+      "icons": [
+        {
+          "src": "/icons/admin-icon-96x96.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
     }
   ],
   "icons": [

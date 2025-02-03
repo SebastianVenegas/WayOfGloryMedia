@@ -1,4 +1,4 @@
-const ADMIN_CACHE_NAME = 'wog-admin-cache-v2';
+const ADMIN_CACHE_NAME = 'wog-admin-cache-v3';
 const urlsToCache = [
   '/admin',
   '/admin/products',
@@ -45,14 +45,19 @@ self.addEventListener('fetch', (event) => {
       fetch(event.request)
         .then(response => {
           if (!response || response.status !== 200) {
-            // Check if the requested URL is in our cache
+            // Try to get from cache first
             return caches.match(event.request)
               .then(cachedResponse => {
                 if (cachedResponse) {
                   return cachedResponse;
                 }
-                // If not in cache and response is not ok, redirect to products
-                return Response.redirect('/admin/products', 302);
+                // If not in cache, try the requested URL
+                const url = new URL(event.request.url);
+                if (url.pathname.startsWith('/admin')) {
+                  return caches.match('/admin')
+                    .then(response => response || Response.redirect('/admin', 302));
+                }
+                return Response.redirect('/admin', 302);
               });
           }
           return response;
@@ -64,8 +69,9 @@ self.addEventListener('fetch', (event) => {
               if (cachedResponse) {
                 return cachedResponse;
               }
-              return caches.match('/admin/products')
-                .then(response => response || Response.redirect('/admin/products', 302));
+              // If not in cache, try the dashboard
+              return caches.match('/admin')
+                .then(response => response || Response.redirect('/admin', 302));
             });
         })
     );
