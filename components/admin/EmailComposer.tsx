@@ -67,36 +67,40 @@ export default function EmailComposer({
 
     setIsLoading(true)
     try {
-      // Clean and prepare the content
-      const cleanContent = content
-        .trim()
-        .replace(/\n/g, '')
-        .replace(/<p><br><\/p>/g, '<br>')
-        .replace(/<p><\/p>/g, '')
-        .replace(/\s+/g, ' ');
+      // Simplify content cleaning - just remove extra whitespace
+      const cleanContent = content.replace(/\s+/g, ' ').trim();
 
-      // Create a simple and clean HTML structure
-      const formattedHtml = `
-        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #374151;">
-          ${cleanContent}
-        </div>
-      `.trim();
+      const payload = {
+        templateId: 'custom',
+        customEmail: {
+          subject: subject.trim(),
+          html: cleanContent
+        }
+      };
+
+      // Log the payload for debugging
+      console.log('Sending email payload:', payload);
 
       const response = await fetch(`/api/admin/orders/${orderId}/send-template`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          templateId: 'custom',
-          customEmail: {
-            subject: subject.trim(),
-            html: formattedHtml,
-          },
-        }, null, 0), // Use null and 0 to prevent JSON formatting issues
+        body: JSON.stringify(payload)
       });
 
-      const responseData = await response.json();
+      // Log the raw response for debugging
+      console.log('Raw response status:', response.status);
+      
+      let responseData;
+      try {
+        const textData = await response.text();
+        console.log('Raw response text:', textData);
+        responseData = JSON.parse(textData);
+      } catch (parseError) {
+        console.error('Error parsing response:', parseError);
+        throw new Error('Invalid response from server');
+      }
 
       if (!response.ok) {
         throw new Error(responseData.error || 'Failed to send email');
