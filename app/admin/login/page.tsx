@@ -1,50 +1,75 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
-import { Lock, Mail } from 'lucide-react'
+import { Lock, Mail, Loader2 } from 'lucide-react'
+import { useToast } from "@/components/ui/use-toast"
 
 export default function LoginPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { toast } = useToast()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [showInstallPrompt, setShowInstallPrompt] = useState(false)
 
-  async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
+  // Check if we're in PWA mode
+  const isPWA = searchParams.get('pwa') === 'true'
+
+  useEffect(() => {
+    // Check if we can install the PWA
+    const checkInstallable = async () => {
+      if ('getInstalledRelatedApps' in navigator) {
+        const relatedApps = await (navigator as any).getInstalledRelatedApps()
+        if (relatedApps.length === 0) {
+          setShowInstallPrompt(true)
+        }
+      }
+    }
+
+    if (isPWA) {
+      checkInstallable()
+    }
+  }, [isPWA])
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
     setIsLoading(true)
 
     try {
-      const formData = new FormData(event.currentTarget)
-      const email = formData.get('email')
-      const password = formData.get('password')
-
-      const response = await fetch('/api/auth/login', {
+      const res = await fetch('/api/auth/login', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
       })
 
-      const data = await response.json()
-
-      if (response.ok && data.success) {
-        toast.success('Logged in successfully')
-        
-        // Get the redirect URL from searchParams or default to /admin/products
-        const from = searchParams.get('from')
-        window.location.href = from || '/admin/products'
-      } else {
-        toast.error(data.error || 'Invalid credentials')
+      if (!res.ok) {
+        throw new Error('Login failed')
       }
+
+      // If we're in PWA mode and need to install
+      if (isPWA && showInstallPrompt) {
+        toast({
+          title: "Install Admin Dashboard",
+          description: "Please add this page to your home screen for secure access.",
+          duration: 5000,
+        })
+        return
+      }
+
+      // Otherwise redirect to products page
+      router.push('/admin/products')
     } catch (error) {
-      console.error('Login error:', error)
-      toast.error('An error occurred while logging in')
+      toast({
+        title: "Error",
+        description: "Invalid email or password",
+        variant: "destructive",
+      })
     } finally {
       setIsLoading(false)
     }
@@ -59,7 +84,7 @@ export default function LoginPage() {
           <p className="text-gray-600">Sign in to access the admin panel</p>
         </div>
 
-        <form onSubmit={onSubmit} className="space-y-6">
+        <form onSubmit={handleLogin} className="space-y-6">
           <div className="space-y-2">
             <Label htmlFor="email" className="text-gray-700 font-medium">Email</Label>
             <div className="relative">
@@ -72,6 +97,8 @@ export default function LoginPage() {
                 type="email"
                 disabled={isLoading}
                 className="pl-10 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
               />
             </div>
           </div>
@@ -88,6 +115,8 @@ export default function LoginPage() {
                 type="password"
                 disabled={isLoading}
                 className="pl-10 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
               />
             </div>
           </div>
@@ -99,7 +128,7 @@ export default function LoginPage() {
           >
             {isLoading ? (
               <div className="flex items-center justify-center">
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
                 Signing in...
               </div>
             ) : (
@@ -111,6 +140,12 @@ export default function LoginPage() {
         <div className="text-center text-sm text-gray-500">
           <p>Protected by World Of Glory Admin</p>
         </div>
+
+        {showInstallPrompt && (
+          <div className="mt-4 text-center text-sm text-gray-600">
+            <p>Please add this page to your home screen after logging in for secure access.</p>
+          </div>
+        )}
       </div>
     </div>
   )

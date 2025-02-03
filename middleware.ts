@@ -28,75 +28,47 @@ async function verifyToken(token: string) {
 }
 
 export async function middleware(request: NextRequest) {
-  // Check if it's a PWA by looking for display-mode header
+  const pathname = request.nextUrl.pathname
+
+  // Check if it's a PWA request
   const isPWA = request.headers.get('sec-fetch-mode') === 'navigate' && 
                 request.headers.get('sec-fetch-dest') === 'document' &&
                 request.headers.get('sec-fetch-site') === 'none'
 
-  // Get the pathname
-  const pathname = request.nextUrl.pathname
-
-  // If it's a PWA request to /admin, redirect to /admin/products
-  if (isPWA && pathname === '/admin') {
-    return NextResponse.redirect(new URL('/admin/products', request.url))
-  }
-
-  // Define protected paths
-  const isAdminPath = pathname.startsWith('/admin') && pathname !== '/admin/login'
-  const isProtectedApiPath = pathname.startsWith('/api/admin')
-  const isAuthCheck = pathname === '/api/auth/check'
-
-  // Skip middleware for OPTIONS requests
-  if (request.method === 'OPTIONS') {
-    return NextResponse.next()
-  }
-
   // Get token from cookie
   const token = request.cookies.get('auth_token')?.value
 
-  // Handle auth check endpoint
-  if (isAuthCheck) {
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const isValidToken = await verifyToken(token)
-    if (!isValidToken) {
-      const response = NextResponse.json({ error: 'Invalid token' }, { status: 401 })
-      response.cookies.delete('auth_token')
-      return response
-    }
-
-    return NextResponse.next()
-  }
-
-  // Handle protected paths
-  if (isAdminPath || isProtectedApiPath) {
-    if (!token) {
-      if (isProtectedApiPath) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-      }
-      // Redirect to login for admin pages
+  // If no token and trying to access admin routes (except login)
+  if (!token && pathname.startsWith('/admin') && pathname !== '/admin/login') {
+    // If it's a PWA request, redirect to login with PWA flag
+    if (isPWA) {
       const loginUrl = new URL('/admin/login', request.url)
-      loginUrl.searchParams.set('from', request.nextUrl.pathname)
+      loginUrl.searchParams.set('pwa', 'true')
       return NextResponse.redirect(loginUrl)
     }
+    // Otherwise, regular login redirect
+    const loginUrl = new URL('/admin/login', request.url)
+    loginUrl.searchParams.set('from', pathname)
+    return NextResponse.redirect(loginUrl)
+  }
 
+  // If we have a token, verify it
+  if (token) {
     const isValidToken = await verifyToken(token)
     if (!isValidToken) {
-      const response = isProtectedApiPath
-        ? NextResponse.json({ error: 'Invalid token' }, { status: 401 })
-        : NextResponse.redirect(new URL('/admin/login', request.url))
-      
+      const response = NextResponse.redirect(new URL('/admin/login', request.url))
       response.cookies.delete('auth_token')
       return response
     }
 
-    // Clone the response to add headers
-    const response = NextResponse.next()
-    
+    // If it's a valid token and a PWA request to /admin, redirect to products
+    if (isPWA && pathname === '/admin') {
+      return NextResponse.redirect(new URL('/admin/products', request.url))
+    }
+
     // Set persistent cookie with 3-hour expiration
-    const threeHours = 60 * 60 * 3 // 3 hours in seconds
+    const threeHours = 60 * 60 * 3
+    const response = NextResponse.next()
     response.cookies.set({
       name: 'auth_token',
       value: token,
@@ -111,14 +83,10 @@ export async function middleware(request: NextRequest) {
     return response
   }
 
+  // For all other requests
   return NextResponse.next()
 }
 
-// Configure the paths that middleware will run on
 export const config = {
-  matcher: [
-    '/admin/:path*',
-    '/api/admin/:path*', 
-    '/api/auth/check'
-  ]
+  matcher: ['/admin/:path*']
 } 
