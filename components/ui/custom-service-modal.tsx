@@ -2,12 +2,48 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Package, FileText, X, ArrowRight, DollarSign, Wand2, Edit, Eye, Plus } from "lucide-react"
+import { Package, FileText, X, ArrowRight, DollarSign, Wand2, Edit, Eye, Plus, Mic, MicOff } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/components/ui/use-toast"
+
+interface SpeechRecognitionErrorEvent extends Event {
+  error: string;
+}
+
+interface SpeechRecognitionEvent extends Event {
+  results: {
+    item(index: number): {
+      item(index: number): {
+        transcript: string;
+      };
+    };
+    length: number;
+  };
+}
+
+interface SpeechRecognition extends EventTarget {
+  continuous: boolean;
+  interimResults: boolean;
+  onresult: (event: SpeechRecognitionEvent) => void;
+  onerror: (event: SpeechRecognitionErrorEvent) => void;
+  onend: () => void;
+  start: () => void;
+  stop: () => void;
+}
+
+declare global {
+  interface Window {
+    SpeechRecognition: {
+      new(): SpeechRecognition;
+    };
+    webkitSpeechRecognition: {
+      new(): SpeechRecognition;
+    };
+  }
+}
 
 interface CustomServiceModalProps {
   isOpen: boolean
@@ -40,6 +76,8 @@ export default function CustomServiceModal({ isOpen, onClose, onSave }: CustomSe
   const [isGenerating, setIsGenerating] = useState(false)
   const [isImproving, setIsImproving] = useState(false)
   const [aiPrompt, setAiPrompt] = useState('')
+  const [isRecording, setIsRecording] = useState(false)
+  const [recognition, setRecognition] = useState<SpeechRecognition | null>(null)
   const { toast } = useToast()
   
   const [formData, setFormData] = useState<CustomService>({
@@ -49,6 +87,69 @@ export default function CustomServiceModal({ isOpen, onClose, onSave }: CustomSe
     features: [""],
     category: "Services"
   })
+
+  useEffect(() => {
+    // Initialize speech recognition
+    if (typeof window !== 'undefined' && 'SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+      const recognition = new SpeechRecognition()
+      recognition.continuous = true
+      recognition.interimResults = true
+      
+      recognition.onresult = (event: SpeechRecognitionEvent) => {
+        let transcript = ''
+        for (let i = 0; i < event.results.length; i++) {
+          transcript += event.results.item(i).item(0).transcript
+        }
+        setAiPrompt(transcript)
+      }
+
+      recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+        console.error('Speech recognition error:', event.error)
+        setIsRecording(false)
+        toast({
+          title: "Voice Input Error",
+          description: "There was an error with voice input. Please try again.",
+          variant: "destructive",
+        })
+      }
+
+      recognition.onend = () => {
+        setIsRecording(false)
+      }
+
+      setRecognition(recognition)
+    }
+
+    return () => {
+      if (recognition) {
+        recognition.stop()
+      }
+    }
+  }, [toast])
+
+  const toggleRecording = () => {
+    if (!recognition) {
+      toast({
+        title: "Not Supported",
+        description: "Voice input is not supported in your browser.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (isRecording) {
+      recognition.stop()
+      setIsRecording(false)
+    } else {
+      recognition.start()
+      setIsRecording(true)
+      toast({
+        title: "Recording Started",
+        description: "Speak to describe the service you want to create.",
+      })
+    }
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -258,12 +359,30 @@ export default function CustomServiceModal({ isOpen, onClose, onSave }: CustomSe
                       <label className="text-sm font-medium text-gray-700">
                         Describe your ideal service
                       </label>
-                      <Textarea
-                        value={aiPrompt}
-                        onChange={(e) => setAiPrompt(e.target.value)}
-                        placeholder="E.g., Create a professional audio setup service for small venues, including equipment selection, installation, and sound optimization..."
-                        className="min-h-[120px] rounded-xl border-gray-200 focus:ring-blue-500 focus:border-blue-500 resize-none"
-                      />
+                      <div className="relative">
+                        <Textarea
+                          value={aiPrompt}
+                          onChange={(e) => setAiPrompt(e.target.value)}
+                          placeholder="E.g., Create a professional audio setup service for small venues, including equipment selection, installation, and sound optimization..."
+                          className="min-h-[120px] rounded-xl border-gray-200 focus:ring-blue-500 focus:border-blue-500 resize-none pr-12"
+                        />
+                        <Button
+                          type="button"
+                          onClick={toggleRecording}
+                          className={cn(
+                            "absolute right-2 top-2 p-2 rounded-lg",
+                            isRecording 
+                              ? "bg-red-100 text-red-600 hover:bg-red-200" 
+                              : "bg-blue-50 text-blue-600 hover:bg-blue-100"
+                          )}
+                        >
+                          {isRecording ? (
+                            <MicOff className="h-4 w-4" />
+                          ) : (
+                            <Mic className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
                     </div>
                     <Button
                       onClick={handleGenerateService}
