@@ -706,444 +706,364 @@ export default function ProductsPage() {
   return (
     <div className="min-h-screen bg-gray-50/50">
       {/* Dynamic Header */}
-      <motion.div
-        initial={false}
-        animate={{ 
-          left: isExpanded ? '288px' : '80px'
-        }}
-        transition={{
-          duration: 0.3,
-          ease: [0.4, 0, 0.2, 1]
-        }}
-        className={cn(
-          "fixed top-0 right-0 z-[60]",
-          isScrolled ? "bg-white/90 backdrop-blur-xl shadow-sm" : "bg-white"
-        )}
-      >
-        <div className="max-w-[2000px] mx-auto">
-          {/* Main Header */}
-          <div className="h-20 px-4 sm:px-6 lg:px-8 flex items-center gap-4 sm:gap-6 lg:gap-8">
-            {/* Left side - Search */}
-            <motion.div 
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="w-full max-w-[240px] sm:max-w-[320px] relative group"
-            >
-              <Search className="h-5 w-5 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2 transition-colors group-focus-within:text-blue-500" />
-              <Input
-                type="text"
-                placeholder="Search..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-12 h-12 bg-gray-50/80 border-0 ring-1 ring-gray-200 focus-visible:ring-2 focus-visible:ring-blue-500 transition-all duration-200 rounded-xl text-base"
-              />
-              {searchQuery && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 h-8 w-8 text-gray-400 hover:text-gray-600"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              )}
-            </motion.div>
-
-            {/* Center - Categories */}
-            <div className="flex-1 flex items-center justify-center overflow-x-auto scrollbar-hide">
-              <motion.div 
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex items-center bg-gray-100/80 backdrop-blur-sm rounded-xl p-1.5 shadow-sm"
-              >
-                <AnimatePresence mode="wait">
-                  {['all', 'Audio Gear', 'Streaming Gear', 'Services'].map((category) => (
-                    <motion.div key={category} className="relative">
-                      <Button
-                        variant={selectedCategory === category ? 'default' : 'ghost'}
-                        onClick={() => setSelectedCategory(category)}
-                        className={cn(
-                          "h-8 px-2 sm:px-4 text-xs sm:text-sm font-medium rounded-lg transition-all duration-200 relative whitespace-nowrap",
-                          selectedCategory === category 
-                            ? "bg-blue-50 text-blue-500" 
-                            : "text-gray-600 hover:text-blue-500 hover:bg-blue-50/50"
-                        )}
-                      >
-                        {category === 'all' ? 'All' : category.replace(' Gear', '')}
-                      </Button>
-                      {selectedCategory === category && (
-                        <motion.div
-                          layoutId="activeCategory"
-                          className="absolute inset-0 bg-white rounded-lg shadow-sm -z-10"
-                          transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                        />
-                      )}
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-              </motion.div>
-            </div>
-
-            {/* Right side - View options and Bundle */}
-            <motion.div 
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="flex items-center gap-3 sm:gap-4"
-            >
+      <div className={cn(
+        "sticky top-0 z-[150] bg-white/80 backdrop-blur-md border-b border-gray-200",
+        isCheckoutOpen && "bg-white/60 backdrop-blur-lg"
+      )}>
+        <div className="flex h-20 items-center justify-between gap-4 px-6">
+          {/* Left side - Search */}
+          <div className="w-full max-w-[320px] relative group">
+            <Search className="h-5 w-5 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2 transition-colors group-focus-within:text-blue-500" />
+            <Input
+              type="text"
+              placeholder="Search..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-12 h-12 bg-gray-50/80 border-0 ring-1 ring-gray-200 focus-visible:ring-2 focus-visible:ring-blue-500 transition-all duration-200 rounded-xl text-base"
+            />
+            {searchQuery && (
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => setIsListView(!isListView)}
-                className="h-12 w-12 text-gray-500 hover:text-gray-900 rounded-xl"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 h-8 w-8 text-gray-400 hover:text-gray-600"
               >
-                <motion.div
-                  initial={false}
-                  animate={{ rotate: isListView ? 0 : 180 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  {isListView ? <LayoutGrid className="h-5 w-5" /> : <List className="h-5 w-5" />}
-                </motion.div>
+                <X className="h-4 w-4" />
               </Button>
-
-              {/* Bundle Button */}
-              <Button
-                variant="default"
-                onClick={() => setIsCartOpen(!isCartOpen)}
-                className={cn(
-                  "h-12 px-5 bg-blue-500 hover:bg-blue-600 text-white flex items-center gap-3 rounded-xl transition-all duration-200",
-                  bundleItems.length > 0 && "ring-2 ring-blue-200"
-                )}
-              >
-                <ShoppingBag className="h-5 w-5" />
-                <span className="hidden sm:inline text-base">Bundle</span>
-                {bundleItems.length > 0 && (
-                  <motion.div
-                    initial={{ scale: 0.5 }}
-                    animate={{ scale: 1 }}
-                    className="bg-white text-blue-500 rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold"
-                  >
-                    {bundleItems.reduce((sum, item) => sum + item.quantity, 0)}
-                  </motion.div>
-                )}
-              </Button>
-            </motion.div>
+            )}
           </div>
-        </div>
-      </motion.div>
 
-      {/* Main Content with Bundle */}
-      <motion.div 
-        initial={false}
-        animate={{ 
-          marginLeft: isExpanded ? '288px' : '80px'
-        }}
-        transition={{
-          duration: 0.3,
-          ease: [0.4, 0, 0.2, 1]
-        }}
-        className="flex flex-1 min-h-[calc(100vh-80px)] pt-20 overflow-x-hidden"
-      >
-        {/* Products Section */}
-        <motion.div
-          layout
-          className={cn(
-            "flex-1 min-w-0 relative overflow-x-hidden",
-            isCartOpen && "mr-[450px]"
-          )}
-          transition={{
-            type: "spring",
-            stiffness: 300,
-            damping: 30
-          }}
-        >
-          {/* Subcategories Bar */}
-          {selectedCategory.startsWith('Audio Gear') && (
-            <div className="sticky top-20 z-[55] bg-white/95 backdrop-blur-sm border-b border-gray-200 shadow-sm">
-              <div className="px-2 sm:px-4 lg:px-8">
-                <div className="flex items-center -mb-px overflow-x-auto scrollbar-hide py-2">
-                  <Button
-                    variant="ghost"
-                    onClick={() => setSelectedCategory('Audio Gear')}
-                    className={cn(
-                      "px-3 sm:px-4 h-9 text-xs sm:text-sm font-medium rounded-lg transition-all whitespace-nowrap",
-                      selectedCategory === 'Audio Gear'
-                        ? "bg-blue-50 text-blue-500"
-                        : "text-gray-600 hover:text-blue-500 hover:bg-blue-50/50"
-                    )}
-                  >
-                    All Audio
-                  </Button>
-                  {CATEGORIES['Audio Gear'].subcategories.map((subcat) => (
+          {/* Center - Categories */}
+          <div className="flex-1 flex items-center justify-center overflow-x-auto scrollbar-hide">
+            <div className="flex items-center bg-gray-100/80 backdrop-blur-sm rounded-xl p-1.5 shadow-sm">
+              <AnimatePresence mode="wait">
+                {['all', 'Audio Gear', 'Streaming Gear', 'Services'].map((category) => (
+                  <motion.div key={category} className="relative">
                     <Button
-                      key={subcat.path}
-                      variant="ghost"
-                      onClick={() => setSelectedCategory(subcat.path)}
+                      variant={selectedCategory === category ? 'default' : 'ghost'}
+                      onClick={() => setSelectedCategory(category)}
                       className={cn(
-                        "px-3 sm:px-4 h-9 text-xs sm:text-sm font-medium rounded-lg transition-all whitespace-nowrap ml-2",
-                        selectedCategory === subcat.path 
+                        "h-8 px-2 sm:px-4 text-xs sm:text-sm font-medium rounded-lg transition-all duration-200 relative whitespace-nowrap",
+                        selectedCategory === category 
                           ? "bg-blue-50 text-blue-500" 
                           : "text-gray-600 hover:text-blue-500 hover:bg-blue-50/50"
                       )}
                     >
-                      {subcat.name}
+                      {category === 'all' ? 'All' : category.replace(' Gear', '')}
                     </Button>
-                  ))}
-                </div>
-              </div>
+                    {selectedCategory === category && (
+                      <motion.div
+                        layoutId="activeCategory"
+                        className="absolute inset-0 bg-white rounded-lg shadow-sm -z-10"
+                        transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                      />
+                    )}
+                  </motion.div>
+                ))}
+              </AnimatePresence>
             </div>
-          )}
+          </div>
 
-          {/* Products Container with Independent Scroll */}
-          <div className={cn(
-            "h-[calc(100vh-80px)] overflow-y-auto overflow-x-hidden",
-            selectedCategory.startsWith('Audio Gear') && "h-[calc(100vh-133px)]" // Adjust for subcategories bar
-          )}>
-            {/* Header */}
-            <div className="flex items-center justify-between mb-4 sm:mb-8 px-6 sm:px-12 pt-4 sm:pt-6 max-w-[2000px] mx-auto">
-              <div>
-                <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">Products</h1>
-                <p className="mt-1 text-xs sm:text-sm text-gray-500">
-                  Showing {indexOfFirstProduct + 1}-{Math.min(indexOfLastProduct, filteredProducts.length)} of {filteredProducts.length} products
-                </p>
-              </div>
-              {selectedCategory === 'Services' && (
-                <Button
-                  onClick={() => setShowCustomServiceModal(true)}
-                  className="bg-blue-500 hover:bg-blue-600 text-white"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create Custom Service
-                </Button>
+          {/* Right side - View options and Bundle */}
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsListView(!isListView)}
+              className="h-12 w-12 text-gray-500 hover:text-gray-900 rounded-xl"
+            >
+              <motion.div
+                initial={false}
+                animate={{ rotate: isListView ? 0 : 180 }}
+                transition={{ duration: 0.3 }}
+              >
+                {isListView ? <LayoutGrid className="h-5 w-5" /> : <List className="h-5 w-5" />}
+              </motion.div>
+            </Button>
+
+            {/* Bundle Button */}
+            <Button
+              variant="default"
+              onClick={() => setIsCartOpen(!isCartOpen)}
+              className={cn(
+                "h-12 px-5 bg-blue-500 hover:bg-blue-600 text-white flex items-center gap-3 rounded-xl transition-all duration-200",
+                bundleItems.length > 0 && "ring-2 ring-blue-200"
               )}
-            </div>
-
-            {/* Products Grid/List */}
-            <div className="max-w-[2000px] mx-auto px-6 sm:px-12 pb-8">
-              {/* No Results */}
-              {filteredProducts.length === 0 && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="text-center py-12 bg-white rounded-xl shadow-sm border border-gray-200"
+            >
+              <ShoppingBag className="h-5 w-5" />
+              <span className="hidden sm:inline text-base">Bundle</span>
+              {bundleItems.length > 0 && (
+                <motion.div
+                  initial={{ scale: 0.5 }}
+                  animate={{ scale: 1 }}
+                  className="bg-white text-blue-500 rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold"
                 >
-                  <div className="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center">
-                    <Package className="h-8 w-8 text-gray-400" />
-                  </div>
-                  <h3 className="mt-4 text-lg font-medium text-gray-900">No products found</h3>
-                  <p className="mt-1 text-sm text-gray-500 max-w-sm mx-auto">
-                    Try adjusting your search or filter to find what you're looking for.
-                  </p>
+                  {bundleItems.reduce((sum, item) => sum + item.quantity, 0)}
                 </motion.div>
               )}
+            </Button>
+          </div>
+        </div>
 
-              {/* Product Grid/List View */}
-              <motion.div 
-                variants={containerVariants}
-                initial="hidden"
-                animate="show"
-                className={cn(
-                  isListView 
-                    ? "flex flex-col gap-4"
-                    : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 sm:gap-6",
-                  isCartOpen && "xl:grid-cols-3 2xl:grid-cols-4"
-                )}
-              >
-                {currentProducts.map((product) => (
-                  product.category === 'Services' ? (
-                    <ServiceCard
-                      key={product.id}
-                      service={product}
-                      onSelect={handleProductClick}
-                    />
-                  ) : (
-                    <motion.div
-                      key={product.id}
-                      variants={itemVariants}
-                      className={cn(
-                        "group relative bg-white rounded-lg border border-gray-200 hover:border-blue-500/20 hover:shadow-lg transition-all duration-300",
-                        isListView ? "flex gap-4 p-4" : ""
-                      )}
-                    >
-                      <div 
+        {/* Subcategories Bar */}
+        {selectedCategory.startsWith('Audio Gear') && (
+          <div className="border-t border-gray-200 bg-white/60">
+            <div className="px-6">
+              <div className="flex items-center -mb-px overflow-x-auto scrollbar-hide py-2">
+                <Button
+                  variant="ghost"
+                  onClick={() => setSelectedCategory('Audio Gear')}
+                  className={cn(
+                    "px-3 sm:px-4 h-9 text-xs sm:text-sm font-medium rounded-lg transition-all whitespace-nowrap",
+                    selectedCategory === 'Audio Gear'
+                      ? "bg-blue-50 text-blue-500"
+                      : "text-gray-600 hover:text-blue-500 hover:bg-blue-50/50"
+                  )}
+                >
+                  All Audio
+                </Button>
+                {CATEGORIES['Audio Gear'].subcategories.map((subcat) => (
+                  <Button
+                    key={subcat.path}
+                    variant="ghost"
+                    onClick={() => setSelectedCategory(subcat.path)}
+                    className={cn(
+                      "px-3 sm:px-4 h-9 text-xs sm:text-sm font-medium rounded-lg transition-all whitespace-nowrap ml-2",
+                      selectedCategory === subcat.path 
+                        ? "bg-blue-50 text-blue-500" 
+                        : "text-gray-600 hover:text-blue-500 hover:bg-blue-50/50"
+                    )}
+                  >
+                    {subcat.name}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Main Content with Cart */}
+      <div className="flex min-h-[calc(100vh-5rem)]">
+        {/* Products Grid */}
+        <motion.div 
+          data-main-content
+          layout
+          className={cn(
+            "flex-1 p-6 transition-all duration-300",
+            isCartOpen ? "mr-[350px]" : ""
+          )}
+        >
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            animate="show"
+            layout
+            className={cn(
+              "grid gap-4 transition-all duration-300",
+              isListView 
+                ? 'grid-cols-1' 
+                : isCartOpen
+                  ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+                  : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5'
+            )}
+          >
+            {currentProducts.map((product) => (
+              product.category === 'Services' ? (
+                <ServiceCard
+                  key={product.id}
+                  service={product}
+                  onSelect={handleProductClick}
+                />
+              ) : (
+                <motion.div
+                  key={product.id}
+                  variants={itemVariants}
+                  className={cn(
+                    "group relative bg-white rounded-lg border border-gray-200 hover:border-blue-500/20 hover:shadow-lg transition-all duration-300 flex flex-col",
+                    isListView ? "flex-row gap-4 p-4" : ""
+                  )}
+                >
+                  <div 
+                    className={cn(
+                      "relative bg-white overflow-hidden cursor-pointer rounded-lg",
+                      isListView ? "h-24 w-24 flex-shrink-0" : "aspect-square w-full"
+                    )}
+                    onClick={() => handleProductClick(product)}
+                  >
+                    {(() => {
+                      const key = getProductImageKey(product.title);
+                      const images = productImages[key as keyof typeof productImages];
+                      if (images && images.length > 0) {
+                        return (
+                          <div className="absolute inset-0 flex items-center justify-center bg-white">
+                            <Image
+                              src={images[0]}
+                              alt={product.title}
+                              fill
+                              className="object-contain p-2"
+                              sizes="80px"
+                            />
+                          </div>
+                        );
+                      }
+                      return (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <Package className="h-8 w-8 text-gray-400" />
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  <div className={cn(
+                    isListView ? "flex-1 py-1" : "p-4"
+                  )}>
+                    <div className="flex items-start justify-between gap-4">
+                      <h3 
                         className={cn(
-                          "relative bg-white overflow-hidden cursor-pointer rounded-lg",
-                          isListView ? "h-24 w-24 flex-shrink-0" : "aspect-square"
+                          "font-medium text-gray-900 group-hover:text-blue-600 transition-colors cursor-pointer",
+                          isListView ? "text-sm line-clamp-1" : "text-base line-clamp-2"
                         )}
                         onClick={() => handleProductClick(product)}
                       >
-                        {(() => {
-                          const key = getProductImageKey(product.title);
-                          const images = productImages[key as keyof typeof productImages];
-                          if (images && images.length > 0) {
-                            return (
-                              <div className="absolute inset-0 flex items-center justify-center bg-white">
-                                <Image
-                                  src={images[0]}
-                                  alt={product.title}
-                                  fill
-                                  className="object-contain p-2"
-                                  sizes="80px"
-                                />
-                              </div>
-                            );
-                          }
-                          return (
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <Package className="h-8 w-8 text-gray-400" />
-                            </div>
-                          );
-                        })()}
-                      </div>
-
-                      <div className={cn(
-                        isListView ? "flex-1 py-1" : "p-4"
-                      )}>
-                        <div className="flex items-start justify-between gap-4">
-                          <h3 
-                            className={cn(
-                              "font-medium text-gray-900 group-hover:text-blue-600 transition-colors cursor-pointer",
-                              isListView ? "text-sm line-clamp-1" : "text-base line-clamp-2"
-                            )}
-                            onClick={() => handleProductClick(product)}
-                          >
-                            {product.title}
-                          </h3>
-                          <div className="flex flex-col items-end">
-                            <span className={cn(
-                              "font-semibold text-blue-600 whitespace-nowrap",
-                              isListView ? "text-sm" : "text-base"
-                            )}>
-                              ${(product.our_price || product.price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </span>
-                          </div>
-                        </div>
-                        
-                        {!isListView && (
-                          <p className="mt-2 text-sm text-gray-600 line-clamp-2">
-                            {product.description}
-                          </p>
-                        )}
-
-                        {!isListView && product.features && product.features.length > 0 && (
-                          <div className="mt-3">
-                            <h4 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Key Features</h4>
-                            <ul className="space-y-1.5">
-                              {product.features.slice(0, 2).map((feature, i) => (
-                                <li key={i} className="text-xs text-gray-600 flex items-center">
-                                  <span className="w-1 h-1 rounded-full bg-blue-600/80 mr-1.5 flex-shrink-0" />
-                                  <span className="line-clamp-1">{feature}</span>
-                                </li>
-                              ))}
-                            </ul>
-                            {product.features.length > 2 && (
-                              <button 
-                                onClick={() => handleProductClick(product)}
-                                className="mt-1 text-xs text-blue-600 hover:text-blue-700 cursor-pointer flex items-center gap-1 group/btn"
-                              >
-                                +{product.features.length - 2} more features
-                                <ChevronRight className="w-3 h-3 group-hover/btn:translate-x-0.5 transition-transform" />
-                              </button>
-                            )}
-                          </div>
-                        )}
-
-                        <div className={cn(
-                          isListView 
-                            ? "flex items-center justify-between mt-2" 
-                            : "mt-3 pt-3 border-t border-gray-100 flex items-center justify-between"
+                        {product.title}
+                      </h3>
+                      <div className="flex flex-col items-end">
+                        <span className={cn(
+                          "font-semibold text-blue-600 whitespace-nowrap",
+                          isListView ? "text-sm" : "text-base"
                         )}>
-                          <span className="px-2.5 py-1 bg-gray-50 text-gray-600 rounded-md text-xs font-medium border border-gray-100">
-                            {product.category.split('/')[1] || product.category}
-                          </span>
-                          <div className="flex items-center gap-2">
-                            <div className="flex items-center gap-1 bg-gray-50 rounded-lg p-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleCardQuantityChange(product.id, -1);
-                                }}
-                                disabled={!cardQuantities[product.id] || cardQuantities[product.id] <= 1}
-                                className="h-6 w-6"
-                              >
-                                <Minus className="h-3 w-3" />
-                              </Button>
-                              <span className="w-6 text-center text-sm font-medium">
-                                {cardQuantities[product.id] || 1}
-                              </span>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleCardQuantityChange(product.id, 1);
-                                }}
-                                className="h-6 w-6"
-                              >
-                                <Plus className="h-3 w-3" />
-                              </Button>
-                            </div>
+                          ${(product.our_price || product.price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    {!isListView && (
+                      <p className="mt-2 text-sm text-gray-600 line-clamp-2">
+                        {product.description}
+                      </p>
+                    )}
+
+                    {!isListView && product.features && product.features.length > 0 && (
+                      <div className="mt-3">
+                        <h4 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Key Features</h4>
+                        <ul className="space-y-1.5">
+                          {product.features.slice(0, 2).map((feature, i) => (
+                            <li key={i} className="text-xs text-gray-600 flex items-center">
+                              <span className="w-1 h-1 rounded-full bg-blue-600/80 mr-1.5 flex-shrink-0" />
+                              <span className="line-clamp-1">{feature}</span>
+                            </li>
+                          ))}
+                        </ul>
+                        {product.features.length > 2 && (
+                          <button 
+                            onClick={() => handleProductClick(product)}
+                            className="mt-1 text-xs text-blue-600 hover:text-blue-700 cursor-pointer flex items-center gap-1 group/btn"
+                          >
+                            +{product.features.length - 2} more features
+                            <ChevronRight className="w-3 h-3 group-hover/btn:translate-x-0.5 transition-transform" />
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    <div className={cn(
+                      isListView 
+                        ? "flex items-center justify-between mt-2" 
+                        : "mt-3 pt-3 border-t border-gray-100"
+                    )}>
+                      <div className="flex items-center justify-between w-full flex-wrap gap-2">
+                        <span className="px-2.5 py-1 bg-gray-50 text-gray-600 rounded-md text-xs font-medium border border-gray-100 shrink-0">
+                          {product.category.split('/')[1] || product.category}
+                        </span>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <div className="flex items-center gap-1 bg-gray-50 rounded-lg p-1">
                             <Button
                               variant="ghost"
-                              size="sm"
+                              size="icon"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleAddToBundle(product);
+                                handleCardQuantityChange(product.id, -1);
                               }}
-                              className="text-blue-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg font-medium"
+                              disabled={!cardQuantities[product.id] || cardQuantities[product.id] <= 1}
+                              className="h-6 w-6 shrink-0"
                             >
-                              <span className="flex items-center gap-1">
-                                <span>Add</span>
-                                <Plus className="h-3 w-3" />
-                              </span>
+                              <Minus className="h-3 w-3" />
+                            </Button>
+                            <span className="w-6 text-center text-sm font-medium">
+                              {cardQuantities[product.id] || 1}
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCardQuantityChange(product.id, 1);
+                              }}
+                              className="h-6 w-6 shrink-0"
+                            >
+                              <Plus className="h-3 w-3" />
                             </Button>
                           </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleAddToBundle(product);
+                            }}
+                            className="text-blue-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg font-medium h-8 px-3 shrink-0"
+                          >
+                            <span className="flex items-center gap-1 whitespace-nowrap">
+                              <span>Add</span>
+                              <Plus className="h-3 w-3" />
+                            </span>
+                          </Button>
                         </div>
                       </div>
-                    </motion.div>
-                  )
-                ))}
-              </motion.div>
-            </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )
+            ))}
+          </motion.div>
 
-            {/* Pagination */}
-            <div className="flex justify-center pb-8 px-4 max-w-[2000px] mx-auto">
-              <div className="flex items-center gap-2">
+          {/* Pagination */}
+          <div className="flex justify-center mt-8 pb-6">
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className="h-8 w-8 sm:h-9 sm:w-9 transition-all hover:scale-105 hover:border-blue-400"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                 <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                  disabled={currentPage === 1}
-                  className="h-8 w-8 sm:h-9 sm:w-9 transition-all hover:scale-105 hover:border-blue-400"
+                  key={page}
+                  variant={currentPage === page ? "default" : "outline"}
+                  onClick={() => setCurrentPage(page)}
+                  className={cn(
+                    "h-8 w-8 sm:h-9 sm:w-9 transition-all text-sm",
+                    currentPage === page 
+                      ? "bg-blue-500 hover:bg-blue-600 shadow-md hover:shadow-lg transform hover:scale-105 text-white" 
+                      : "hover:border-blue-300 hover:scale-105 text-gray-600"
+                  )}
                 >
-                  <ChevronLeft className="h-4 w-4" />
+                  {page}
                 </Button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                  <Button
-                    key={page}
-                    variant={currentPage === page ? "default" : "outline"}
-                    onClick={() => setCurrentPage(page)}
-                    className={cn(
-                      "h-8 w-8 sm:h-9 sm:w-9 transition-all text-sm",
-                      currentPage === page 
-                        ? "bg-blue-500 hover:bg-blue-600 shadow-md hover:shadow-lg transform hover:scale-105 text-white" 
-                        : "hover:border-blue-300 hover:scale-105 text-gray-600"
-                    )}
-                  >
-                    {page}
-                  </Button>
-                ))}
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                  disabled={currentPage === totalPages}
-                  className="h-8 w-8 sm:h-9 sm:w-9 transition-all hover:scale-105 hover:border-blue-400"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
+              ))}
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+                className="h-8 w-8 sm:h-9 sm:w-9 transition-all hover:scale-105 hover:border-blue-400"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
             </div>
           </div>
         </motion.div>
@@ -1152,17 +1072,54 @@ export default function ProductsPage() {
         <AnimatePresence mode="wait">
           {isCartOpen && (
             <motion.div
-              initial={{ x: 450, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: 450, opacity: 0 }}
-              transition={{
-                type: "spring",
-                stiffness: 300,
-                damping: 30,
-                mass: 0.8
+              initial={{ width: 0, opacity: 0 }}
+              animate={{ 
+                width: 350,
+                opacity: 1,
+                transition: {
+                  width: { type: "spring", stiffness: 300, damping: 30 },
+                  opacity: { duration: 0.2 }
+                }
               }}
-              className="fixed right-0 top-0 bottom-0 w-[450px] bg-white border-l border-gray-100 shadow-lg overflow-hidden z-[50] pt-20"
+              exit={{ 
+                width: 0,
+                opacity: 0,
+                transition: {
+                  width: { type: "spring", stiffness: 300, damping: 30 },
+                  opacity: { duration: 0.2 }
+                }
+              }}
+              className="fixed right-0 top-0 bottom-0 bg-white border-l border-gray-100 shadow-lg overflow-hidden z-[45] pt-20"
             >
+              {/* Drag Handle */}
+              <div
+                className="absolute left-0 top-0 bottom-0 w-1 cursor-ew-resize hover:bg-blue-500/20 transition-colors z-50"
+                onMouseDown={(e: React.MouseEvent<HTMLDivElement>) => {
+                  const handle = e.currentTarget;
+                  const cart = handle.parentElement as HTMLDivElement;
+                  const mainContent = document.querySelector('[data-main-content]') as HTMLDivElement;
+                  const startX = e.clientX;
+                  const startWidth = cart.offsetWidth;
+                  
+                  const handleMouseMove = (e: MouseEvent) => {
+                    const newWidth = Math.min(Math.max(280, startWidth + (startX - e.clientX)), 500);
+                    cart.style.width = `${newWidth}px`;
+                    if (mainContent) {
+                      mainContent.style.marginRight = `${newWidth}px`;
+                    }
+                  };
+                  
+                  const handleMouseUp = () => {
+                    document.removeEventListener('mousemove', handleMouseMove);
+                    document.removeEventListener('mouseup', handleMouseUp);
+                    document.body.style.cursor = 'default';
+                  };
+                  
+                  document.addEventListener('mousemove', handleMouseMove);
+                  document.addEventListener('mouseup', handleMouseUp);
+                  document.body.style.cursor = 'ew-resize';
+                }}
+              />
               <Bundle 
                 products={bundleItems.map(item => ({
                   ...item.product,
@@ -1178,7 +1135,7 @@ export default function ProductsPage() {
             </motion.div>
           )}
         </AnimatePresence>
-      </motion.div>
+      </div>
 
       {/* Checkout Component */}
       {isCheckoutOpen && (
@@ -1201,18 +1158,11 @@ export default function ProductsPage() {
         <ProductModal
           isOpen={isModalOpen}
           onClose={() => {
-            setIsModalOpen(false)
-            setSelectedProduct(null)
+            setIsModalOpen(false);
+            setSelectedProduct(null);
           }}
           onAddToBundle={(product) => handleAddToBundle(product)}
-          selectedProduct={{
-            ...selectedProduct,
-            images: (() => {
-              const key = getProductImageKey(selectedProduct.title);
-              const images = productImages[key as keyof typeof productImages];
-              return images?.map(url => ({ image_url: url })) || [];
-            })()
-          }}
+          selectedProduct={selectedProduct}
         />
       )}
 
