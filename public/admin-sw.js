@@ -1,4 +1,4 @@
-const ADMIN_CACHE_NAME = 'wog-admin-cache-v3';
+const ADMIN_CACHE_NAME = 'wog-admin-cache-v4';
 const urlsToCache = [
   '/admin',
   '/admin/products',
@@ -21,7 +21,6 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-  // Clean up old caches
   event.waitUntil(
     Promise.all([
       self.clients.claim(),
@@ -39,64 +38,33 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Handle navigation requests
-  if (event.request.mode === 'navigate') {
-    event.respondWith(
-      fetch(event.request)
-        .then(response => {
-          if (!response || response.status !== 200) {
-            // Try to get from cache first
-            return caches.match(event.request)
-              .then(cachedResponse => {
-                if (cachedResponse) {
-                  return cachedResponse;
-                }
-                // If not in cache, try the requested URL
-                const url = new URL(event.request.url);
-                if (url.pathname.startsWith('/admin')) {
-                  return caches.match('/admin')
-                    .then(response => response || Response.redirect('/admin', 302));
-                }
-                return Response.redirect('/admin', 302);
-              });
-          }
-          return response;
-        })
-        .catch(() => {
-          // On offline or error, try to serve from cache
-          return caches.match(event.request)
-            .then(cachedResponse => {
-              if (cachedResponse) {
-                return cachedResponse;
-              }
-              // If not in cache, try the dashboard
-              return caches.match('/admin')
-                .then(response => response || Response.redirect('/admin', 302));
-            });
-        })
-    );
+  const url = new URL(event.request.url);
+  
+  // Only handle admin routes
+  if (!url.pathname.startsWith('/admin')) {
     return;
   }
 
-  // Handle other requests
   event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        if (response) {
+    fetch(event.request)
+      .then(response => {
+        // If online and response is ok, return it
+        if (response && response.status === 200) {
+          // Clone the response for caching
+          const responseToCache = response.clone();
+          caches.open(ADMIN_CACHE_NAME)
+            .then(cache => {
+              cache.put(event.request, responseToCache);
+            });
           return response;
         }
-        return fetch(event.request)
-          .then((response) => {
-            if (!response || response.status !== 200 || response.type !== 'basic') {
-              return response;
-            }
-            const responseToCache = response.clone();
-            caches.open(ADMIN_CACHE_NAME)
-              .then((cache) => {
-                cache.put(event.request, responseToCache);
-              });
-            return response;
-          });
+        
+        // If response is not ok, try cache
+        return caches.match(event.request);
+      })
+      .catch(() => {
+        // If offline, try cache
+        return caches.match(event.request);
       })
   );
 }); 
