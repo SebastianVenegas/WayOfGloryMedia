@@ -74,7 +74,12 @@ export default function ProductModal({ isOpen, onClose, onAddToBundle, selectedP
   }
 
   const handleAddToBundle = () => {
-    onAddToBundle?.({ ...selectedProduct, quantity })
+    if (onAddToBundle) {
+      onAddToBundle({ 
+        ...selectedProduct, 
+        quantity: quantity // Pass the selected quantity
+      })
+    }
     onClose()
   }
 
@@ -124,46 +129,16 @@ export default function ProductModal({ isOpen, onClose, onAddToBundle, selectedP
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50"
+            className="fixed inset-0 bg-black/60 backdrop-blur-xl z-[9998]"
             onClick={onClose}
           />
-          
-          {/* Image Preview Overlay */}
-          <AnimatePresence>
-            {isPreviewOpen && (
-              <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="fixed inset-0 z-[60] bg-black/95 flex items-center justify-center"
-                onClick={() => setIsPreviewOpen(false)}
-              >
-                <div className="relative w-full max-w-5xl aspect-square p-8">
-                  <Image
-                    src={images[selectedImageIndex]}
-                    alt={selectedProduct.title}
-                    fill
-                    className="object-contain"
-                  />
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setIsPreviewOpen(false)}
-                    className="absolute top-4 right-4 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-sm border-white/20 text-white"
-                  >
-                    <X className="h-5 w-5" />
-                  </Button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
           
           {/* Modal */}
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="fixed inset-0 m-auto w-[95vw] h-[90vh] max-w-6xl bg-white rounded-2xl shadow-2xl z-50 flex flex-col overflow-hidden"
+            className="fixed inset-0 m-auto w-[95vw] h-[90vh] max-w-6xl bg-white rounded-2xl shadow-2xl z-[9999] flex flex-col overflow-hidden"
           >
             {/* Header */}
             <div className="sticky top-0 z-10 px-6 py-4 bg-white/80 backdrop-blur-md border-b border-gray-200">
@@ -325,7 +300,7 @@ export default function ProductModal({ isOpen, onClose, onAddToBundle, selectedP
 
                       <Button 
                         size="default"
-                        className="w-full mt-4"
+                        className="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white font-medium"
                         onClick={handleAddToBundle}
                       >
                         Add to Bundle

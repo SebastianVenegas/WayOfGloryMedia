@@ -1,5 +1,7 @@
+'use client'
+
 import { motion } from 'framer-motion'
-import { Button } from "./button"
+import { Button } from "../button"
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { 
@@ -190,4 +192,4 @@ export function Sidebar({ isExpanded, toggleSidebar, pathname, handleLogout }: S
       </div>
     </motion.div>
   )
-}
+} 

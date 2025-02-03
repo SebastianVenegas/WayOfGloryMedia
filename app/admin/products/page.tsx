@@ -853,7 +853,10 @@ export default function ProductsPage() {
         <motion.div 
           data-main-content
           layout
-          className="flex-1 p-6"
+          className={cn(
+            "flex-1 p-6 transition-all duration-300",
+            isCartOpen ? "lg:mr-[350px]" : ""
+          )}
         >
           <motion.div
             variants={containerVariants}
@@ -864,7 +867,9 @@ export default function ProductsPage() {
               "grid gap-4 transition-all duration-300",
               isListView 
                 ? 'grid-cols-1' 
-                : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5'
+                : isCartOpen
+                  ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
+                  : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5'
             )}
           >
             {currentProducts.map((product) => (
@@ -1088,7 +1093,7 @@ export default function ProductsPage() {
                 x: "100%"
               }}
               animate={{ 
-                width: "350px",
+                width: "100%",
                 opacity: 1,
                 x: 0,
                 transition: {
@@ -1109,8 +1114,8 @@ export default function ProductsPage() {
               }}
               className={cn(
                 "bg-white border-l border-gray-100 shadow-lg overflow-hidden",
-                "w-[350px] shrink-0",
-                "lg:fixed lg:inset-y-0 lg:right-0 lg:w-[350px] lg:pt-20",
+                "lg:fixed lg:inset-y-0 lg:right-0 lg:pt-20",
+                "w-full lg:w-[350px]",
                 "lg:z-[45]"
               )}
             >

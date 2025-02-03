@@ -3,7 +3,6 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import { Analytics } from '@vercel/analytics/react'
 import { SpeedInsights } from '@vercel/speed-insights/next'
-import { BundleProvider } from '@/context/BundleContext'
 import TawkToScript from '@/components/TawkToScript'
 import { headers } from 'next/headers'
 import { Toaster } from "@/components/ui/toaster"
@@ -28,13 +27,11 @@ export default async function RootLayout({
     <html lang="en">
       <body className={inter.className} suppressHydrationWarning>
         <SidebarProvider>
-          <BundleProvider>
-            <div className="relative min-h-screen">
-              {children}
-              <Analytics />
-              <SpeedInsights />
-            </div>
-          </BundleProvider>
+          <div className="relative min-h-screen">
+            {children}
+            <Analytics />
+            <SpeedInsights />
+          </div>
         </SidebarProvider>
         <TawkToScript />
         <Toaster />
