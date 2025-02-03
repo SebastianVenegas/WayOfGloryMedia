@@ -848,7 +848,7 @@ export default function ProductsPage() {
       </div>
 
       {/* Main Content with Cart */}
-      <div className="flex min-h-[calc(100vh-5rem)] relative">
+      <div className="flex flex-col lg:flex-row min-h-[calc(100vh-5rem)]">
         {/* Products Grid */}
         <motion.div 
           data-main-content
@@ -1113,9 +1113,10 @@ export default function ProductsPage() {
                 }
               }}
               className={cn(
-                "fixed inset-y-0 right-0 bg-white border-l border-gray-100 shadow-lg overflow-hidden pt-20",
-                "w-full sm:w-[400px] lg:w-[350px]",
-                "z-[45]"
+                "bg-white border-l border-gray-100 shadow-lg overflow-hidden",
+                "lg:fixed lg:inset-y-0 lg:right-0 lg:pt-20",
+                "w-full lg:w-[350px]",
+                "lg:z-[45]"
               )}
             >
               {/* Close button for mobile */}
@@ -1123,7 +1124,7 @@ export default function ProductsPage() {
                 variant="ghost"
                 size="icon"
                 onClick={() => setIsCartOpen(false)}
-                className="absolute top-24 right-4 lg:hidden"
+                className="absolute top-4 right-4 lg:hidden"
               >
                 <X className="h-5 w-5" />
               </Button>
@@ -1157,18 +1158,20 @@ export default function ProductsPage() {
                   document.body.style.cursor = 'ew-resize';
                 }}
               />
-              <Bundle 
-                products={bundleItems.map(item => ({
-                  ...item.product,
-                  quantity: item.quantity,
-                  price: item.our_price || item.price
-                }))}
-                onRemove={removeFromBundle}
-                onUpdateQuantity={handleBundleQuantityUpdate}
-                isOpen={isCartOpen}
-                setIsOpen={setIsCartOpen}
-                clearCart={() => setBundleItems([])}
-              />
+              <div className="h-full pt-14 lg:pt-0">
+                <Bundle 
+                  products={bundleItems.map(item => ({
+                    ...item.product,
+                    quantity: item.quantity,
+                    price: item.our_price || item.price
+                  }))}
+                  onRemove={removeFromBundle}
+                  onUpdateQuantity={handleBundleQuantityUpdate}
+                  isOpen={isCartOpen}
+                  setIsOpen={setIsCartOpen}
+                  clearCart={() => setBundleItems([])}
+                />
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
