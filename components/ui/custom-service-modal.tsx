@@ -71,6 +71,19 @@ const slideIn = {
   exit: { x: -20, opacity: 0 }
 }
 
+const pulseAnimation = {
+  initial: { scale: 1, opacity: 1 },
+  animate: {
+    scale: [1, 1.1, 1],
+    opacity: [1, 0.8, 1],
+    transition: {
+      duration: 1.5,
+      repeat: Infinity,
+      ease: "easeInOut"
+    }
+  }
+}
+
 export default function CustomServiceModal({ isOpen, onClose, onSave }: CustomServiceModalProps) {
   const [activeTab, setActiveTab] = useState('edit')
   const [isGenerating, setIsGenerating] = useState(false)
@@ -353,55 +366,96 @@ export default function CustomServiceModal({ isOpen, onClose, onSave }: CustomSe
                 variants={slideIn}
                 transition={{ duration: 0.2 }}
               >
-                <TabsContent value="ai" className="mt-0 space-y-4">
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-700">
-                        Describe your ideal service
-                      </label>
-                      <div className="relative">
-                        <Textarea
-                          value={aiPrompt}
-                          onChange={(e) => setAiPrompt(e.target.value)}
-                          placeholder="E.g., Create a professional audio setup service for small venues, including equipment selection, installation, and sound optimization..."
-                          className="min-h-[120px] rounded-xl border-gray-200 focus:ring-blue-500 focus:border-blue-500 resize-none pr-12"
-                        />
-                        <Button
-                          type="button"
-                          onClick={toggleRecording}
-                          className={cn(
-                            "absolute right-2 top-2 p-2 rounded-lg",
-                            isRecording 
-                              ? "bg-red-100 text-red-600 hover:bg-red-200" 
-                              : "bg-blue-50 text-blue-600 hover:bg-blue-100"
-                          )}
-                        >
-                          {isRecording ? (
-                            <MicOff className="h-4 w-4" />
-                          ) : (
-                            <Mic className="h-4 w-4" />
-                          )}
-                        </Button>
+                <TabsContent value="ai" className="mt-0 space-y-6">
+                  {/* Voice Input Section */}
+                  <div className="relative">
+                    <motion.div 
+                      className={cn(
+                        "absolute inset-0 rounded-2xl",
+                        isRecording ? "bg-red-50" : "bg-blue-50"
+                      )}
+                      animate={isRecording ? pulseAnimation : {}}
+                    />
+                    <div className="relative p-6 flex flex-col items-center text-center space-y-4">
+                      <motion.button
+                        onClick={toggleRecording}
+                        className={cn(
+                          "w-16 h-16 rounded-full flex items-center justify-center transition-all duration-200",
+                          isRecording 
+                            ? "bg-red-100 text-red-600 hover:bg-red-200 hover:scale-105" 
+                            : "bg-blue-100 text-blue-600 hover:bg-blue-200 hover:scale-105"
+                        )}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        {isRecording ? (
+                          <MicOff className="h-6 w-6" />
+                        ) : (
+                          <Mic className="h-6 w-6" />
+                        )}
+                      </motion.button>
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          {isRecording ? "Recording..." : "Start Speaking"}
+                        </h3>
+                        <p className="text-sm text-gray-600 mt-1">
+                          {isRecording 
+                            ? "Click the microphone to stop recording" 
+                            : "Click the microphone and describe your service"}
+                        </p>
                       </div>
                     </div>
-                    <Button
-                      onClick={handleGenerateService}
-                      disabled={isGenerating || !aiPrompt.trim()}
-                      className="w-full h-11 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-600 text-white rounded-xl flex items-center justify-center gap-2 transition-all duration-300"
-                    >
-                      {isGenerating ? (
-                        <>
-                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                          Generating...
-                        </>
-                      ) : (
-                        <>
-                          <Wand2 className="h-4 w-4" />
-                          Generate Service
-                        </>
-                      )}
-                    </Button>
                   </div>
+
+                  {/* Prompt Input */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700 flex items-center justify-between">
+                      <span>Service Description</span>
+                      {aiPrompt.trim() && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setAiPrompt('')}
+                          className="h-8 px-2 text-gray-500 hover:text-gray-700"
+                        >
+                          <X className="h-4 w-4 mr-1" />
+                          Clear
+                        </Button>
+                      )}
+                    </label>
+                    <Textarea
+                      value={aiPrompt}
+                      onChange={(e) => setAiPrompt(e.target.value)}
+                      placeholder="Your service description will appear here as you speak, or type it manually..."
+                      className="min-h-[120px] rounded-xl border-gray-200 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                    />
+                  </div>
+
+                  {/* Generate Button */}
+                  <Button
+                    onClick={handleGenerateService}
+                    disabled={isGenerating || !aiPrompt.trim()}
+                    className={cn(
+                      "w-full h-12 rounded-xl flex items-center justify-center gap-2 transition-all duration-300",
+                      "bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-600",
+                      "text-white font-medium text-sm",
+                      "disabled:opacity-50 disabled:cursor-not-allowed",
+                      "shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+                    )}
+                  >
+                    {isGenerating ? (
+                      <>
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                        Generating Service...
+                      </>
+                    ) : (
+                      <>
+                        <Wand2 className="h-4 w-4" />
+                        Generate Custom Service
+                      </>
+                    )}
+                  </Button>
                 </TabsContent>
 
                 <TabsContent value="edit" className="mt-0 space-y-6">
