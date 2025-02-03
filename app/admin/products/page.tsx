@@ -734,6 +734,17 @@ export default function ProductsPage() {
             isCartOpen ? "mr-[350px]" : ""
           )}
         >
+          {selectedCategory === 'Services' && (
+            <div className="mb-6">
+              <Button
+                onClick={() => setShowCustomServiceModal(true)}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Create Custom Service
+              </Button>
+            </div>
+          )}
           <motion.div
             variants={containerVariants}
             initial="hidden"
