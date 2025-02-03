@@ -142,6 +142,7 @@ interface Product {
   skip_tax?: boolean
   original_price?: number
   is_custom?: boolean
+  quantity?: number
 }
 
 interface BundleItem {
@@ -518,17 +519,20 @@ export default function ProductsPage() {
         // Update quantity if item exists
         const updated = prev.map(item =>
           item.product.id === product.id
-            ? { ...item, quantity: item.quantity + 1 }
+            ? { ...item, quantity: item.quantity + (product.quantity || 1) }
             : item
         );
         console.log('Updated bundle items:', updated);
         return updated;
       }
       
-      // Add new item with quantity 1
+      // Add new item with specified quantity or default to 1
       const newItem: BundleItem = {
-        product: product,
-        quantity: 1,
+        product: {
+          ...product,
+          quantity: undefined // Remove quantity from product object
+        },
+        quantity: product.quantity || 1,
         price: Number(product.price),
         our_price: product.our_price || Number(product.price)
       };
@@ -983,7 +987,11 @@ export default function ProductsPage() {
                               size="icon"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleCardQuantityChange(product.id, -1);
+                                const newQuantity = Math.max(1, (cardQuantities[product.id] || 1) - 1);
+                                setCardQuantities(prev => ({
+                                  ...prev,
+                                  [product.id]: newQuantity
+                                }));
                               }}
                               disabled={!cardQuantities[product.id] || cardQuantities[product.id] <= 1}
                               className="h-6 w-6 shrink-0"
@@ -998,7 +1006,11 @@ export default function ProductsPage() {
                               size="icon"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleCardQuantityChange(product.id, 1);
+                                const newQuantity = (cardQuantities[product.id] || 1) + 1;
+                                setCardQuantities(prev => ({
+                                  ...prev,
+                                  [product.id]: newQuantity
+                                }));
                               }}
                               className="h-6 w-6 shrink-0"
                             >
@@ -1010,7 +1022,10 @@ export default function ProductsPage() {
                             size="sm"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleAddToBundle(product);
+                              handleAddToBundle({
+                                ...product,
+                                quantity: cardQuantities[product.id] || 1
+                              });
                             }}
                             className="text-blue-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg font-medium h-8 px-3 shrink-0"
                           >
