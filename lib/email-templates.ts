@@ -16,7 +16,7 @@ interface Order {
   shipping_zip?: string;
 }
 
-export const getEmailTemplate = (templateId: string, order: Order) => {
+export const getEmailTemplate = (templateId: string, order: Order, customEmail?: { subject: string; html: string }) => {
   const baseStyle = `
     <style>
       .email-container {
@@ -96,6 +96,10 @@ export const getEmailTemplate = (templateId: string, order: Order) => {
   `;
 
   const templates: { [key: string]: { subject: string; html: string } } = {
+    custom: {
+      subject: '',
+      html: ''
+    },
     payment_reminder: {
       subject: 'Payment Reminder for Your Way of Glory Order',
       html: `
@@ -219,6 +223,23 @@ export const getEmailTemplate = (templateId: string, order: Order) => {
       `
     }
   };
+
+  if (templateId === 'custom' && customEmail) {
+    return {
+      subject: customEmail.subject,
+      html: `
+        ${baseStyle}
+        <div class="email-container">
+          <div class="content">
+            ${customEmail.html}
+          </div>
+          <div class="footer">
+            <p>© ${new Date().getFullYear()} Way of Glory. All rights reserved.</p>
+          </div>
+        </div>
+      `
+    };
+  }
 
   return templates[templateId];
 };

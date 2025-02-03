@@ -76,13 +76,14 @@ export default function EmailComposer({
           templateId: 'custom',
           customEmail: {
             subject: subject.trim(),
-            content: content.trim(),
+            html: content.trim(),
           },
         }),
       })
 
       if (!response.ok) {
-        throw new Error('Failed to send email')
+        const errorData = await response.json()
+        throw new Error(errorData.message || 'Failed to send email')
       }
 
       toast({
