@@ -2,7 +2,7 @@
   "name": "Way of Glory Media Admin",
   "short_name": "WoG Admin",
   "description": "Way of Glory Media Admin Dashboard",
-  "start_url": "/admin/products",
+  "start_url": "/admin",
   "scope": "/admin",
   "display": "standalone",
   "display_override": ["standalone", "fullscreen"],
@@ -13,6 +13,23 @@
   "launch_handler": {
     "client_mode": ["navigate-existing", "auto"]
   },
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "url": "/admin",
+      "description": "Go to Dashboard"
+    },
+    {
+      "name": "Products",
+      "url": "/admin/products",
+      "description": "Manage Products"
+    },
+    {
+      "name": "Orders",
+      "url": "/admin/orders",
+      "description": "View Orders"
+    }
+  ],
   "icons": [
     {
       "src": "/icons/admin-icon-72x72.png",

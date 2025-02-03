@@ -1,7 +1,12 @@
-const ADMIN_CACHE_NAME = 'wog-admin-cache-v1';
+const ADMIN_CACHE_NAME = 'wog-admin-cache-v2';
 const urlsToCache = [
+  '/admin',
   '/admin/products',
-  '/admin/products?source=pwa',
+  '/admin/orders',
+  '/admin/customers',
+  '/admin/analytics',
+  '/admin/settings',
+  '/admin/services',
   '/admin-manifest.json',
   '/icons/admin-icon-192x192.png',
   '/icons/admin-icon-512x512.png',
@@ -16,7 +21,21 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim());
+  // Clean up old caches
+  event.waitUntil(
+    Promise.all([
+      self.clients.claim(),
+      caches.keys().then(cacheNames => {
+        return Promise.all(
+          cacheNames.map(cacheName => {
+            if (cacheName !== ADMIN_CACHE_NAME) {
+              return caches.delete(cacheName);
+            }
+          })
+        );
+      })
+    ])
+  );
 });
 
 self.addEventListener('fetch', (event) => {
@@ -25,17 +44,29 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(event.request)
         .then(response => {
-          // If we get a response other than 200 OK for navigation,
-          // redirect to the admin products page
           if (!response || response.status !== 200) {
-            return Response.redirect('/admin/products', 302);
+            // Check if the requested URL is in our cache
+            return caches.match(event.request)
+              .then(cachedResponse => {
+                if (cachedResponse) {
+                  return cachedResponse;
+                }
+                // If not in cache and response is not ok, redirect to products
+                return Response.redirect('/admin/products', 302);
+              });
           }
           return response;
         })
         .catch(() => {
           // On offline or error, try to serve from cache
-          return caches.match('/admin/products')
-            .then(response => response || Response.redirect('/admin/products', 302));
+          return caches.match(event.request)
+            .then(cachedResponse => {
+              if (cachedResponse) {
+                return cachedResponse;
+              }
+              return caches.match('/admin/products')
+                .then(response => response || Response.redirect('/admin/products', 302));
+            });
         })
     );
     return;
