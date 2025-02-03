@@ -67,6 +67,13 @@ export default function EmailComposer({
 
     setIsLoading(true)
     try {
+      // Format the HTML content with proper structure
+      const formattedHtml = `
+        <div class="email-content">
+          ${content.trim()}
+        </div>
+      `;
+
       const response = await fetch(`/api/admin/orders/${orderId}/send-template`, {
         method: 'POST',
         headers: {
@@ -76,7 +83,7 @@ export default function EmailComposer({
           templateId: 'custom',
           customEmail: {
             subject: subject.trim(),
-            html: content.trim(),
+            html: formattedHtml,
           },
         }),
       })
@@ -100,9 +107,10 @@ export default function EmailComposer({
         onEmailSent()
       }
     } catch (error) {
+      console.error('Error sending email:', error)
       toast({
         title: 'Error',
-        description: 'Failed to send email. Please try again.',
+        description: error instanceof Error ? error.message : 'Failed to send email. Please try again.',
         variant: 'destructive',
       })
     } finally {

@@ -1,7 +1,15 @@
 import { sql } from '@vercel/postgres';
 import { NextRequest, NextResponse } from 'next/server';
-import { getEmailTemplate, formatEmailPreview } from '@/lib/email-templates';
+import { getEmailTemplate } from '@/lib/email-templates';
 import nodemailer from 'nodemailer';
+
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_APP_PASSWORD
+  }
+});
 
 export async function POST(request: NextRequest) {
   try {
@@ -39,24 +47,13 @@ export async function POST(request: NextRequest) {
 
     const { templateId, customEmail } = await request.json();
 
-    // Configure nodemailer with Gmail
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.GMAIL_USER,
-        pass: process.env.GMAIL_APP_PASSWORD,
-      },
-    });
-
     let emailContent;
     let subject;
 
-    if (templateId === 'custom') {
-      // For custom emails
+    if (templateId === 'custom' && customEmail) {
       subject = customEmail.subject;
-      emailContent = await formatEmailPreview(customEmail.content, order);
+      emailContent = customEmail.html;
     } else {
-      // For predefined templates
       const template = getEmailTemplate(templateId, order);
       subject = template.subject;
       emailContent = template.html;
