@@ -2,12 +2,12 @@
   "name": "WoG Media Admin",
   "short_name": "WoG Admin",
   "description": "Way of Glory Media Admin Dashboard",
-  "start_url": "/admin",
+  "start_url": "/admin/products",
   "scope": "/admin",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#3b82f6",
-  "orientation": "portrait-primary",
+  "orientation": "any",
   "icons": [
     {
       "src": "/icons/admin-icon-72x72.png",
