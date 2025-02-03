@@ -1,4 +1,4 @@
-const ADMIN_CACHE_NAME = 'wog-admin-cache-v5';
+const ADMIN_CACHE_NAME = 'wog-admin-cache-v6';
 const urlsToCache = [
   '/admin',
   '/admin/products',
@@ -40,8 +40,46 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   
-  // Special handling for dashboard route
-  if (url.pathname === '/admin') {
+  // Only handle navigation requests for admin routes
+  if (url.pathname.startsWith('/admin') && event.request.mode === 'navigate') {
+    event.respondWith(
+      Promise.race([
+        // Try network first
+        fetch(event.request.clone())
+          .then(response => {
+            if (response && response.status === 200) {
+              // Cache the successful response
+              const responseToCache = response.clone();
+              caches.open(ADMIN_CACHE_NAME)
+                .then(cache => {
+                  cache.put(event.request, responseToCache);
+                });
+              return response;
+            }
+            throw new Error('Network response was not ok');
+          }),
+        
+        // If network takes too long or fails, use cache
+        new Promise((resolve) => {
+          setTimeout(() => {
+            caches.match(event.request)
+              .then(cachedResponse => {
+                if (cachedResponse) {
+                  resolve(cachedResponse);
+                }
+              });
+          }, 500); // Small timeout to prefer network but fallback quickly
+        })
+      ]).catch(() => {
+        // If both network and race timeout fail, try cache one last time
+        return caches.match(event.request);
+      })
+    );
+    return;
+  }
+
+  // For non-navigation requests, use a simple network-first strategy
+  if (url.pathname.startsWith('/admin')) {
     event.respondWith(
       fetch(event.request)
         .then(response => {
@@ -57,29 +95,5 @@ self.addEventListener('fetch', (event) => {
         })
         .catch(() => caches.match(event.request))
     );
-    return;
   }
-
-  // Handle other admin routes
-  if (url.pathname.startsWith('/admin/')) {
-    event.respondWith(
-      fetch(event.request)
-        .then(response => {
-          if (response && response.status === 200) {
-            const responseToCache = response.clone();
-            caches.open(ADMIN_CACHE_NAME)
-              .then(cache => {
-                cache.put(event.request, responseToCache);
-              });
-            return response;
-          }
-          return caches.match(event.request);
-        })
-        .catch(() => caches.match(event.request))
-    );
-    return;
-  }
-
-  // For non-admin routes, let the browser handle it
-  return;
 }); 
