@@ -189,8 +189,8 @@ const calculateOrderProfit = (order: Order) => {
       profit.services += price;  // 100% profit for services
       console.log('Added to services profit:', price);
     } else {
-      profit.products += price * 0.2155;  // 21.55% profit for products
-      console.log('Added to products profit:', price * 0.2155);
+      profit.products += price * 0.20;  // 20% profit for products
+      console.log('Added to products profit:', price * 0.20);
     }
   });
 
@@ -1237,7 +1237,7 @@ export default function OrdersPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
-                    <p className="text-sm text-gray-600">Products (21.55%)</p>
+                    <p className="text-sm text-gray-600">Products (20%)</p>
                   </div>
                   <p className="text-sm font-semibold text-emerald-600">
                     ${(stats.profit.products).toFixed(2)}
@@ -1748,10 +1748,10 @@ export default function OrdersPage() {
                         <div className="pt-4 border-t border-gray-200">
                           <div className="space-y-2">
                             <div className="flex justify-between text-sm">
-                              <span className="text-gray-500">Product Profit (21.55%)</span>
+                              <span className="text-gray-500">Product Profit (20%)</span>
                               <span className="font-medium text-green-600">
                                 ${((selectedOrder.order_items.reduce((sum, item) => 
-                                  sum + (Number(item.price_at_time) * item.quantity), 0)) * 0.2155).toFixed(2)}
+                                  sum + (Number(item.price_at_time) * item.quantity), 0)) * 0.20).toFixed(2)}
                               </span>
                             </div>
                             {Number(selectedOrder.installation_price || 0) > 0 && (
@@ -1767,7 +1767,7 @@ export default function OrdersPage() {
                               <span className="text-lg text-green-600">
                                 ${(
                                   ((selectedOrder.order_items.reduce((sum, item) => 
-                                    sum + (Number(item.price_at_time) * item.quantity), 0)) * 0.2155) +
+                                    sum + (Number(item.price_at_time) * item.quantity), 0)) * 0.20) +
                                   Number(selectedOrder.installation_price || 0)
                                 ).toFixed(2)}
                               </span>
