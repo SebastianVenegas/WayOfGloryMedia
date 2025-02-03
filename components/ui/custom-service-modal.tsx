@@ -123,80 +123,87 @@ export default function CustomServiceModal({ isOpen, onClose, onSave }: CustomSe
   })
 
   useEffect(() => {
-    let recognitionInstance: SpeechRecognition | null = null;
-
-    try {
-      // Initialize speech recognition
-      if (typeof window !== 'undefined') {
+    // Initialize speech recognition
+    if (typeof window !== 'undefined') {
+      try {
+        // Check for browser support
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (SpeechRecognition) {
-          recognitionInstance = new SpeechRecognition();
-          recognitionInstance.continuous = true;  // Changed to true to keep listening
-          recognitionInstance.interimResults = true;  // Changed to true to get real-time results
-          recognitionInstance.lang = 'en-US';
-
-          // Event handlers
-          recognitionInstance.onstart = () => {
-            console.log('Speech recognition started');
-            setIsRecording(true);
-          };
-
-          recognitionInstance.onresult = (event) => {
-            console.log('Speech recognition result received');
-            let finalTranscript = '';
-            
-            for (let i = 0; i < event.results.length; i++) {
-              const result = event.results[i];
-              if (result.isFinal) {
-                finalTranscript += result[0].transcript;
-              }
-            }
-
-            if (finalTranscript) {
-              console.log('Final transcript:', finalTranscript);
-              setAiPrompt(prev => {
-                const newText = prev ? `${prev} ${finalTranscript}` : finalTranscript;
-                return newText.trim();
-              });
-            }
-          };
-
-          recognitionInstance.onerror = (event) => {
-            console.error('Speech recognition error:', event.error);
-            setIsRecording(false);
-            toast({
-              title: "Voice Input Error",
-              description: event.error === 'not-allowed' 
-                ? "Please allow microphone access to use voice input."
-                : `Error: ${event.error}. Please try again.`,
-              variant: "destructive",
-            });
-          };
-
-          recognitionInstance.onend = () => {
-            console.log('Speech recognition ended');
-            setIsRecording(false);
-          };
-
-          setRecognition(recognitionInstance);
+        if (!SpeechRecognition) {
+          console.error('Speech recognition not supported');
+          return;
         }
-      }
-    } catch (error) {
-      console.error('Failed to initialize speech recognition:', error);
-    }
 
-    return () => {
-      if (recognitionInstance) {
-        recognitionInstance.stop();
+        const recognitionInstance = new SpeechRecognition();
+        
+        // Configure recognition
+        recognitionInstance.continuous = false; // Set to false for more reliable results
+        recognitionInstance.interimResults = false; // Set to false for final results only
+        recognitionInstance.lang = 'en-US';
+
+        // Event handlers
+        recognitionInstance.onstart = () => {
+          console.log('Started recording');
+          setIsRecording(true);
+          toast({
+            title: "Recording Started",
+            description: "Speak now...",
+          });
+        };
+
+        recognitionInstance.onresult = (event) => {
+          const transcript = event.results[0][0].transcript;
+          console.log('Got result:', transcript);
+          
+          setAiPrompt(prev => {
+            const newText = prev ? `${prev} ${transcript}` : transcript;
+            return newText.trim();
+          });
+        };
+
+        recognitionInstance.onerror = (event) => {
+          console.error('Recognition error:', event.error);
+          setIsRecording(false);
+          
+          let errorMessage = "An error occurred with voice input.";
+          if (event.error === 'not-allowed') {
+            errorMessage = "Microphone access was denied. Please allow microphone access and try again.";
+          } else if (event.error === 'no-speech') {
+            errorMessage = "No speech was detected. Please try again.";
+          }
+          
+          toast({
+            title: "Error",
+            description: errorMessage,
+            variant: "destructive",
+          });
+        };
+
+        recognitionInstance.onend = () => {
+          console.log('Recognition ended');
+          setIsRecording(false);
+          toast({
+            title: "Recording Ended",
+            description: "Click the microphone to record again",
+          });
+        };
+
+        setRecognition(recognitionInstance);
+      } catch (error) {
+        console.error('Failed to initialize speech recognition:', error);
+        toast({
+          title: "Error",
+          description: "Failed to initialize speech recognition. Please use Chrome browser.",
+          variant: "destructive",
+        });
       }
-    };
-  }, [toast]);
+    }
+  }, []); // Only run once on mount
 
   const toggleRecording = async () => {
     if (!recognition) {
       toast({
-        title: "Not Supported",
-        description: "Voice input is not supported in your browser. Please use Chrome.",
+        title: "Not Available",
+        description: "Speech recognition is not available. Please use Chrome browser.",
         variant: "destructive",
       });
       return;
@@ -204,24 +211,26 @@ export default function CustomServiceModal({ isOpen, onClose, onSave }: CustomSe
 
     try {
       if (isRecording) {
-        console.log('Stopping recording...');
         recognition.stop();
         setIsRecording(false);
       } else {
-        console.log('Starting recording...');
+        // Request microphone permission first
         await navigator.mediaDevices.getUserMedia({ audio: true });
-        setAiPrompt(''); // Clear existing text
+        
+        // Clear previous text when starting new recording
+        setAiPrompt('');
+        
+        // Start recognition
         recognition.start();
-        toast({
-          title: "Listening",
-          description: "Speak now to describe your service...",
-        });
+        
+        console.log('Starting recording...');
       }
     } catch (error) {
       console.error('Error toggling recording:', error);
+      setIsRecording(false);
       toast({
         title: "Error",
-        description: "Please allow microphone access to use voice input.",
+        description: "Failed to access microphone. Please ensure microphone permissions are granted.",
         variant: "destructive",
       });
     }
