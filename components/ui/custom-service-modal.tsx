@@ -15,6 +15,9 @@ interface SpeechRecognitionErrorEvent extends Event {
 
 interface SpeechRecognitionResult {
   isFinal: boolean;
+  0: {
+    transcript: string;
+  };
   item(index: number): {
     transcript: string;
   };
@@ -22,6 +25,7 @@ interface SpeechRecognitionResult {
 
 interface SpeechRecognitionEvent extends Event {
   results: {
+    [index: number]: SpeechRecognitionResult;
     item(index: number): SpeechRecognitionResult;
     length: number;
   };
@@ -124,34 +128,23 @@ export default function CustomServiceModal({ isOpen, onClose, onSave }: CustomSe
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
       const recognition = new SpeechRecognition()
       
-      // Configure for continuous speech recognition
-      recognition.continuous = true
-      recognition.interimResults = true
+      // Configure for better speech recognition
+      recognition.continuous = false // Change to false for more reliable results
+      recognition.interimResults = false // Change to false for final results only
       recognition.lang = 'en-US'
       
       recognition.onstart = () => {
-        console.log('Speech recognition started')
         setIsRecording(true)
+        setAiPrompt('') // Clear existing text
       }
       
       recognition.onresult = (event: SpeechRecognitionEvent) => {
-        let finalTranscript = ''
-        let interimTranscript = ''
-        
-        for (let i = 0; i < event.results.length; i++) {
-          const result = event.results.item(i)
-          const transcript = result.item(0).transcript
-          
-          if (result.isFinal) {
-            finalTranscript += transcript
-          } else {
-            interimTranscript += transcript
-          }
-        }
+        const last = event.results.length - 1
+        const transcript = event.results[last][0].transcript
         
         setAiPrompt(prev => {
-          const newText = (prev + ' ' + finalTranscript).trim()
-          return interimTranscript ? newText + ' ' + interimTranscript : newText
+          const newText = prev + ' ' + transcript
+          return newText.trim()
         })
       }
 
@@ -168,8 +161,11 @@ export default function CustomServiceModal({ isOpen, onClose, onSave }: CustomSe
       }
 
       recognition.onend = () => {
-        console.log('Speech recognition ended')
         setIsRecording(false)
+        // Automatically restart if still recording
+        if (isRecording) {
+          recognition.start()
+        }
       }
 
       setRecognition(recognition)
@@ -180,7 +176,7 @@ export default function CustomServiceModal({ isOpen, onClose, onSave }: CustomSe
         recognition.stop()
       }
     }
-  }, [toast])
+  }, [toast, isRecording])
 
   const toggleRecording = () => {
     if (!recognition) {
@@ -194,13 +190,18 @@ export default function CustomServiceModal({ isOpen, onClose, onSave }: CustomSe
 
     if (isRecording) {
       recognition.stop()
+      setIsRecording(false)
     } else {
-      setAiPrompt('')  // Clear existing text when starting new recording
-      recognition.start()
-      toast({
-        title: "Recording Started",
-        description: "Speak clearly to describe the service you want to create.",
-      })
+      try {
+        recognition.start()
+      } catch (error) {
+        console.error('Failed to start recognition:', error)
+        toast({
+          title: "Error",
+          description: "Failed to start voice input. Please try again.",
+          variant: "destructive",
+        })
+      }
     }
   }
 
@@ -406,103 +407,36 @@ export default function CustomServiceModal({ isOpen, onClose, onSave }: CustomSe
                 variants={slideIn}
                 transition={{ duration: 0.2 }}
               >
-                <TabsContent value="ai" className="mt-0 space-y-6">
+                <TabsContent value="ai" className="mt-0 space-y-4">
                   {/* Voice Input Section */}
-                  <div className="relative">
-                    <motion.div 
-                      className={cn(
-                        "absolute inset-0 rounded-2xl",
-                        isRecording ? "bg-gradient-to-br from-red-50 to-red-100" : "bg-gradient-to-br from-blue-50 to-blue-100"
-                      )}
-                      animate={isRecording ? pulseAnimation : {}}
-                    />
-                    
-                    {/* Audio Wave Animation */}
-                    {isRecording && (
-                      <div className="absolute inset-x-0 bottom-0 h-16 flex items-end justify-center gap-1 pb-4">
-                        {[...Array(8)].map((_, i) => (
-                          <motion.div
-                            key={i}
-                            className="w-1 bg-red-400/50 rounded-full"
-                            style={{ height: Math.random() * 100 + '%' }}
-                            animate={waveAnimation}
-                            transition={{ delay: i * 0.1 }}
-                          />
-                        ))}
-                      </div>
-                    )}
-
-                    <div className="relative p-8 flex flex-col items-center text-center space-y-4">
+                  <div className="relative bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4">
+                    <div className="flex items-center gap-4">
                       <motion.button
                         onClick={toggleRecording}
                         className={cn(
-                          "w-20 h-20 rounded-full flex items-center justify-center transition-all duration-200",
-                          "shadow-lg hover:shadow-xl",
+                          "flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center",
+                          "shadow-md transition-all duration-200",
                           isRecording 
-                            ? "bg-gradient-to-br from-red-500 to-red-600 text-white hover:from-red-600 hover:to-red-700" 
-                            : "bg-gradient-to-br from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700"
+                            ? "bg-red-500 text-white animate-pulse" 
+                            : "bg-blue-500 text-white hover:bg-blue-600"
                         )}
-                        whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                       >
                         {isRecording ? (
-                          <MicOff className="h-8 w-8" />
+                          <MicOff className="h-5 w-5" />
                         ) : (
-                          <Mic className="h-8 w-8" />
+                          <Mic className="h-5 w-5" />
                         )}
                       </motion.button>
-                      <div className="space-y-2">
-                        <h3 className="text-xl font-semibold text-gray-900">
-                          {isRecording ? "Listening..." : "Start Speaking"}
-                        </h3>
-                        <p className="text-sm text-gray-600">
-                          {isRecording 
-                            ? "Click the microphone when you're done speaking" 
-                            : "Click the microphone and describe your service"}
-                        </p>
+                      
+                      <div className="flex-grow">
+                        <Textarea
+                          value={aiPrompt}
+                          onChange={(e) => setAiPrompt(e.target.value)}
+                          placeholder="Click the microphone and start speaking, or type your service description here..."
+                          className="min-h-[80px] resize-none bg-white/80 backdrop-blur-sm border-0 focus:ring-1 rounded-lg"
+                        />
                       </div>
-                    </div>
-                  </div>
-
-                  {/* Prompt Input */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <label className="text-sm font-medium text-gray-700">
-                        Service Description
-                      </label>
-                      {aiPrompt.trim() && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setAiPrompt('')}
-                          className="h-8 px-3 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg"
-                        >
-                          <X className="h-4 w-4 mr-2" />
-                          Clear Text
-                        </Button>
-                      )}
-                    </div>
-                    <div className="relative">
-                      <Textarea
-                        value={aiPrompt}
-                        onChange={(e) => setAiPrompt(e.target.value)}
-                        placeholder="Your service description will appear here as you speak, or type it manually..."
-                        className={cn(
-                          "min-h-[120px] rounded-xl transition-all duration-300",
-                          "border-gray-200 focus:ring-blue-500 focus:border-blue-500 resize-none",
-                          "placeholder:text-gray-400",
-                          isRecording && "border-red-200 focus:border-red-500 focus:ring-red-500"
-                        )}
-                      />
-                      {isRecording && (
-                        <div className="absolute right-3 top-3">
-                          <span className="flex h-3 w-3">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
-                          </span>
-                        </div>
-                      )}
                     </div>
                   </div>
 
@@ -510,23 +444,17 @@ export default function CustomServiceModal({ isOpen, onClose, onSave }: CustomSe
                   <Button
                     onClick={handleGenerateService}
                     disabled={isGenerating || !aiPrompt.trim()}
-                    className={cn(
-                      "w-full h-14 rounded-xl flex items-center justify-center gap-3 transition-all duration-300",
-                      "bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-600",
-                      "text-white font-medium",
-                      "disabled:opacity-50 disabled:cursor-not-allowed",
-                      "shadow-lg hover:shadow-xl hover:-translate-y-0.5"
-                    )}
+                    className="w-full h-11 bg-blue-500 hover:bg-blue-600 text-white rounded-lg flex items-center justify-center gap-2 transition-all duration-200"
                   >
                     {isGenerating ? (
                       <>
-                        <div className="h-5 w-5 animate-spin rounded-full border-3 border-white border-t-transparent" />
-                        <span className="text-base">Creating Your Service...</span>
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                        <span>Creating...</span>
                       </>
                     ) : (
                       <>
-                        <Wand2 className="h-5 w-5" />
-                        <span className="text-base">Generate Custom Service</span>
+                        <Wand2 className="h-4 w-4" />
+                        <span>Generate Service</span>
                       </>
                     )}
                   </Button>
