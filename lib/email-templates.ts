@@ -188,22 +188,43 @@ const createEmailWrapper = (content: string) => `
   </div>
 `;
 
+const sanitizeHtml = (html: string) => {
+  return html
+    .replace(/\n\s*/g, ' ')  // Replace newlines and following spaces with a single space
+    .replace(/>\s+</g, '><')  // Remove spaces between tags
+    .replace(/\s{2,}/g, ' ')  // Replace multiple spaces with a single space
+    .trim();
+};
+
+const wrapContent = (content: string) => {
+  if (content.includes('style="font-family:')) {
+    return content;
+  }
+  return `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; line-height: 1.6;">
+      ${content}
+    </div>
+  `.trim();
+};
+
 export const getEmailTemplate = (templateId: string, order: Order, customEmail?: { subject: string; html: string }) => {
   // For custom emails, wrap the content in our standard template
   if (templateId === 'custom' && customEmail) {
+    const wrappedHtml = wrapContent(customEmail.html);
+    const cleanHtml = sanitizeHtml(wrappedHtml);
     return {
       subject: customEmail.subject,
       html: `
         ${baseStyle}
-        ${createEmailWrapper(customEmail.html)}
-      `
+        ${createEmailWrapper(cleanHtml)}
+      `.trim()
     };
   }
 
   const templates: { [key: string]: { subject: string; html: string } } = {
     payment_reminder: {
       subject: 'Payment Reminder for Your Way of Glory Order',
-      html: `
+      html: sanitizeHtml(`
         ${baseStyle}
         ${createEmailWrapper(`
           <h2>Payment Reminder</h2>
@@ -221,11 +242,11 @@ export const getEmailTemplate = (templateId: string, order: Order, customEmail?:
           <p>Please complete your payment to proceed with your order. If you've already made the payment, please disregard this reminder.</p>
           <a href="#" class="cta-button">Complete Payment</a>
         `)}
-      `
+      `)
     },
     installation_confirmation: {
       subject: 'Installation Details for Your Way of Glory Order',
-      html: `
+      html: sanitizeHtml(`
         ${baseStyle}
         ${createEmailWrapper(`
           <h2>Installation Details</h2>
@@ -241,11 +262,11 @@ export const getEmailTemplate = (templateId: string, order: Order, customEmail?:
           </div>
           <p>Our installation team will arrive within the scheduled time window. Please ensure someone is available to provide access to the installation area.</p>
         `)}
-      `
+      `)
     },
     shipping_update: {
       subject: 'Shipping Update for Your Way of Glory Order',
-      html: `
+      html: sanitizeHtml(`
         ${baseStyle}
         ${createEmailWrapper(`
           <h2>Shipping Update</h2>
@@ -258,11 +279,11 @@ export const getEmailTemplate = (templateId: string, order: Order, customEmail?:
           </div>
           <p>We'll notify you once your order has been delivered. If you have any special delivery instructions, please contact us.</p>
         `)}
-      `
+      `)
     },
     thank_you: {
       subject: 'Thank You for Your Way of Glory Order',
-      html: `
+      html: sanitizeHtml(`
         ${baseStyle}
         ${createEmailWrapper(`
           <h2>Thank You!</h2>
@@ -274,16 +295,23 @@ export const getEmailTemplate = (templateId: string, order: Order, customEmail?:
           </div>
           <p>We hope you're completely satisfied with your purchase. If you have any questions or need assistance, please don't hesitate to reach out.</p>
         `)}
-      `
+      `)
     }
   };
 
-  return templates[templateId];
+  const template = templates[templateId];
+  if (!template) {
+    throw new Error(`Invalid template ID: ${templateId}`);
+  }
+
+  return template;
 };
 
 export const formatEmailPreview = async (content: string, order: Order): Promise<string> => {
-  return `
+  const wrappedContent = wrapContent(content);
+  const cleanContent = sanitizeHtml(wrappedContent);
+  return sanitizeHtml(`
     ${baseStyle}
-    ${createEmailWrapper(content)}
-  `;
+    ${createEmailWrapper(cleanContent)}
+  `);
 }; 

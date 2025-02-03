@@ -103,13 +103,19 @@ export default function EmailComposer({
 
     setIsLoading(true)
     try {
+      // Ensure content is properly wrapped in a div with styles
+      const wrappedContent = content.includes('style="font-family:') ? content : `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; line-height: 1.6;">
+          ${content}
+        </div>
+      `.trim();
+
       // Clean and prepare the content
-      const cleanContent = content
-        .trim()
-        .replace(/\n/g, '')
-        .replace(/<p><br><\/p>/g, '<br>')
-        .replace(/<p><\/p>/g, '')
-        .replace(/\s+/g, ' ');
+      const cleanContent = wrappedContent
+        .replace(/\n\s*/g, ' ')  // Replace newlines and following spaces with a single space
+        .replace(/>\s+</g, '><')  // Remove spaces between tags
+        .replace(/\s{2,}/g, ' ')  // Replace multiple spaces with a single space
+        .trim();
 
       const payload = {
         templateId: 'custom',
