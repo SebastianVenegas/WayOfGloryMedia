@@ -1,4 +1,4 @@
-const ADMIN_CACHE_NAME = 'wog-admin-cache-v4';
+const ADMIN_CACHE_NAME = 'wog-admin-cache-v5';
 const urlsToCache = [
   '/admin',
   '/admin/products',
@@ -40,31 +40,46 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   
-  // Only handle admin routes
-  if (!url.pathname.startsWith('/admin')) {
+  // Special handling for dashboard route
+  if (url.pathname === '/admin') {
+    event.respondWith(
+      fetch(event.request)
+        .then(response => {
+          if (response && response.status === 200) {
+            const responseToCache = response.clone();
+            caches.open(ADMIN_CACHE_NAME)
+              .then(cache => {
+                cache.put(event.request, responseToCache);
+              });
+            return response;
+          }
+          return caches.match(event.request);
+        })
+        .catch(() => caches.match(event.request))
+    );
     return;
   }
 
-  event.respondWith(
-    fetch(event.request)
-      .then(response => {
-        // If online and response is ok, return it
-        if (response && response.status === 200) {
-          // Clone the response for caching
-          const responseToCache = response.clone();
-          caches.open(ADMIN_CACHE_NAME)
-            .then(cache => {
-              cache.put(event.request, responseToCache);
-            });
-          return response;
-        }
-        
-        // If response is not ok, try cache
-        return caches.match(event.request);
-      })
-      .catch(() => {
-        // If offline, try cache
-        return caches.match(event.request);
-      })
-  );
+  // Handle other admin routes
+  if (url.pathname.startsWith('/admin/')) {
+    event.respondWith(
+      fetch(event.request)
+        .then(response => {
+          if (response && response.status === 200) {
+            const responseToCache = response.clone();
+            caches.open(ADMIN_CACHE_NAME)
+              .then(cache => {
+                cache.put(event.request, responseToCache);
+              });
+            return response;
+          }
+          return caches.match(event.request);
+        })
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
+  // For non-admin routes, let the browser handle it
+  return;
 }); 
