@@ -146,7 +146,7 @@ export default function Bundle({ products, onRemove, onUpdateQuantity, isOpen, s
 
   useEffect(() => {
     document.documentElement.style.setProperty('--cart-width', `${width}px`)
-  }, [])
+  }, [width])
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
