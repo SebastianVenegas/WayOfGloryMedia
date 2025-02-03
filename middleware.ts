@@ -29,8 +29,18 @@ async function verifyToken(token: string) {
 
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname
+  const userAgent = request.headers.get('user-agent') || ''
+  const displayMode = request.headers.get('display-mode') || ''
+  const isStandalone = request.headers.get('sec-fetch-mode') === 'navigate' && 
+                      request.headers.get('sec-fetch-dest') === 'document' &&
+                      request.headers.get('sec-fetch-site') === 'none'
 
-  // Only handle admin routes
+  // Check if it's a PWA request to the root
+  if (pathname === '/' && (displayMode === 'standalone' || isStandalone)) {
+    return NextResponse.redirect(new URL('/admin/products', request.url))
+  }
+
+  // Only handle admin routes from here
   if (!pathname.startsWith('/admin')) {
     return NextResponse.next()
   }
@@ -75,5 +85,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*']
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)']
 } 
