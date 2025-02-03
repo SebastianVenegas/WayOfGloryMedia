@@ -30,23 +30,13 @@ async function verifyToken(token: string) {
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname
 
-  // Check if it's a PWA request
-  const isPWA = request.headers.get('sec-fetch-mode') === 'navigate' && 
-                request.headers.get('sec-fetch-dest') === 'document' &&
-                request.headers.get('sec-fetch-site') === 'none'
-
-  // Get token from cookie
-  const token = request.cookies.get('auth_token')?.value
-
-  // If it's a PWA request to the root, redirect to admin login
-  if (isPWA && pathname === '/') {
-    return NextResponse.redirect(new URL('/admin/login', request.url))
-  }
-
-  // If not an admin route and not a PWA request, skip middleware
+  // Only handle admin routes
   if (!pathname.startsWith('/admin')) {
     return NextResponse.next()
   }
+
+  // Get token from cookie
+  const token = request.cookies.get('auth_token')?.value
 
   // If no token and trying to access admin routes (except login)
   if (!token && pathname !== '/admin/login') {
@@ -85,8 +75,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    '/',
-    '/admin/:path*'
-  ]
+  matcher: ['/admin/:path*']
 } 
