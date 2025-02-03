@@ -709,7 +709,7 @@ export default function ProductsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50/50 pt-20">
+    <div className="min-h-screen bg-gray-50/50">
       <ProductsHeader 
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
@@ -730,7 +730,7 @@ export default function ProductsPage() {
           data-main-content
           layout
           className={cn(
-            "flex-1 p-6 transition-all duration-300",
+            "flex-1 p-6 pt-24 transition-all duration-300",
             isCartOpen ? "mr-[350px]" : ""
           )}
         >
