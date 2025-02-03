@@ -16,9 +16,21 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // Check if we're in PWA mode
-    const isPWA = window.matchMedia('(display-mode: standalone)').matches
+    const checkPWA = () => {
+      // Multiple checks for PWA mode
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+      const isFullscreen = window.matchMedia('(display-mode: fullscreen)').matches
+      const hasManifest = !!document.querySelector('link[rel="manifest"]')
+      // @ts-ignore iOS specific property
+      const isIOS = navigator.standalone || false
+      
+      return isStandalone || isFullscreen || (hasManifest && isIOS)
+    }
+
     const isWayOfGloryMedia = window.location.hostname === 'wayofglorymedia.com'
+    const isPWA = checkPWA()
+
+    console.log('PWA Status:', { isPWA, isWayOfGloryMedia, hostname: window.location.hostname })
 
     if (isPWA && isWayOfGloryMedia) {
       // If in PWA mode, redirect to admin
