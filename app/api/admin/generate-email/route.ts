@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server'
-import { getEmailPrompt, getEmailTemplate, wrapContent, sanitizeHtml } from '@/lib/email-templates'
+import { getEmailPrompt } from '@/lib/email-templates'
 import prisma from '@/lib/prisma'
 import OpenAI from 'openai'
-import { Decimal } from '@prisma/client/runtime/library'
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -13,7 +12,7 @@ interface Order {
   first_name: string;
   last_name: string;
   email: string;
-  total_amount: Decimal;
+  total_amount: string | number;
   installation_date?: string | null;
   installation_time?: string | null;
   installation_address?: string | null;
@@ -24,8 +23,6 @@ interface Order {
   shipping_city?: string | null;
   shipping_state?: string | null;
   shipping_zip?: string | null;
-  created_at?: Date;
-  updated_at?: Date;
 }
 
 interface EmailResponse {
@@ -71,12 +68,7 @@ function processVariables(content: string, order: any) {
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json()
-    const { orderId, templateId = 'custom', content, isPWA = false } = body
-
-    if (!orderId) {
-      return NextResponse.json({ error: 'Order ID is required' }, { status: 400 })
-    }
+    const { orderId, templateId = 'custom', content, isPWA = false } = await req.json()
 
     // Fetch order details
     const order = await prisma.order.findUnique({
@@ -97,8 +89,6 @@ export async function POST(req: Request) {
         shipping_city: true,
         shipping_state: true,
         shipping_zip: true,
-        created_at: true,
-        updated_at: true,
       },
     })
 
@@ -106,10 +96,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Order not found' }, { status: 404 })
     }
 
-    // Convert Prisma Decimal to proper type
-    const orderWithSerializedAmount = {
+    // Convert Decimal to string and null values to undefined
+    const orderWithStringAmount = {
       ...order,
-      total_amount: order.total_amount as unknown as Decimal,
+      total_amount: order.total_amount.toString(),
+      installation_date: order.installation_date || undefined,
+      installation_time: order.installation_time || undefined,
+      installation_address: order.installation_address || undefined,
+      installation_city: order.installation_city || undefined,
+      installation_state: order.installation_state || undefined,
+      installation_zip: order.installation_zip || undefined,
+      shipping_address: order.shipping_address || undefined,
+      shipping_city: order.shipping_city || undefined,
+      shipping_state: order.shipping_state || undefined,
+      shipping_zip: order.shipping_zip || undefined
     }
 
     let prompt = ''
@@ -122,7 +122,7 @@ ${content}
 Please ensure the response maintains a professional tone and includes all necessary information from the original content.`
     } else {
       // Use predefined template prompts
-      prompt = getEmailPrompt(templateId, orderWithSerializedAmount)
+      prompt = getEmailPrompt(templateId, orderWithStringAmount)
     }
 
     const completion = await openai.chat.completions.create({
@@ -141,103 +141,27 @@ Please ensure the response maintains a professional tone and includes all necess
       max_tokens: 1000,
     })
 
-    const generatedContent = completion.choices[0]?.message?.content
+    const generatedContent = completion.choices[0].message.content
+
     if (!generatedContent) {
-      return NextResponse.json({ error: 'Failed to generate email content' }, { status: 500 })
+      throw new Error('Failed to generate email content')
     }
 
-    // Create the email template
-    const emailTemplate = getEmailTemplate('custom', orderWithSerializedAmount, {
-      subject: templateId === 'custom' ? 'Way of Glory Media - Order Update' : `${templateId.replace(/_/g, ' ')} - Way of Glory Media`,
-      html: generatedContent
-    }, isPWA)
-
+    // Return the complete response object that the frontend expects
     return NextResponse.json({
-      subject: emailTemplate.subject,
-      html: emailTemplate.html,
+      subject: templateId === 'custom' ? 'Custom Email' : `Way of Glory Media - ${templateId.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}`,
       content: generatedContent,
-      isNewTemplate: true
+      html: generatedContent,
+      isNewTemplate: false
     })
   } catch (error) {
     console.error('Error generating email:', error)
-    return NextResponse.json({ 
-      error: error instanceof Error ? error.message : 'Failed to generate email'
-    }, { 
-      status: 500 
-    })
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Failed to generate email' },
+      { status: 500 }
+    )
   }
 }
-
-function formatEmailEdit(content: string): string {
-  // For edit mode, return content with proper line breaks
-  return content
-    .split('\n')
-    .map(line => line.trim())
-    .filter(line => line)
-    .join('\n\n') // Double newline for better paragraph separation
-}
-
-// Define base styling for better email appearance
-const baseStyle = `
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      background-color: #f4f4f5;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-      line-height: 1.5;
-      color: #111827;
-      -webkit-font-smoothing: antialiased;
-    }
-    .email-container {
-      max-width: 600px;
-      margin: 40px auto;
-      padding: 40px;
-      background-color: #ffffff;
-      border-radius: 8px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    }
-    h1 {
-      font-size: 28px;
-      font-weight: 600;
-      margin: 0 0 32px 0;
-      padding: 0;
-      color: #111827;
-    }
-    .content {
-      font-size: 16px;
-      line-height: 1.6;
-      color: #374151;
-    }
-    .content p {
-      margin: 0 0 16px 0;
-      padding: 0;
-    }
-    .content p:last-child {
-      margin-bottom: 0;
-    }
-    .content ul {
-      margin: 16px 0;
-      padding: 0 0 0 24px;
-    }
-    .content li {
-      margin: 8px 0;
-      padding: 0;
-      line-height: 1.5;
-    }
-    .footer {
-      margin-top: 40px;
-      padding-top: 24px;
-      border-top: 1px solid #e5e7eb;
-    }
-    .footer p {
-      margin: 4px 0;
-      color: #6b7280;
-      font-size: 14px;
-      line-height: 1.5;
-    }
-  </style>
-`
 
 function formatEmailPreview({ subject, content, order, baseStyle }: { 
   subject: string;
@@ -338,7 +262,7 @@ function formatEmailPreview({ subject, content, order, baseStyle }: {
             </div>
             <div class="order-detail">
               <span class="order-label">Total Amount</span>
-              <span class="order-value">$${order.total_amount.toFixed(2)}</span>
+              <span class="order-value">$${order.total_amount}</span>
             </div>
             ${order.installation_date ? `
             <div class="order-detail">

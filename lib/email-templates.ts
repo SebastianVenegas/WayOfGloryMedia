@@ -1,23 +1,19 @@
-import { Decimal } from '@prisma/client/runtime/library'
-
 interface Order {
   id: number;
   first_name: string;
   last_name: string;
   email: string;
-  total_amount: Decimal;
-  installation_date?: string | null;
-  installation_time?: string | null;
-  installation_address?: string | null;
-  installation_city?: string | null;
-  installation_state?: string | null;
-  installation_zip?: string | null;
-  shipping_address?: string | null;
-  shipping_city?: string | null;
-  shipping_state?: string | null;
-  shipping_zip?: string | null;
-  created_at?: Date;
-  updated_at?: Date;
+  total_amount: number | string;
+  installation_date?: string;
+  installation_time?: string;
+  installation_address?: string;
+  installation_city?: string;
+  installation_state?: string;
+  installation_zip?: string;
+  shipping_address?: string;
+  shipping_city?: string;
+  shipping_state?: string;
+  shipping_zip?: string;
 }
 
 const baseStyle = `
@@ -192,7 +188,7 @@ const createEmailWrapper = (content: string) => `
   </div>
 `;
 
-export const sanitizeHtml = (html: string, isPWA = false) => {
+const sanitizeHtml = (html: string, isPWA = false) => {
   let sanitized = html
     .replace(/\n\s*/g, ' ')  // Replace newlines and following spaces with a single space
     .replace(/>\s+</g, '><')  // Remove spaces between tags
@@ -211,7 +207,7 @@ export const sanitizeHtml = (html: string, isPWA = false) => {
   return sanitized;
 };
 
-export const wrapContent = (content: string, isPWA = false) => {
+const wrapContent = (content: string, isPWA = false) => {
   // Don't wrap if content already has font-family style
   if (content.includes('style="font-family:')) {
     return isPWA ? sanitizeHtml(content, true) : content;
@@ -265,18 +261,17 @@ export const getEmailPrompt = (templateId: string, order: Order): string => {
     throw new Error('Invalid template ID');
   }
 
-  // Format the total amount to 2 decimal places
-  const formattedAmount = order.total_amount.toFixed(2);
-
   // Add order-specific context to the prompt
   return `${prompt}
 
 Order Context:
 - Customer Name: ${order.first_name} ${order.last_name}
 - Order ID: ${order.id}
-- Total Amount: $${formattedAmount}
+- Total Amount: $${order.total_amount}
 ${order.installation_date ? `- Installation Date: ${order.installation_date}` : ''}
 ${order.installation_time ? `- Installation Time: ${order.installation_time}` : ''}
+${order.installation_address ? `- Installation Address: ${order.installation_address}, ${order.installation_city}, ${order.installation_state} ${order.installation_zip}` : ''}
+${order.shipping_address ? `- Shipping Address: ${order.shipping_address}, ${order.shipping_city}, ${order.shipping_state} ${order.shipping_zip}` : ''}
 
 Please generate a professional email that follows Way of Glory Media's brand voice: friendly, professional, and customer-focused.`;
 };
@@ -310,7 +305,7 @@ export const getEmailTemplate = (
           <p>Dear ${order.first_name} ${order.last_name},</p>
           <p>This is a friendly reminder about your pending payment for order #${order.id}.</p>
           <div class="details">
-            <p><strong>Total Amount Due:</strong> $${order.total_amount.toFixed(2)}</p>
+            <p><strong>Total Amount Due:</strong> $${order.total_amount}</p>
             <p><strong>Payment Methods:</strong></p>
             <p>We offer several convenient payment options. Please contact our team to arrange your preferred payment method:</p>
             <p>
@@ -331,15 +326,13 @@ export const getEmailTemplate = (
         ${createEmailWrapper(`
           <h2>Installation Details</h2>
           <p>Dear ${order.first_name} ${order.last_name},</p>
-          <p>Your installation for order #${order.id} has been scheduled.</p>
+          <p>Your installation for order #${order.id} has been scheduled. Here are the details:</p>
           <div class="details">
+            <p><strong>Installation Address:</strong><br>
+              ${order.installation_address}, ${order.installation_city}, ${order.installation_state} ${order.installation_zip}
+            </p>
             <p><strong>Date & Time:</strong><br>
               ${order.installation_date} at ${order.installation_time}
-            </p>
-            <p><strong>Need to make changes?</strong><br>
-              Contact our team:<br>
-              Phone: (310) 872-9781<br>
-              Email: help@wayofglory.com
             </p>
           </div>
           <p>Our installation team will arrive within the scheduled time window. Please ensure someone is available to provide access to the installation area.</p>
@@ -355,10 +348,8 @@ export const getEmailTemplate = (
           <p>Dear ${order.first_name} ${order.last_name},</p>
           <p>Great news! Your order #${order.id} has been shipped and is on its way to you.</p>
           <div class="details">
-            <p><strong>Have questions about your delivery?</strong><br>
-              Contact our team:<br>
-              Phone: (310) 872-9781<br>
-              Email: help@wayofglory.com
+            <p><strong>Delivery Address:</strong><br>
+              ${order.shipping_address}, ${order.shipping_city}, ${order.shipping_state} ${order.shipping_zip}
             </p>
           </div>
           <p>We'll notify you once your order has been delivered. If you have any special delivery instructions, please contact us.</p>
@@ -375,7 +366,7 @@ export const getEmailTemplate = (
           <p>Thank you for choosing Way of Glory. We truly appreciate your business and trust in our services.</p>
           <div class="details">
             <p><strong>Order Number:</strong> #${order.id}</p>
-            <p><strong>Total Amount:</strong> $${order.total_amount.toFixed(2)}</p>
+            <p><strong>Total Amount:</strong> $${order.total_amount}</p>
           </div>
           <p>We hope you're completely satisfied with your purchase. If you have any questions or need assistance, please don't hesitate to reach out.</p>
         `)}
@@ -391,14 +382,11 @@ export const getEmailTemplate = (
   return template;
 };
 
-export const formatEmailPreview = async (html: string, order: Order) => {
-  // Replace any remaining variables in the HTML
-  const processedHtml = html
-    .replace(/\{customerName\}/g, `${order.first_name} ${order.last_name}`)
-    .replace(/\{orderId\}/g, `${order.id}`)
-    .replace(/\{totalAmount\}/g, `$${order.total_amount.toFixed(2)}`)
-    .replace(/\{installationDate\}/g, order.installation_date || 'Not scheduled')
-    .replace(/\{installationTime\}/g, order.installation_time || 'Not scheduled');
-
-  return processedHtml;
+export const formatEmailPreview = async (content: string, order: Order): Promise<string> => {
+  const wrappedContent = wrapContent(content);
+  const cleanContent = sanitizeHtml(wrappedContent);
+  return sanitizeHtml(`
+    ${baseStyle}
+    ${createEmailWrapper(cleanContent)}
+  `);
 }; 
