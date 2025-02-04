@@ -68,29 +68,42 @@ function processVariables(content: string, order: any) {
 
 export async function POST(req: Request) {
   try {
-    const { orderId, templateId = 'custom', content, isPWA = false } = await req.json()
+    const { 
+      orderId, 
+      templateId = 'custom', 
+      content, 
+      isPWA = false,
+      prompt: customPrompt,
+      templateType,
+      order: providedOrder,
+      viewMode,
+      variables 
+    } = await req.json()
 
-    // Fetch order details
-    const order = await prisma.order.findUnique({
-      where: { id: Number(orderId) },
-      select: {
-        id: true,
-        first_name: true,
-        last_name: true,
-        email: true,
-        total_amount: true,
-        installation_date: true,
-        installation_time: true,
-        installation_address: true,
-        installation_city: true,
-        installation_state: true,
-        installation_zip: true,
-        shipping_address: true,
-        shipping_city: true,
-        shipping_state: true,
-        shipping_zip: true,
-      },
-    })
+    // Use provided order if available, otherwise fetch from database
+    let order = providedOrder
+    if (!order && orderId) {
+      order = await prisma.order.findUnique({
+        where: { id: Number(orderId) },
+        select: {
+          id: true,
+          first_name: true,
+          last_name: true,
+          email: true,
+          total_amount: true,
+          installation_date: true,
+          installation_time: true,
+          installation_address: true,
+          installation_city: true,
+          installation_state: true,
+          installation_zip: true,
+          shipping_address: true,
+          shipping_city: true,
+          shipping_state: true,
+          shipping_zip: true,
+        },
+      })
+    }
 
     if (!order) {
       return NextResponse.json({
@@ -119,15 +132,17 @@ export async function POST(req: Request) {
       shipping_zip: order.shipping_zip || undefined
     }
 
-    let prompt = ''
-    if (templateId === 'custom' && content) {
-      prompt = `Please help improve and professionally format this email content while maintaining its core message. Make it more engaging and on-brand for Way of Glory Media:
+    let prompt = customPrompt || ''
+    if (!prompt) {
+      if (templateId === 'custom' && content) {
+        prompt = `Please help improve and professionally format this email content while maintaining its core message. Make it more engaging and on-brand for Way of Glory Media:
 
 ${content}
 
 Please ensure the response maintains a professional tone and includes all necessary information from the original content.`
-    } else {
-      prompt = getEmailPrompt(templateId, orderWithStringAmount)
+      } else {
+        prompt = getEmailPrompt(templateId || templateType, orderWithStringAmount)
+      }
     }
 
     const completion = await openai.chat.completions.create({
@@ -161,14 +176,24 @@ Please ensure the response maintains a professional tone and includes all necess
 
     const subject = templateId === 'custom' 
       ? 'Custom Email' 
-      : `Way of Glory Media - ${templateId.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}`
+      : `Way of Glory Media - ${(templateId || templateType).replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}`
+
+    // Format content based on view mode
+    const formattedContent = viewMode === 'preview' 
+      ? formatEmailPreview({ 
+          subject, 
+          content: generatedContent, 
+          order: orderWithStringAmount, 
+          baseStyle: '' 
+        })
+      : generatedContent
 
     return NextResponse.json({
       success: true,
       error: null,
       subject,
       content: generatedContent,
-      html: generatedContent,
+      html: formattedContent,
       isNewTemplate: false
     })
   } catch (error) {
