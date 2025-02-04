@@ -18,7 +18,7 @@ Guidelines:
 4. Use professional but engaging language
 5. Focus on benefits and value proposition
 
-Return the response in this exact JSON format:
+Return ONLY a JSON object in this exact format without any additional text:
 {
   "title": "service title",
   "description": "detailed service description",
@@ -38,11 +38,21 @@ Return the response in this exact JSON format:
           content: `Please create a professional service offering based on this description: ${prompt}`
         }
       ],
-      temperature: 0.7,
-      response_format: { type: "json_object" }
+      temperature: 0.7
     })
 
-    const generatedService = JSON.parse(completion.choices[0]?.message?.content || '{}')
+    const responseContent = completion.choices[0]?.message?.content || '{}'
+    let generatedService
+    
+    try {
+      generatedService = JSON.parse(responseContent)
+    } catch (parseError) {
+      console.error('Error parsing service JSON:', parseError)
+      return NextResponse.json(
+        { error: 'Failed to parse generated service' },
+        { status: 500 }
+      )
+    }
 
     return NextResponse.json(generatedService)
   } catch (error) {

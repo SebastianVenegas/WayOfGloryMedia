@@ -2,9 +2,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Package, FileText, X, ArrowRight, DollarSign, Wand2, Edit, Eye, Plus, Save, Sparkles } from "lucide-react"
-import { motion, AnimatePresence } from "framer-motion"
-import { useState, useEffect } from "react"
+import { Package, X, ArrowRight, DollarSign, Wand2, Edit, Eye, Plus, Save, Sparkles } from "lucide-react"
+import { motion } from "framer-motion"
+import { useState } from "react"
 import { cn } from "@/lib/utils"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/components/ui/use-toast"
@@ -13,15 +13,19 @@ interface CustomServiceModalProps {
   isOpen: boolean
   onClose: () => void
   onSave: (service: CustomService) => void
-  onAddToBundle?: (service: CustomService) => void
 }
 
 interface CustomService {
+  id?: string
   title: string
   description: string
   price: number
   features: string[]
   category: string
+  is_custom: boolean
+  created_at?: string
+  updated_at?: string
+  created_by?: string
 }
 
 const fadeIn = {
@@ -30,38 +34,7 @@ const fadeIn = {
   exit: { opacity: 0, y: -10 }
 }
 
-const slideIn = {
-  initial: { x: 20, opacity: 0 },
-  animate: { x: 0, opacity: 1 },
-  exit: { x: -20, opacity: 0 }
-}
-
-const pulseAnimation = {
-  initial: { scale: 1, opacity: 1 },
-  animate: {
-    scale: [1, 1.2, 1],
-    opacity: [1, 0.7, 1],
-    transition: {
-      duration: 1,
-      repeat: Infinity,
-      ease: "easeInOut"
-    }
-  }
-}
-
-const waveAnimation = {
-  initial: { opacity: 0.3 },
-  animate: {
-    opacity: [0.3, 1, 0.3],
-    transition: {
-      duration: 1.5,
-      repeat: Infinity,
-      ease: "easeInOut"
-    }
-  }
-}
-
-export default function CustomServiceModal({ isOpen, onClose, onSave, onAddToBundle }: CustomServiceModalProps) {
+export default function CustomServiceModal({ isOpen, onClose, onSave }: CustomServiceModalProps) {
   const [activeTab, setActiveTab] = useState('edit')
   const [isGenerating, setIsGenerating] = useState(false)
   const [isImproving, setIsImproving] = useState(false)
@@ -73,22 +46,9 @@ export default function CustomServiceModal({ isOpen, onClose, onSave, onAddToBun
     description: "",
     price: 0,
     features: [""],
-    category: "Services"
+    category: "Services",
+    is_custom: true
   })
-
-  useEffect(() => {
-    if (!isOpen) {
-      setFormData({
-        title: "",
-        description: "",
-        price: 0,
-        features: [""],
-        category: "Services"
-      })
-      setAiPrompt('')
-      setActiveTab('edit')
-    }
-  }, [isOpen])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -113,31 +73,10 @@ export default function CustomServiceModal({ isOpen, onClose, onSave, onAddToBun
       description: "",
       price: 0,
       features: [""],
-      category: "Services"
+      category: "Services",
+      is_custom: true
     })
     onClose()
-  }
-
-  const handleAddToBundle = () => {
-    if (!isFormValid()) {
-      toast({
-        title: "Validation Error",
-        description: "Please fill in all required fields correctly",
-        variant: "destructive",
-      })
-      return
-    }
-    
-    const serviceData = {
-      ...formData,
-      features: formData.features.filter(f => f.trim() !== "")
-    }
-    
-    onAddToBundle?.(serviceData)
-    toast({
-      title: "Added to Bundle",
-      description: "Service has been added to your bundle",
-    })
   }
 
   const isFormValid = () => {
@@ -246,7 +185,8 @@ export default function CustomServiceModal({ isOpen, onClose, onSave, onAddToBun
         description: generated.description || '',
         features: generated.features || [''],
         price: generated.price || 0,
-        category: 'Services'
+        category: 'Services',
+        is_custom: true
       })
       setActiveTab('edit')
 
@@ -267,7 +207,7 @@ export default function CustomServiceModal({ isOpen, onClose, onSave, onAddToBun
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg p-0 gap-0 bg-white rounded-2xl border-none shadow-2xl">
+      <DialogContent className="max-w-4xl p-0 gap-0 bg-white rounded-2xl border-none shadow-2xl">
         <DialogHeader className="relative p-6 pb-0">
           <Button
             variant="ghost"
@@ -279,12 +219,14 @@ export default function CustomServiceModal({ isOpen, onClose, onSave, onAddToBun
           </Button>
           
           <div className="flex flex-col items-start space-y-4">
-            <span className="inline-flex items-center px-3 py-1 rounded-lg bg-blue-50 text-blue-700 text-sm font-medium">
-              <Package className="h-4 w-4 mr-2" />
-              Create Custom Service
+            <span className="inline-flex items-center px-3 py-1 rounded-lg bg-gradient-to-r from-blue-50 to-blue-100 text-blue-700 text-sm font-medium">
+              <Sparkles className="h-4 w-4 mr-2" />
+              Custom Service
             </span>
             <DialogTitle className="text-2xl font-bold text-gray-900">
-              New Custom Service
+              {activeTab === 'ai' ? 'Generate Service with AI' : 
+               activeTab === 'edit' ? 'Create Custom Service' :
+               'Preview Service'}
             </DialogTitle>
           </div>
         </DialogHeader>
@@ -303,6 +245,7 @@ export default function CustomServiceModal({ isOpen, onClose, onSave, onAddToBun
                   className={cn(
                     "flex items-center justify-center gap-2 py-2.5 text-sm font-medium transition-all",
                     "data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm",
+                    "data-[state=active]:scale-[0.98] hover:bg-white/50",
                     "focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                   )}
                 >
@@ -314,18 +257,18 @@ export default function CustomServiceModal({ isOpen, onClose, onSave, onAddToBun
           </div>
 
           <div className="p-6">
-            <TabsContent value="ai" className="mt-0">
+            <TabsContent value="ai" className="mt-0 space-y-4">
               <div className="space-y-4">
                 <Textarea
                   placeholder="Describe the service you want to create..."
                   value={aiPrompt}
                   onChange={(e) => setAiPrompt(e.target.value)}
-                  className="min-h-[150px] resize-none"
+                  className="min-h-[150px] resize-none bg-gray-50/50 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                 />
                 <Button
                   onClick={handleGenerateService}
-                  className="w-full"
                   disabled={isGenerating}
+                  className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md hover:shadow-lg transition-all duration-200"
                 >
                   {isGenerating ? (
                     <>Generating...</>
@@ -340,73 +283,93 @@ export default function CustomServiceModal({ isOpen, onClose, onSave, onAddToBun
             </TabsContent>
 
             <TabsContent value="edit" className="mt-0">
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <Input
-                    placeholder="Service Title"
-                    value={formData.title}
-                    onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                    className="font-medium"
-                  />
-                </div>
-
-                <div>
-                  <Textarea
-                    placeholder="Service Description"
-                    value={formData.description}
-                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                    className="min-h-[100px] resize-none"
-                  />
-                </div>
-
-                <div>
-                  <Input
-                    type="number"
-                    placeholder="Price"
-                    value={formData.price || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, price: parseFloat(e.target.value) || 0 }))}
-                    className="font-medium"
-                  />
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Service Title</label>
+                    <Input
+                      value={formData.title}
+                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                      placeholder="e.g., Premium Audio Setup"
+                      className="bg-gray-50/50 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Price (USD)</label>
+                    <div className="relative">
+                      <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input
+                        type="number"
+                        value={formData.price || ''}
+                        onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })}
+                        placeholder="0.00"
+                        className="pl-9 bg-gray-50/50 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">Features</label>
-                  {formData.features.map((feature, index) => (
-                    <div key={index} className="flex gap-2">
-                      <Input
-                        placeholder="Feature description"
-                        value={feature}
-                        onChange={(e) => updateFeature(index, e.target.value)}
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeFeature(index)}
-                        className="shrink-0"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={addFeature}
-                    className="w-full mt-2"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Feature
-                  </Button>
+                  <label className="text-sm font-medium text-gray-700">Description</label>
+                  <Textarea
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    placeholder="Describe your service in detail..."
+                    className="min-h-[100px] bg-gray-50/50 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                  />
                 </div>
 
-                <div className="flex gap-2 pt-4">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium text-gray-700">Features</label>
+                    <Button
+                      type="button"
+                      onClick={addFeature}
+                      variant="outline"
+                      size="sm"
+                      className="text-blue-600 hover:text-blue-700 border-blue-200 hover:border-blue-300"
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      Add Feature
+                    </Button>
+                  </div>
+                  <motion.div layout className="space-y-3">
+                    {formData.features.map((feature, index) => (
+                      <motion.div
+                        key={index}
+                        layout
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        className="flex gap-2"
+                      >
+                        <Input
+                          value={feature}
+                          onChange={(e) => updateFeature(index, e.target.value)}
+                          placeholder={`Feature ${index + 1}`}
+                          className="flex-1 bg-gray-50/50 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                        />
+                        <Button
+                          type="button"
+                          onClick={() => removeFeature(index)}
+                          variant="ghost"
+                          size="icon"
+                          className="hover:bg-red-50 hover:text-red-600"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </motion.div>
+                    ))}
+                  </motion.div>
+                </div>
+
+                <div className="flex items-center justify-between pt-6 border-t">
                   <Button
                     type="button"
-                    variant="outline"
                     onClick={handleImproveService}
+                    variant="outline"
                     disabled={isImproving}
-                    className="flex-1"
+                    className="text-blue-600 hover:text-blue-700 border-blue-200 hover:border-blue-300"
                   >
                     {isImproving ? (
                       <>Improving...</>
@@ -417,55 +380,55 @@ export default function CustomServiceModal({ isOpen, onClose, onSave, onAddToBun
                       </>
                     )}
                   </Button>
-                  <Button type="submit" className="flex-1">
-                    <Save className="h-4 w-4 mr-2" />
-                    Save Service
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      onClick={onClose}
+                      variant="ghost"
+                      className="text-gray-600 hover:text-gray-700"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="submit"
+                      className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md hover:shadow-lg transition-all duration-200"
+                    >
+                      <Save className="h-4 w-4 mr-2" />
+                      Save Service
+                    </Button>
+                  </div>
                 </div>
               </form>
             </TabsContent>
 
             <TabsContent value="preview" className="mt-0">
-              <div className="bg-gray-50 rounded-lg p-6 space-y-4">
-                <div>
-                  <h3 className="text-xl font-semibold text-gray-900">{formData.title || 'Service Title'}</h3>
-                  <p className="text-gray-600 mt-2">{formData.description || 'Service description will appear here'}</p>
+              <div className="bg-gray-50/50 rounded-xl p-6 space-y-6">
+                <div className="space-y-2">
+                  <h3 className="text-xl font-semibold text-gray-900">{formData.title || 'Untitled Service'}</h3>
+                  <p className="text-gray-600">{formData.description || 'No description provided.'}</p>
                 </div>
 
-                <div className="bg-white rounded-lg p-4 shadow-sm">
-                  <div className="text-2xl font-bold text-gray-900">${formData.price || '0'}</div>
-                </div>
+                {formData.features.filter(f => f.trim()).length > 0 && (
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-medium text-gray-900">Features</h4>
+                    <ul className="space-y-2">
+                      {formData.features.filter(f => f.trim()).map((feature, index) => (
+                        <li key={index} className="flex items-start gap-2 text-gray-600">
+                          <ArrowRight className="h-4 w-4 mt-1 text-blue-500 flex-shrink-0" />
+                          <span>{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
-                <div>
-                  <h4 className="font-medium text-gray-900 mb-2">Features</h4>
-                  <ul className="space-y-2">
-                    {formData.features.filter(f => f.trim()).map((feature, index) => (
-                      <li key={index} className="flex items-start gap-2 text-gray-600">
-                        <ArrowRight className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
-                        {feature}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                <div className="flex gap-2 pt-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleAddToBundle}
-                    className="flex-1"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add to Bundle
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={handleSubmit}
-                    className="flex-1"
-                  >
-                    <Save className="h-4 w-4 mr-2" />
-                    Save Service
-                  </Button>
+                <div className="pt-4 border-t">
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-sm text-gray-500">Price</span>
+                    <span className="text-2xl font-bold text-gray-900">
+                      ${formData.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
                 </div>
               </div>
             </TabsContent>

@@ -1,36 +1,31 @@
 import { NextResponse } from 'next/server'
 import OpenAI from 'openai'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+const openai = new OpenAI()
 
 export async function POST(req: Request) {
   try {
     const { title, description, features, price, category } = await req.json()
 
-    const prompt = `Please enhance this service offering to make it more professional and appealing:
-
+    const prompt = `Enhance the following service description to make it more professional and appealing:
 Title: ${title}
 Description: ${description}
-Features:
-${features.map((f: string) => `- ${f}`).join('\n')}
+Features: ${features.join(', ')}
 Price: $${price}
 Category: ${category}
 
-Please improve:
-1. Make the title more compelling and professional
-2. Enhance the description to better highlight value and benefits
-3. Refine and expand the features to be more specific and valuable
-4. Suggest an optimized price point based on the value offered
-5. Keep the tone professional but engaging
+Please provide an improved version with:
+1. A more compelling title
+2. A clearer, more detailed description
+3. Better organized and more valuable features
+4. An optimized price point based on the value provided
 
-Return the response in this exact JSON format:
+Return ONLY a JSON response in this exact format without any additional text:
 {
   "title": "enhanced title",
   "description": "enhanced description",
   "features": ["feature1", "feature2", ...],
-  "price": number
+  "price": numeric_price
 }`
 
     const completion = await openai.chat.completions.create({
@@ -38,7 +33,7 @@ Return the response in this exact JSON format:
       messages: [
         {
           role: "system",
-          content: "You are an expert service offering consultant for Way of Glory Media. Your task is to enhance service descriptions to be more professional, compelling, and value-focused."
+          content: "You are a professional service description writer. Always respond with valid JSON only."
         },
         {
           role: "user",
@@ -46,16 +41,15 @@ Return the response in this exact JSON format:
         }
       ],
       temperature: 0.7,
-      response_format: { type: "json_object" }
     })
 
-    const enhancedService = JSON.parse(completion.choices[0]?.message?.content || '{}')
+    const enhancedService = JSON.parse(completion.choices[0].message.content || '{}')
 
     return NextResponse.json(enhancedService)
   } catch (error) {
-    console.error('Error enhancing service:', error)
+    console.error('Service enhancement error:', error)
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to enhance service' },
+      { error: 'Failed to enhance service' },
       { status: 500 }
     )
   }

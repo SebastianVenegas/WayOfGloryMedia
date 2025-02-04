@@ -65,4 +65,19 @@ export async function POST(req: Request) {
       { status: 500 }
     )
   }
+}
+
+export async function GET() {
+  try {
+    const result = await sql`
+      SELECT * FROM products 
+      WHERE category = 'Services' 
+      AND is_custom = true 
+      ORDER BY created_at DESC
+    `
+    return NextResponse.json(result.rows)
+  } catch (error) {
+    console.error('Error fetching custom services:', error)
+    return NextResponse.json({ error: 'Failed to fetch custom services' }, { status: 500 })
+  }
 } 

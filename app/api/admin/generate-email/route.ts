@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getEmailPrompt } from '@/lib/email-templates'
 import prisma from '@/lib/prisma'
 import OpenAI from 'openai'
+import { sql } from '@vercel/postgres'
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -9,20 +10,15 @@ const openai = new OpenAI({
 
 interface Order {
   id: number;
-  first_name: string;
-  last_name: string;
+  customer_name: string;
   email: string;
-  total_amount: string | number;
-  installation_date?: string | null;
-  installation_time?: string | null;
-  installation_address?: string | null;
-  installation_city?: string | null;
-  installation_state?: string | null;
-  installation_zip?: string | null;
-  shipping_address?: string | null;
-  shipping_city?: string | null;
-  shipping_state?: string | null;
-  shipping_zip?: string | null;
+  status: string;
+  total: number;
+  created_at: string;
+  notes?: string;
+  phone?: string;
+  payment_status?: string;
+  payment_method?: string;
 }
 
 interface EmailResponse {
@@ -34,32 +30,19 @@ interface EmailResponse {
 
 // Function to process variables in content
 function processVariables(content: string, order: any) {
-  const customerName = `${order.first_name} ${order.last_name}`.trim()
-  
   return content
     // Customer Information
-    .replace(/\{customerName\}/g, customerName)
-    .replace(/\{firstName\}/g, order.first_name)
-    .replace(/\{lastName\}/g, order.last_name)
-    .replace(/\{email\}/g, order.email)
+    .replace(/\{customerName\}/g, order.customer_name || '')
+    .replace(/\{email\}/g, order.email || '')
     .replace(/\{phone\}/g, order.phone || 'Not provided')
-    .replace(/\{organization\}/g, order.organization || 'Not provided')
 
     // Order Information
     .replace(/\{orderId\}/g, order.id)
     .replace(/\#\{orderId\}/g, `#${order.id}`)
     .replace(/\{orderDate\}/g, new Date(order.created_at).toLocaleDateString())
-    .replace(/\{totalAmount\}/g, `$${Number(order.total_amount).toFixed(2)}`)
+    .replace(/\{totalAmount\}/g, `$${Number(order.total).toFixed(2)}`)
     .replace(/\{status\}/g, order.status)
-
-    // Installation Information
-    .replace(/\{installationDate\}/g, order.installation_date || 'To be scheduled')
-    .replace(/\{installationTime\}/g, order.installation_time || 'To be scheduled')
-    .replace(/\{installationInstructions\}/g, order.installation_instructions || 'No special instructions provided')
-
-    // Contact Information
-    .replace(/\{contactOnsite\}/g, order.contact_onsite || 'Not provided')
-    .replace(/\{contactOnsitePhone\}/g, order.contact_onsite_phone || 'Not provided')
+    .replace(/\{notes\}/g, order.notes || 'No notes provided')
 }
 
 export async function POST(req: Request) {
@@ -79,26 +62,12 @@ export async function POST(req: Request) {
     // Use provided order if available, otherwise fetch from database
     let order = providedOrder
     if (!order && orderId) {
-      order = await prisma.order.findUnique({
-        where: { id: Number(orderId) },
-        select: {
-          id: true,
-          first_name: true,
-          last_name: true,
-          email: true,
-          total_amount: true,
-          installation_date: true,
-          installation_time: true,
-          installation_address: true,
-          installation_city: true,
-          installation_state: true,
-          installation_zip: true,
-          shipping_address: true,
-          shipping_city: true,
-          shipping_state: true,
-          shipping_zip: true,
-        },
-      })
+      const result = await sql`
+        SELECT id, customer_name, email, status, total, created_at, notes
+        FROM orders 
+        WHERE id = ${orderId}
+      `
+      order = result.rows[0]
     }
 
     if (!order) {
@@ -115,17 +84,7 @@ export async function POST(req: Request) {
     // Convert Decimal to string and null values to undefined
     const orderWithStringAmount = {
       ...order,
-      total_amount: order.total_amount.toString(),
-      installation_date: order.installation_date || undefined,
-      installation_time: order.installation_time || undefined,
-      installation_address: order.installation_address || undefined,
-      installation_city: order.installation_city || undefined,
-      installation_state: order.installation_state || undefined,
-      installation_zip: order.installation_zip || undefined,
-      shipping_address: order.shipping_address || undefined,
-      shipping_city: order.shipping_city || undefined,
-      shipping_state: order.shipping_state || undefined,
-      shipping_zip: order.shipping_zip || undefined
+      total: order.total.toString()
     }
 
     let prompt = customPrompt || ''
@@ -218,172 +177,139 @@ function formatEmailPreview({ subject, content, order, baseStyle }: {
   order: Order;
   baseStyle: string;
 }): string {
-  // First, clean and standardize the content
-  let formattedContent = content
-    .split('\n')
-    .map(line => line.trim())
-    .filter(line => line)
-    .map(line => {
-      // Remove any address-related content and standardize signatures
-      line = line.replace(/(?:visit|at|in|our|the)\s+office/gi, 'contact us')
-      line = line.replace(/(?:come|visit)\s+us\s+at/gi, 'contact us')
-      line = line.replace(/(?:located|situated|based)\s+(?:at|in)/gi, 'available')
-      line = line.replace(/contact\s+(?:our|the)\s+office/gi, 'contact us')
-      line = line.replace(/\[Your Name\]/gi, 'Way of Glory Team')
-      line = line.replace(/(?:Best|Kind|Warm|Sincerely|Regards|Best Regards),?\s*\n*(?:\[.*?\]|Your Name)/gi, 'Best Regards,\nWay of Glory Team')
-      
-      // Ensure consistent paragraph formatting
-      if (!line.startsWith('<')) {
-        line = `<p>${line}</p>`
-      }
-      
-      return line
-    })
-    .join('\n')
-
-  // Ensure consistent spacing between sections
-  formattedContent = formattedContent
-    .replace(/<\/p>\s*<p>/g, '</p>\n<p>') // Add newline between paragraphs
-    .replace(/(<\/div>)\s*(<div)/g, '$1\n$2') // Add newline between divs
-    .replace(/(<\/h\d>)\s*(<p)/g, '$1\n$2') // Add newline after headers
-    .replace(/(<\/p>)\s*(<h\d)/g, '$1\n$2') // Add newline before headers
-
-  // Add consistent styling
-  const styles = `
-    <style>
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
-      body {
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-        line-height: 1.6;
-        color: #374151;
-        background-color: #f9fafb;
-      }
-      .email-container {
-        max-width: 600px;
-        margin: 40px auto;
-        padding: 32px;
-        background-color: #ffffff;
-        border-radius: 8px;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-      }
-      h1, h2, h3 {
-        color: #111827;
-        margin-bottom: 16px;
-        font-weight: 600;
-      }
-      h1 {
-        font-size: 24px;
-        margin-bottom: 24px;
-      }
-      h2 {
-        font-size: 20px;
-      }
-      h3 {
-        font-size: 16px;
-      }
-      p {
-        margin-bottom: 16px;
-        line-height: 1.6;
-      }
-      .content {
-        margin-bottom: 32px;
-      }
-      .order-card {
-        background: #f8fafc;
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
-        padding: 24px;
-        margin: 24px 0;
-      }
-      .order-detail {
-        display: flex;
-        justify-content: space-between;
-        padding: 12px 0;
-        border-bottom: 1px solid #e2e8f0;
-      }
-      .order-detail:last-child {
-        border-bottom: none;
-      }
-      .order-label {
-        color: #64748b;
-        font-size: 14px;
-      }
-      .order-value {
-        color: #0f172a;
-        font-size: 14px;
-        font-weight: 500;
-      }
-      .contact-info {
-        margin-top: 32px;
-        padding: 24px;
-        background: #f8fafc;
-        border-radius: 8px;
-        border: 1px solid #e2e8f0;
-      }
-      .contact-info h3 {
-        margin-bottom: 12px;
-      }
-      .contact-info p {
-        margin-bottom: 8px;
-      }
-      .signature {
-        margin-top: 32px;
-        padding-top: 24px;
-        border-top: 1px solid #e2e8f0;
-        text-align: left;
-      }
-      .signature-name {
-        font-weight: 600;
-        color: #111827;
-        margin-bottom: 4px;
-      }
-      .signature-title {
-        color: #64748b;
-        font-size: 14px;
-      }
-      ul, ol {
-        margin: 16px 0;
-        padding-left: 24px;
-      }
-      li {
-        margin: 8px 0;
-      }
-    </style>
-  `
-
   return `
     <!DOCTYPE html>
     <html>
       <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        ${styles}
+        <title>${subject}</title>
+        <style>
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+          }
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            line-height: 1.6;
+            color: #374151;
+            background-color: #f9fafb;
+          }
+          .email-container {
+            max-width: 600px;
+            margin: 40px auto;
+            padding: 32px;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+          }
+          h1, h2, h3 {
+            color: #111827;
+            margin-bottom: 16px;
+            font-weight: 600;
+          }
+          h1 {
+            font-size: 24px;
+            margin-bottom: 24px;
+          }
+          h2 {
+            font-size: 20px;
+          }
+          h3 {
+            font-size: 16px;
+          }
+          p {
+            margin-bottom: 16px;
+            line-height: 1.6;
+          }
+          .content {
+            margin-bottom: 32px;
+          }
+          .order-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 24px;
+            margin: 24px 0;
+          }
+          .order-detail {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #e2e8f0;
+          }
+          .order-detail:last-child {
+            border-bottom: none;
+          }
+          .order-label {
+            color: #64748b;
+            font-size: 14px;
+          }
+          .order-value {
+            color: #0f172a;
+            font-size: 14px;
+            font-weight: 500;
+          }
+          .contact-info {
+            margin-top: 32px;
+            padding: 24px;
+            background: #f8fafc;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+          }
+          .contact-info h3 {
+            margin-bottom: 12px;
+          }
+          .contact-info p {
+            margin-bottom: 8px;
+          }
+          .signature {
+            margin-top: 32px;
+            padding-top: 24px;
+            border-top: 1px solid #e2e8f0;
+            text-align: left;
+          }
+          .signature-name {
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 4px;
+          }
+          .signature-title {
+            color: #64748b;
+            font-size: 14px;
+          }
+          ul, ol {
+            margin: 16px 0;
+            padding-left: 24px;
+          }
+          li {
+            margin: 8px 0;
+          }
+        </style>
       </head>
       <body>
         <div class="email-container">
-          <h1>Dear ${order.first_name},</h1>
-          <div class="content">
-            ${formattedContent}
-          </div>
-
-          <div class="order-card">
+          <div class="order-details">
             <h3>Order Details</h3>
             <div class="order-detail">
-              <span class="order-label">Order Number</span>
+              <span class="order-label">Order ID</span>
               <span class="order-value">#${order.id}</span>
             </div>
             <div class="order-detail">
-              <span class="order-label">Total Amount</span>
-              <span class="order-value">$${order.total_amount}</span>
+              <span class="order-label">Customer</span>
+              <span class="order-value">${order.customer_name}</span>
             </div>
-            ${order.installation_date ? `
             <div class="order-detail">
-              <span class="order-label">Installation Date</span>
-              <span class="order-value">${order.installation_date}</span>
+              <span class="order-label">Total</span>
+              <span class="order-value">$${Number(order.total).toFixed(2)}</span>
+            </div>
+            <div class="order-detail">
+              <span class="order-label">Status</span>
+              <span class="order-value">${order.status}</span>
+            </div>
+            ${order.notes ? `
+            <div class="order-detail">
+              <span class="order-label">Notes</span>
+              <span class="order-value">${order.notes}</span>
             </div>
             ` : ''}
           </div>

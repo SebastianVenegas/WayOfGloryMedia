@@ -22,6 +22,8 @@ import { productImages } from '@/lib/product-images'
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { useSidebar } from '@/contexts/SidebarContext'
 import ProductsHeader from '@/components/admin/ProductsHeader'
+import { SelectCustomServiceModal } from "../../components/ui/select-custom-service-modal"
+import type { CustomService } from "../../components/ui/custom-service-modal"
 
 // Category type definitions
 type MainCategory = 'all' | 'Audio Gear' | 'Streaming Gear' | 'Services';
@@ -169,15 +171,6 @@ interface ProductFormData {
   installation_available: boolean
   technical_details: Record<string, string>
   images: string[]
-}
-
-interface CustomService {
-  title: string
-  description: string
-  price: number
-  features?: string[]
-  category: string
-  quantity?: number
 }
 
 const containerVariants = {
@@ -355,9 +348,15 @@ export default function ProductsPage() {
   const [showForm, setShowForm] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showCustomServiceModal, setShowCustomServiceModal] = useState(false)
+  const [isCustomServiceModalOpen, setIsCustomServiceModalOpen] = useState(false)
   const [authToken, setAuthToken] = useState<string | null>(null)
   const productsPerPage = 12
   const router = useRouter()
+  const [expandedCard, setExpandedCard] = useState<number | null>(null)
+  const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  const [imagesLoaded, setImagesLoaded] = useState(false)
+  const [isSelectCustomServiceModalOpen, setIsSelectCustomServiceModalOpen] = useState(false)
+  const [customServices, setCustomServices] = useState<CustomService[]>([])
 
   useEffect(() => {
     setMounted(true)
@@ -389,6 +388,10 @@ export default function ProductsPage() {
     getAuthToken()
   }, [])
 
+  useEffect(() => {
+    fetchCustomServices()
+  }, [])
+
   const fetchProducts = async () => {
     try {
       const response = await fetch('/api/admin/products')
@@ -401,6 +404,18 @@ export default function ProductsPage() {
       console.error('Error fetching products:', error)
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const fetchCustomServices = async () => {
+    try {
+      const response = await fetch('/api/custom-services')
+      if (response.ok) {
+        const data = await response.json()
+        setCustomServices(data)
+      }
+    } catch (error) {
+      console.error('Error fetching custom services:', error)
     }
   }
 
@@ -634,14 +649,13 @@ export default function ProductsPage() {
 
   const handleCustomServiceSave = async (serviceData: CustomService) => {
     try {
-      // First, create the custom service as a product
       const response = await fetch('/api/custom-services', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: serviceData.title,
           description: serviceData.description,
-          price: serviceData.price,
+          price: typeof serviceData.price === 'string' ? parseFloat(serviceData.price) : serviceData.price,
           features: serviceData.features || [],
           category: 'Services'
         })
@@ -685,6 +699,29 @@ export default function ProductsPage() {
     }
   }
 
+  const handleCustomServiceSelect = (service: CustomService) => {
+    if (!service.id) return; // Early return if no ID
+    
+    const bundleItem: BundleItem = {
+      product: {
+        id: service.id,
+        title: service.title,
+        description: service.description,
+        price: typeof service.price === 'string' ? parseFloat(service.price) : service.price,
+        category: 'Services',
+        features: service.features || [],
+        is_custom: true,
+        is_service: true,
+        quantity: 1
+      },
+      quantity: 1,
+      price: typeof service.price === 'string' ? parseFloat(service.price) : service.price
+    }
+    setBundleItems(prev => [...prev, bundleItem])
+    setIsSelectCustomServiceModalOpen(false)
+    setIsCartOpen(true)
+  }
+
   const isAudioCategory = selectedCategory === 'Audio Gear' || selectedCategory.startsWith('Audio Gear/')
 
   // Early return while not mounted to prevent hydration mismatch
@@ -711,431 +748,448 @@ export default function ProductsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50/50">
-      <ProductsHeader 
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        selectedCategory={selectedCategory}
-        setSelectedCategory={setSelectedCategory}
-        isListView={isListView}
-        setIsListView={setIsListView}
-        isCartOpen={isCartOpen}
-        setIsCartOpen={setIsCartOpen}
-        bundleItems={bundleItems}
-        isCheckoutOpen={isCheckoutOpen}
-      />
+    <>
+      <div className="min-h-screen bg-gray-50/50">
+        <ProductsHeader 
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          selectedCategory={selectedCategory}
+          setSelectedCategory={setSelectedCategory}
+          isListView={isListView}
+          setIsListView={setIsListView}
+          isCartOpen={isCartOpen}
+          setIsCartOpen={setIsCartOpen}
+          bundleItems={bundleItems}
+          isCheckoutOpen={isCheckoutOpen}
+        />
 
-      {/* Main Content with Cart */}
-      <div className="flex min-h-[calc(100vh-5rem)]">
-        {/* Products Grid */}
-        <motion.div 
-          data-main-content
-          layout
-          className={cn(
-            "flex-1 p-6 transition-all duration-300",
-            isCartOpen ? "mr-[350px]" : "",
-            isAudioCategory ? "pt-[8.5rem]" : "pt-24"
-          )}
-        >
-          {selectedCategory === 'Services' && (
-            <div className="mb-6">
-              <Button
-                onClick={() => setShowCustomServiceModal(true)}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Create Custom Service
-              </Button>
-            </div>
-          )}
-          <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            animate="show"
+        {/* Main Content with Cart */}
+        <div className="flex min-h-[calc(100vh-5rem)]">
+          {/* Products Grid */}
+          <motion.div 
+            data-main-content
             layout
             className={cn(
-              "grid gap-4 transition-all duration-300",
-              isListView 
-                ? 'grid-cols-1' 
-                : isCartOpen
-                  ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
-                  : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5'
+              "flex-1 p-6 transition-all duration-300",
+              isCartOpen ? "mr-[350px]" : "",
+              isAudioCategory ? "pt-[8.5rem]" : "pt-24"
             )}
           >
-            {currentProducts.map((product) => (
-              product.category === 'Services' ? (
-                <ServiceCard
-                  key={product.id}
-                  service={product}
-                  onSelect={handleProductClick}
-                />
-              ) : (
-                <motion.div
-                  key={product.id}
-                  variants={itemVariants}
-                  className={cn(
-                    "group relative bg-white rounded-lg border border-gray-200 hover:border-blue-500/20 hover:shadow-lg transition-all duration-300 flex flex-col",
-                    isListView ? "flex-row gap-4 p-4" : ""
-                  )}
+            {selectedCategory === 'Services' && (
+              <div className="mb-6 flex gap-2">
+                <Button
+                  onClick={() => setShowCustomServiceModal(true)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
                 >
-                  <div 
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Custom Service
+                </Button>
+                <Button
+                  onClick={() => setIsSelectCustomServiceModalOpen(true)}
+                  className="bg-white hover:bg-gray-50 text-blue-600 border-2 border-blue-200"
+                >
+                  <Settings className="h-4 w-4 mr-2" />
+                  Select Custom Service
+                </Button>
+              </div>
+            )}
+            <motion.div
+              variants={containerVariants}
+              initial="hidden"
+              animate="show"
+              layout
+              className={cn(
+                "grid gap-4 transition-all duration-300",
+                isListView 
+                  ? 'grid-cols-1' 
+                  : isCartOpen
+                    ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+                    : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5'
+              )}
+            >
+              {currentProducts.map((product) => (
+                product.category === 'Services' ? (
+                  <ServiceCard
+                    key={product.id}
+                    service={product}
+                    onSelect={handleProductClick}
+                  />
+                ) : (
+                  <motion.div
+                    key={product.id}
+                    variants={itemVariants}
                     className={cn(
-                      "relative bg-white overflow-hidden cursor-pointer rounded-lg",
-                      isListView ? "h-24 w-24 flex-shrink-0" : "aspect-square w-full"
+                      "group relative bg-white rounded-lg border border-gray-200 hover:border-blue-500/20 hover:shadow-lg transition-all duration-300 flex flex-col",
+                      isListView ? "flex-row gap-4 p-4" : ""
                     )}
-                    onClick={() => handleProductClick(product)}
                   >
-                    {(() => {
-                      const key = getProductImageKey(product.title);
-                      const images = productImages[key as keyof typeof productImages];
-                      if (images && images.length > 0) {
+                    <div 
+                      className={cn(
+                        "relative bg-white overflow-hidden cursor-pointer rounded-lg",
+                        isListView ? "h-24 w-24 flex-shrink-0" : "aspect-square w-full"
+                      )}
+                      onClick={() => handleProductClick(product)}
+                    >
+                      {(() => {
+                        const key = getProductImageKey(product.title);
+                        const images = productImages[key as keyof typeof productImages];
+                        if (images && images.length > 0) {
+                          return (
+                            <div className="absolute inset-0 flex items-center justify-center bg-white">
+                              <Image
+                                src={images[0]}
+                                alt={product.title}
+                                fill
+                                className="object-contain p-2"
+                                sizes="80px"
+                              />
+                            </div>
+                          );
+                        }
                         return (
-                          <div className="absolute inset-0 flex items-center justify-center bg-white">
-                            <Image
-                              src={images[0]}
-                              alt={product.title}
-                              fill
-                              className="object-contain p-2"
-                              sizes="80px"
-                            />
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <Package className="h-8 w-8 text-gray-400" />
                           </div>
                         );
-                      }
-                      return (
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <Package className="h-8 w-8 text-gray-400" />
-                        </div>
-                      );
-                    })()}
-                  </div>
-
-                  <div className={cn(
-                    isListView ? "flex-1 py-1" : "p-4"
-                  )}>
-                    <div className="flex items-start justify-between gap-4">
-                      <h3 
-                        className={cn(
-                          "font-medium text-gray-900 group-hover:text-blue-600 transition-colors cursor-pointer",
-                          isListView ? "text-sm line-clamp-1" : "text-base line-clamp-2"
-                        )}
-                        onClick={() => handleProductClick(product)}
-                      >
-                        {product.title}
-                      </h3>
-                      <div className="flex flex-col items-end">
-                        <span className={cn(
-                          "font-semibold text-blue-600 whitespace-nowrap",
-                          isListView ? "text-sm" : "text-base"
-                        )}>
-                          ${(product.our_price || product.price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </span>
-                      </div>
+                      })()}
                     </div>
-                    
-                    {!isListView && (
-                      <p className="mt-2 text-sm text-gray-600 line-clamp-2">
-                        {product.description}
-                      </p>
-                    )}
-
-                    {!isListView && product.features && product.features.length > 0 && (
-                      <div className="mt-3">
-                        <h4 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Key Features</h4>
-                        <ul className="space-y-1.5">
-                          {product.features.slice(0, 2).map((feature, i) => (
-                            <li key={i} className="text-xs text-gray-600 flex items-center">
-                              <span className="w-1 h-1 rounded-full bg-blue-600/80 mr-1.5 flex-shrink-0" />
-                              <span className="line-clamp-1">{feature}</span>
-                            </li>
-                          ))}
-                        </ul>
-                        {product.features.length > 2 && (
-                          <button 
-                            onClick={() => handleProductClick(product)}
-                            className="mt-1 text-xs text-blue-600 hover:text-blue-700 cursor-pointer flex items-center gap-1 group/btn"
-                          >
-                            +{product.features.length - 2} more features
-                            <ChevronRight className="w-3 h-3 group-hover/btn:translate-x-0.5 transition-transform" />
-                          </button>
-                        )}
-                      </div>
-                    )}
 
                     <div className={cn(
-                      isListView 
-                        ? "flex items-center justify-between mt-2" 
-                        : "mt-3 pt-3 border-t border-gray-100"
+                      isListView ? "flex-1 py-1" : "p-4"
                     )}>
-                      <div className="flex items-center justify-between w-full flex-wrap gap-2">
-                        <span className="px-2.5 py-1 bg-gray-50 text-gray-600 rounded-md text-xs font-medium border border-gray-100 shrink-0">
-                          {product.category.split('/')[1] || product.category}
-                        </span>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <div className="flex items-center gap-1 bg-gray-50 rounded-lg p-1">
+                      <div className="flex items-start justify-between gap-4">
+                        <h3 
+                          className={cn(
+                            "font-medium text-gray-900 group-hover:text-blue-600 transition-colors cursor-pointer",
+                            isListView ? "text-sm line-clamp-1" : "text-base line-clamp-2"
+                          )}
+                          onClick={() => handleProductClick(product)}
+                        >
+                          {product.title}
+                        </h3>
+                        <div className="flex flex-col items-end">
+                          <span className={cn(
+                            "font-semibold text-blue-600 whitespace-nowrap",
+                            isListView ? "text-sm" : "text-base"
+                          )}>
+                            ${(product.our_price || product.price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      {!isListView && (
+                        <p className="mt-2 text-sm text-gray-600 line-clamp-2">
+                          {product.description}
+                        </p>
+                      )}
+
+                      {!isListView && product.features && product.features.length > 0 && (
+                        <div className="mt-3">
+                          <h4 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Key Features</h4>
+                          <ul className="space-y-1.5">
+                            {product.features.slice(0, 2).map((feature, i) => (
+                              <li key={i} className="text-xs text-gray-600 flex items-center">
+                                <span className="w-1 h-1 rounded-full bg-blue-600/80 mr-1.5 flex-shrink-0" />
+                                <span className="line-clamp-1">{feature}</span>
+                              </li>
+                            ))}
+                          </ul>
+                          {product.features.length > 2 && (
+                            <button 
+                              onClick={() => handleProductClick(product)}
+                              className="mt-1 text-xs text-blue-600 hover:text-blue-700 cursor-pointer flex items-center gap-1 group/btn"
+                            >
+                              +{product.features.length - 2} more features
+                              <ChevronRight className="w-3 h-3 group-hover/btn:translate-x-0.5 transition-transform" />
+                            </button>
+                          )}
+                        </div>
+                      )}
+
+                      <div className={cn(
+                        isListView 
+                          ? "flex items-center justify-between mt-2" 
+                          : "mt-3 pt-3 border-t border-gray-100"
+                      )}>
+                        <div className="flex items-center justify-between w-full flex-wrap gap-2">
+                          <span className="px-2.5 py-1 bg-gray-50 text-gray-600 rounded-md text-xs font-medium border border-gray-100 shrink-0">
+                            {product.category.split('/')[1] || product.category}
+                          </span>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <div className="flex items-center gap-1 bg-gray-50 rounded-lg p-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const newQuantity = Math.max(1, (cardQuantities[product.id] || 1) - 1);
+                                  setCardQuantities(prev => ({
+                                    ...prev,
+                                    [product.id]: newQuantity
+                                  }));
+                                }}
+                                disabled={!cardQuantities[product.id] || cardQuantities[product.id] <= 1}
+                                className="h-6 w-6 shrink-0"
+                              >
+                                <Minus className="h-3 w-3" />
+                              </Button>
+                              <span className="w-6 text-center text-sm font-medium">
+                                {cardQuantities[product.id] || 1}
+                              </span>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const newQuantity = (cardQuantities[product.id] || 1) + 1;
+                                  setCardQuantities(prev => ({
+                                    ...prev,
+                                    [product.id]: newQuantity
+                                  }));
+                                }}
+                                className="h-6 w-6 shrink-0"
+                              >
+                                <Plus className="h-3 w-3" />
+                              </Button>
+                            </div>
                             <Button
                               variant="ghost"
-                              size="icon"
+                              size="sm"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                const newQuantity = Math.max(1, (cardQuantities[product.id] || 1) - 1);
-                                setCardQuantities(prev => ({
-                                  ...prev,
-                                  [product.id]: newQuantity
-                                }));
+                                handleAddToBundle({
+                                  ...product,
+                                  quantity: cardQuantities[product.id] || 1
+                                });
                               }}
-                              disabled={!cardQuantities[product.id] || cardQuantities[product.id] <= 1}
-                              className="h-6 w-6 shrink-0"
+                              className="text-blue-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg font-medium h-8 px-3 shrink-0"
                             >
-                              <Minus className="h-3 w-3" />
-                            </Button>
-                            <span className="w-6 text-center text-sm font-medium">
-                              {cardQuantities[product.id] || 1}
-                            </span>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                const newQuantity = (cardQuantities[product.id] || 1) + 1;
-                                setCardQuantities(prev => ({
-                                  ...prev,
-                                  [product.id]: newQuantity
-                                }));
-                              }}
-                              className="h-6 w-6 shrink-0"
-                            >
-                              <Plus className="h-3 w-3" />
+                              <span className="flex items-center gap-1 whitespace-nowrap">
+                                <span>Add</span>
+                                <Plus className="h-3 w-3" />
+                              </span>
                             </Button>
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleAddToBundle({
-                                ...product,
-                                quantity: cardQuantities[product.id] || 1
-                              });
-                            }}
-                            className="text-blue-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg font-medium h-8 px-3 shrink-0"
-                          >
-                            <span className="flex items-center gap-1 whitespace-nowrap">
-                              <span>Add</span>
-                              <Plus className="h-3 w-3" />
-                            </span>
-                          </Button>
                         </div>
                       </div>
                     </div>
-                  </div>
-                </motion.div>
-              )
-            ))}
+                  </motion.div>
+                )
+              ))}
+            </motion.div>
+
+            {/* Pagination */}
+            <div className="flex justify-center mt-8 pb-6">
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  className="h-8 w-8 sm:h-9 sm:w-9 transition-all hover:scale-105 hover:border-blue-400"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <Button
+                    key={page}
+                    variant={currentPage === page ? "default" : "outline"}
+                    onClick={() => setCurrentPage(page)}
+                    className={cn(
+                      "h-8 w-8 sm:h-9 sm:w-9 transition-all text-sm",
+                      currentPage === page 
+                        ? "bg-blue-500 hover:bg-blue-600 shadow-md hover:shadow-lg transform hover:scale-105 text-white" 
+                        : "hover:border-blue-300 hover:scale-105 text-gray-600"
+                    )}
+                  >
+                    {page}
+                  </Button>
+                ))}
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  className="h-8 w-8 sm:h-9 sm:w-9 transition-all hover:scale-105 hover:border-blue-400"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
           </motion.div>
 
-          {/* Pagination */}
-          <div className="flex justify-center mt-8 pb-6">
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                disabled={currentPage === 1}
-                className="h-8 w-8 sm:h-9 sm:w-9 transition-all hover:scale-105 hover:border-blue-400"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                <Button
-                  key={page}
-                  variant={currentPage === page ? "default" : "outline"}
-                  onClick={() => setCurrentPage(page)}
-                  className={cn(
-                    "h-8 w-8 sm:h-9 sm:w-9 transition-all text-sm",
-                    currentPage === page 
-                      ? "bg-blue-500 hover:bg-blue-600 shadow-md hover:shadow-lg transform hover:scale-105 text-white" 
-                      : "hover:border-blue-300 hover:scale-105 text-gray-600"
-                  )}
-                >
-                  {page}
-                </Button>
-              ))}
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                disabled={currentPage === totalPages}
-                className="h-8 w-8 sm:h-9 sm:w-9 transition-all hover:scale-105 hover:border-blue-400"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Bundle Section */}
-        <AnimatePresence mode="wait">
-          {isCartOpen && (
-            <motion.div
-              initial={{ width: 0, opacity: 0 }}
-              animate={{ 
-                width: 350,
-                opacity: 1,
-                transition: {
-                  width: { type: "spring", stiffness: 300, damping: 30 },
-                  opacity: { duration: 0.2 }
-                }
-              }}
-              exit={{ 
-                width: 0,
-                opacity: 0,
-                transition: {
-                  width: { type: "spring", stiffness: 300, damping: 30 },
-                  opacity: { duration: 0.2 }
-                }
-              }}
-              className="fixed right-0 h-[calc(100vh-5rem)] top-20 bg-white border-l border-gray-100 shadow-lg overflow-hidden z-[45]"
-            >
-              {/* Drag Handle */}
-              <div
-                className="absolute left-0 top-0 bottom-0 w-1 cursor-ew-resize hover:bg-blue-500/20 transition-colors z-50"
-                onMouseDown={(e: React.MouseEvent<HTMLDivElement>) => {
-                  const handle = e.currentTarget;
-                  const cart = handle.parentElement as HTMLDivElement;
-                  const mainContent = document.querySelector('[data-main-content]') as HTMLDivElement;
-                  const startX = e.clientX;
-                  const startWidth = cart.offsetWidth;
-                  
-                  const handleMouseMove = (e: MouseEvent) => {
-                    const newWidth = Math.min(Math.max(280, startWidth + (startX - e.clientX)), 500);
-                    cart.style.width = `${newWidth}px`;
-                    if (mainContent) {
-                      mainContent.style.marginRight = `${newWidth}px`;
-                    }
-                  };
-                  
-                  const handleMouseUp = () => {
-                    document.removeEventListener('mousemove', handleMouseMove);
-                    document.removeEventListener('mouseup', handleMouseUp);
-                    document.body.style.cursor = 'default';
-                  };
-                  
-                  document.addEventListener('mousemove', handleMouseMove);
-                  document.addEventListener('mouseup', handleMouseUp);
-                  document.body.style.cursor = 'ew-resize';
+          {/* Bundle Section */}
+          <AnimatePresence mode="wait">
+            {isCartOpen && (
+              <motion.div
+                initial={{ width: 0, opacity: 0 }}
+                animate={{ 
+                  width: 350,
+                  opacity: 1,
+                  transition: {
+                    width: { type: "spring", stiffness: 300, damping: 30 },
+                    opacity: { duration: 0.2 }
+                  }
                 }}
-              />
-              <Bundle 
-                products={bundleItems.map(item => ({
-                  ...item.product,
-                  quantity: item.quantity,
-                  price: item.our_price || item.price
-                }))}
-                onRemove={removeFromBundle}
-                onUpdateQuantity={handleBundleQuantityUpdate}
-                isOpen={isCartOpen}
-                setIsOpen={setIsCartOpen}
-                clearCart={() => setBundleItems([])}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      {/* Checkout Component */}
-      {isCheckoutOpen && (
-        <Checkout
-          products={bundleItems.map(item => ({
-            id: Number(item.product.id),
-            title: item.product.title,
-            price: item.our_price || item.price,
-            quantity: item.quantity,
-            category: item.product.category
-          }))}
-          onClose={() => setIsCheckoutOpen(false)}
-          onSubmit={handleCheckout}
-          clearCart={() => setBundleItems([])}
-        />
-      )}
-
-      {/* Product Modal */}
-      {selectedProduct && (
-        <ProductModal
-          isOpen={isModalOpen}
-          onClose={() => {
-            setIsModalOpen(false);
-            setSelectedProduct(null);
-          }}
-          onAddToBundle={(product) => handleAddToBundle(product)}
-          selectedProduct={selectedProduct}
-        />
-      )}
-
-      {/* Service Modal */}
-      {selectedService && (
-        <ServiceModal
-          isOpen={isServiceModalOpen}
-          onClose={() => {
-            setIsServiceModalOpen(false);
-            setSelectedService(null);
-          }}
-          service={selectedService}
-          onAddToBundle={(service) => handleAddToBundle(service)}
-          setIsCartOpen={setIsCartOpen}
-        />
-      )}
-
-      {/* Add Product Form */}
-      {showForm && (
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold mb-4">Add New Product</h2>
-          <ProductForm
-            onSubmit={handleAddProduct}
-          />
-          <Button
-            onClick={() => setShowForm(false)}
-            className="mt-4 text-gray-600 hover:text-gray-800"
-          >
-            Cancel
-          </Button>
+                exit={{ 
+                  width: 0,
+                  opacity: 0,
+                  transition: {
+                    width: { type: "spring", stiffness: 300, damping: 30 },
+                    opacity: { duration: 0.2 }
+                  }
+                }}
+                className="fixed right-0 h-[calc(100vh-5rem)] top-20 bg-white border-l border-gray-100 shadow-lg overflow-hidden z-[45]"
+              >
+                {/* Drag Handle */}
+                <div
+                  className="absolute left-0 top-0 bottom-0 w-1 cursor-ew-resize hover:bg-blue-500/20 transition-colors z-50"
+                  onMouseDown={(e: React.MouseEvent<HTMLDivElement>) => {
+                    const handle = e.currentTarget;
+                    const cart = handle.parentElement as HTMLDivElement;
+                    const mainContent = document.querySelector('[data-main-content]') as HTMLDivElement;
+                    const startX = e.clientX;
+                    const startWidth = cart.offsetWidth;
+                    
+                    const handleMouseMove = (e: MouseEvent) => {
+                      const newWidth = Math.min(Math.max(280, startWidth + (startX - e.clientX)), 500);
+                      cart.style.width = `${newWidth}px`;
+                      if (mainContent) {
+                        mainContent.style.marginRight = `${newWidth}px`;
+                      }
+                    };
+                    
+                    const handleMouseUp = () => {
+                      document.removeEventListener('mousemove', handleMouseMove);
+                      document.removeEventListener('mouseup', handleMouseUp);
+                      document.body.style.cursor = 'default';
+                    };
+                    
+                    document.addEventListener('mousemove', handleMouseMove);
+                    document.addEventListener('mouseup', handleMouseUp);
+                    document.body.style.cursor = 'ew-resize';
+                  }}
+                />
+                <Bundle 
+                  products={bundleItems.map(item => ({
+                    ...item.product,
+                    quantity: item.quantity,
+                    price: item.our_price || item.price
+                  }))}
+                  onRemove={removeFromBundle}
+                  onUpdateQuantity={handleBundleQuantityUpdate}
+                  isOpen={isCartOpen}
+                  setIsOpen={setIsCartOpen}
+                  clearCart={() => setBundleItems([])}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
-      )}
 
-      {/* Edit Product Form */}
-      {selectedProduct && (
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold mb-4">Edit Product</h2>
-          <ProductForm
-            onSubmit={handleEditProduct}
-            initialData={{
-              title: selectedProduct.title,
-              description: selectedProduct.description,
-              price: selectedProduct.price.toString(),
-              category: selectedProduct.category,
-              image_url: selectedProduct.image_url || '',
-              features: selectedProduct.features || [],
-              included_items: selectedProduct.included_items || [],
-              warranty_info: selectedProduct.warranty_info || '',
-              installation_available: selectedProduct.installation_available || false,
-              technical_details: selectedProduct.technical_details || {},
-              images: selectedProduct.images?.map(img => img.image_url) || []
+        {/* Checkout Component */}
+        {isCheckoutOpen && (
+          <Checkout
+            products={bundleItems.map(item => ({
+              id: Number(item.product.id),
+              title: item.product.title,
+              price: item.our_price || item.price,
+              quantity: item.quantity,
+              category: item.product.category
+            }))}
+            onClose={() => setIsCheckoutOpen(false)}
+            onSubmit={handleCheckout}
+            clearCart={() => setBundleItems([])}
+          />
+        )}
+
+        {/* Product Modal */}
+        {selectedProduct && (
+          <ProductModal
+            isOpen={isModalOpen}
+            onClose={() => {
+              setIsModalOpen(false);
+              setSelectedProduct(null);
             }}
+            onAddToBundle={(product) => handleAddToBundle(product)}
+            selectedProduct={selectedProduct}
           />
-          <Button
-            onClick={() => setSelectedProduct(null)}
-            className="mt-4 text-gray-600 hover:text-gray-800"
-          >
-            Cancel
-          </Button>
-        </div>
-      )}
+        )}
 
-      {/* Custom Service Modal */}
-      <CustomServiceModal
-        isOpen={showCustomServiceModal}
-        onClose={() => setShowCustomServiceModal(false)}
-        onSave={handleCustomServiceSave}
-      />
-    </div>
+        {/* Service Modal */}
+        {selectedService && (
+          <ServiceModal
+            isOpen={isServiceModalOpen}
+            onClose={() => {
+              setIsServiceModalOpen(false);
+              setSelectedService(null);
+            }}
+            service={selectedService}
+            onAddToBundle={(service) => handleAddToBundle(service)}
+            setIsCartOpen={setIsCartOpen}
+          />
+        )}
+
+        {/* Add Product Form */}
+        {showForm && (
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold mb-4">Add New Product</h2>
+            <ProductForm
+              onSubmit={handleAddProduct}
+            />
+            <Button
+              onClick={() => setShowForm(false)}
+              className="mt-4 text-gray-600 hover:text-gray-800"
+            >
+              Cancel
+            </Button>
+          </div>
+        )}
+
+        {/* Edit Product Form */}
+        {selectedProduct && (
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold mb-4">Edit Product</h2>
+            <ProductForm
+              onSubmit={handleEditProduct}
+              initialData={{
+                title: selectedProduct.title,
+                description: selectedProduct.description,
+                price: selectedProduct.price.toString(),
+                category: selectedProduct.category,
+                image_url: selectedProduct.image_url || '',
+                features: selectedProduct.features || [],
+                included_items: selectedProduct.included_items || [],
+                warranty_info: selectedProduct.warranty_info || '',
+                installation_available: selectedProduct.installation_available || false,
+                technical_details: selectedProduct.technical_details || {},
+                images: selectedProduct.images?.map(img => img.image_url) || []
+              }}
+            />
+            <Button
+              onClick={() => setSelectedProduct(null)}
+              className="mt-4 text-gray-600 hover:text-gray-800"
+            >
+              Cancel
+            </Button>
+          </div>
+        )}
+
+        {/* Custom Service Modal */}
+        <CustomServiceModal
+          isOpen={showCustomServiceModal}
+          onClose={() => setShowCustomServiceModal(false)}
+          onSave={handleCustomServiceSave}
+        />
+
+        {/* Select Custom Service Modal */}
+        <SelectCustomServiceModal
+          isOpen={isSelectCustomServiceModalOpen}
+          onClose={() => setIsSelectCustomServiceModalOpen(false)}
+          onSelect={handleCustomServiceSelect}
+          services={customServices}
+        />
+      </div>
+    </>
   )
 } 
