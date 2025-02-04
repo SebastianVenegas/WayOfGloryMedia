@@ -43,8 +43,6 @@ const createEmailHtml = (content: string) => {
   `;
 };
 
-interface Order extends EmailOrder {}
-
 export async function POST(
   request: Request,
   { params }: { params: { orderId: string } }
@@ -83,8 +81,8 @@ export async function POST(
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 
-    // Convert the order data to match the Order interface
-    const order: Order = {
+    // Convert the order data to match the EmailOrder interface
+    const order: EmailOrder = {
       ...orderData,
       total_amount: orderData.total_amount as unknown as Decimal,
     };
