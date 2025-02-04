@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { templateId, customEmail } = requestBody;
+    const { templateId, customEmail, isPWA } = requestBody;
 
     if (!templateId) {
       return NextResponse.json(
@@ -95,8 +95,34 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
+
+      // Special handling for PWA requests
+      if (isPWA) {
+        // Additional sanitization for PWA content
+        const sanitizedHtml = customEmail.html
+          .trim()
+          .replace(/[\u200B-\u200D\uFEFF]/g, '') // Remove zero-width spaces
+          .replace(/\s+/g, ' ') // Normalize whitespace
+          .replace(/[^\x20-\x7E\s]/g, ''); // Remove non-printable characters
+
+        // Ensure the content is properly wrapped
+        emailContent = `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; line-height: 1.6; color: #333;">
+            ${sanitizedHtml}
+            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee;">
+              <p style="color: #666; font-size: 14px; margin: 5px 0;">© ${new Date().getFullYear()} Way of Glory</p>
+              <p style="color: #666; font-size: 14px; margin: 5px 0;">
+                <a href="tel:+13108729781" style="color: #2563eb; text-decoration: none;">(310) 872-9781</a> |
+                <a href="mailto:help@wayofglory.com" style="color: #2563eb; text-decoration: none;">help@wayofglory.com</a>
+              </p>
+            </div>
+          </div>
+        `.trim();
+      } else {
+        emailContent = createEmailHtml(customEmail.html);
+      }
+      
       subject = customEmail.subject;
-      emailContent = createEmailHtml(customEmail.html);
     } else {
       const template = getEmailTemplate(templateId, order);
       if (!template) {
@@ -113,7 +139,8 @@ export async function POST(request: NextRequest) {
     console.log('Sending email:', {
       to: order.email,
       subject: subject,
-      contentLength: emailContent.length
+      contentLength: emailContent.length,
+      isPWA: isPWA || false
     });
 
     try {
@@ -137,9 +164,10 @@ export async function POST(request: NextRequest) {
         template_id,
         subject,
         content,
-        sent_at
-      ) VALUES ($1, $2, $3, $4, NOW())`,
-      [orderId, templateId, subject, emailContent]
+        sent_at,
+        sent_from_pwa
+      ) VALUES ($1, $2, $3, $4, NOW(), $5)`,
+      [orderId, templateId, subject, emailContent, isPWA || false]
     );
 
     return NextResponse.json({

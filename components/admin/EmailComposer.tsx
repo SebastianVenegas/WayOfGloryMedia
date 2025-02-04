@@ -13,6 +13,7 @@ interface EmailComposerProps {
   onContentChange?: (content: string) => void
   onSubjectChange?: (subject: string) => void
   subject?: string
+  onClose?: () => void
 }
 
 const emailPlaceholder = `
@@ -57,11 +58,13 @@ export default function EmailComposer({
   initialContent = emailPlaceholder, 
   onContentChange,
   onSubjectChange,
-  subject: externalSubject
+  subject: externalSubject,
+  onClose
 }: EmailComposerProps) {
   const [subject, setSubject] = useState(externalSubject || '')
   const [content, setContent] = useState(initialContent)
   const [isLoading, setIsLoading] = useState(false)
+  const [isGenerating, setIsGenerating] = useState(false)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -91,85 +94,107 @@ export default function EmailComposer({
     }
   }
 
-  const handleSendEmail = async () => {
-    if (!subject.trim() || !content.trim()) {
-      toast({
-        title: 'Error',
-        description: 'Please fill in both subject and content fields',
-        variant: 'destructive',
-      })
-      return
-    }
-
-    setIsLoading(true)
+  const handleGenerateEmail = async () => {
     try {
-      // Ensure content is properly wrapped in a div with styles
-      const wrappedContent = content.includes('style="font-family:') ? content : `
-        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; line-height: 1.6;">
-          ${content}
-        </div>
-      `.trim();
+      setIsGenerating(true);
+      
+      // Sanitize the content before sending
+      const sanitizedContent = content.trim().replace(/\s+/g, ' ');
+      
+      if (!sanitizedContent) {
+        throw new Error('Email content cannot be empty');
+      }
 
-      // Clean and prepare the content
-      const cleanContent = wrappedContent
-        .replace(/\n\s*/g, ' ')  // Replace newlines and following spaces with a single space
-        .replace(/>\s+</g, '><')  // Remove spaces between tags
-        .replace(/\s{2,}/g, ' ')  // Replace multiple spaces with a single space
-        .trim();
-
-      const payload = {
-        templateId: 'custom',
-        customEmail: {
-          subject: subject.trim(),
-          html: cleanContent
-        }
-      };
-
-      const response = await fetch(`/api/admin/orders/${orderId}/send-template`, {
+      const response = await fetch('/api/admin/generate-email', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({
+          orderId,
+          content: sanitizedContent,
+          // Add PWA identifier to handle specific validation
+          isPWA: typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches
+        }),
       });
 
-      let responseData;
-      try {
-        const textData = await response.text();
-        responseData = JSON.parse(textData);
-      } catch (parseError) {
-        console.error('Error parsing response:', parseError);
-        throw new Error('Invalid response from server');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate email');
       }
+
+      const data = await response.json();
+      
+      // Ensure the response data is properly formatted
+      if (!data.html || typeof data.html !== 'string') {
+        throw new Error('Invalid email template format');
+      }
+
+      setContent(data.html);
+      toast({
+        title: "Email Generated",
+        description: "Your email has been professionally formatted.",
+      });
+    } catch (error) {
+      console.error('Error generating email:', error);
+      toast({
+        title: "Generation Failed",
+        description: error instanceof Error ? error.message : "Failed to generate email",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleSendEmail = async () => {
+    try {
+      if (!content.trim()) {
+        throw new Error('Email content cannot be empty');
+      }
+
+      // Sanitize and validate content before sending
+      const sanitizedContent = content
+        .trim()
+        .replace(/[\u200B-\u200D\uFEFF]/g, '') // Remove zero-width spaces
+        .replace(/\s+/g, ' '); // Normalize whitespace
+
+      const response = await fetch(`/api/admin/orders/${orderId}/send-template/route`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          templateId: 'custom',
+          customEmail: {
+            subject: "Payment Reminder",
+            html: sanitizedContent,
+          },
+          // Add PWA context
+          isPWA: typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches
+        }),
+      });
 
       if (!response.ok) {
-        throw new Error(responseData.error || 'Failed to send email');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to send email');
       }
 
       toast({
-        title: 'Success',
-        description: 'Email sent successfully',
-      })
+        title: "Email Sent",
+        description: "Your email has been sent successfully.",
+      });
 
-      // Reset form
-      setSubject('')
-      setContent(emailPlaceholder)
-      
-      // Notify parent component
-      if (onEmailSent) {
-        onEmailSent()
-      }
+      onClose?.();
     } catch (error) {
-      console.error('Error sending email:', error)
+      console.error('Error sending email:', error);
       toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to send email. Please try again.',
-        variant: 'destructive',
-      })
-    } finally {
-      setIsLoading(false)
+        title: "Send Failed",
+        description: error instanceof Error ? error.message : "Failed to send email",
+        variant: "destructive",
+      });
     }
-  }
+  };
 
   return (
     <div className="space-y-6 p-6 border rounded-xl bg-white shadow-sm">
