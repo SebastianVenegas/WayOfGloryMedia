@@ -18,6 +18,16 @@ export interface Order {
   shipping_zip?: string | null;
 }
 
+// Helper function to format currency
+const formatCurrency = (amount: number): string => {
+  return amount.toLocaleString('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+};
+
 const baseStyle = `
   <style>
     /* Reset styles for email clients */
@@ -268,7 +278,7 @@ export const getEmailPrompt = (templateId: string, order: Order): string => {
 Key Details:
 • Customer: ${order.first_name} ${order.last_name}
 • Order: #${order.id}
-• Amount: $${order.total_amount.toString()}
+• Amount: ${formatCurrency(order.total_amount)}
 ${order.installation_date ? `• Installation: ${order.installation_date}` : ''}
 ${order.installation_time ? `• Time: ${order.installation_time}` : ''}
 
@@ -311,7 +321,7 @@ export const getEmailTemplate = (
             <p>This is a friendly reminder regarding your payment for order #${order.id}.</p>
             
             <div class="highlight-box">
-              <p><strong>Amount Due:</strong> $${order.total_amount.toString()}</p>
+              <p><strong>Amount Due:</strong> ${formatCurrency(order.total_amount)}</p>
               <p class="spacer"></p>
               <p><strong>Ready to Pay?</strong></p>
               <p>Contact our team to arrange your preferred payment method:</p>
@@ -392,7 +402,7 @@ export const getEmailTemplate = (
           <p>Thank you for choosing Way of Glory. We truly appreciate your business and trust in our services.</p>
           <div class="details">
             <p><strong>Order Number:</strong> #${order.id}</p>
-            <p><strong>Total Amount:</strong> $${order.total_amount.toString()}</p>
+            <p><strong>Total Amount:</strong> ${formatCurrency(order.total_amount)}</p>
           </div>
           <p>We hope you're completely satisfied with your purchase. If you have any questions or need assistance, please don't hesitate to reach out.</p>
         `)}

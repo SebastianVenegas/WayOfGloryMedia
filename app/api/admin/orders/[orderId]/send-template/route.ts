@@ -60,7 +60,7 @@ export async function POST(
         first_name,
         last_name,
         email,
-        total_amount,
+        CAST(total_amount AS FLOAT) as total_amount,
         installation_date,
         installation_time,
         installation_address,
