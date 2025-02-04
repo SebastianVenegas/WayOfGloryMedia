@@ -11,9 +11,9 @@ import {
   Clock,
   ArrowUpRight,
   ArrowDownRight,
-  BarChart3,
+  BarChart,
   Activity,
-  Loader2
+  Loader
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -151,7 +151,7 @@ export default function AdminDashboard() {
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-500 mb-4" />
+        <Loader className="h-8 w-8 animate-spin text-blue-500 mb-4" />
         <p className="text-gray-500">Loading dashboard data...</p>
       </div>
     )
@@ -188,7 +188,7 @@ export default function AdminDashboard() {
                   {calculateGrowth(stats.revenue.total, stats.revenue.previousPeriod).toFixed(1)}% from previous period
                 </p>
                 <div className="mt-4 h-[60px]">
-                  <BarChart3 className="h-full w-full text-emerald-500/25" />
+                  <BarChart className="h-full w-full text-emerald-500/25" />
                 </div>
               </CardContent>
             </Card>
