@@ -2,8 +2,6 @@ import { sql } from '@vercel/postgres';
 import { NextRequest, NextResponse } from 'next/server';
 import { getEmailTemplate, Order as EmailOrder } from '@/lib/email-templates';
 import nodemailer from 'nodemailer';
-import prisma from '@/lib/prisma';
-import { Decimal } from '@prisma/client/runtime/library';
 
 // Check for required environment variables
 if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
@@ -55,36 +53,51 @@ export async function POST(
       return NextResponse.json({ error: "Invalid order ID" }, { status: 400 });
     }
 
-    // Fetch order details
-    const orderData = await prisma.order.findUnique({
-      where: { id: orderId },
-      select: {
-        id: true,
-        first_name: true,
-        last_name: true,
-        email: true,
-        total_amount: true,
-        installation_date: true,
-        installation_time: true,
-        installation_address: true,
-        installation_city: true,
-        installation_state: true,
-        installation_zip: true,
-        shipping_address: true,
-        shipping_city: true,
-        shipping_state: true,
-        shipping_zip: true,
-      },
-    });
+    // Fetch order details using Vercel Postgres
+    const { rows } = await sql`
+      SELECT 
+        id,
+        first_name,
+        last_name,
+        email,
+        total_amount,
+        installation_date,
+        installation_time,
+        installation_address,
+        installation_city,
+        installation_state,
+        installation_zip,
+        shipping_address,
+        shipping_city,
+        shipping_state,
+        shipping_zip
+      FROM orders 
+      WHERE id = ${orderId}
+    `;
 
-    if (!orderData) {
+    if (rows.length === 0) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 
+    const orderData = rows[0];
+
     // Convert the order data to match the EmailOrder interface
     const order: EmailOrder = {
-      ...orderData,
-      total_amount: orderData.total_amount as unknown as Decimal,
+      id: orderData.id,
+      first_name: orderData.first_name,
+      last_name: orderData.last_name,
+      email: orderData.email,
+      total_amount: orderData.total_amount,
+      installation_date: orderData.installation_date,
+      installation_time: orderData.installation_time,
+      installation_address: orderData.installation_address,
+      installation_city: orderData.installation_city,
+      installation_state: orderData.installation_state,
+      installation_zip: orderData.installation_zip,
+      shipping_address: orderData.shipping_address,
+      shipping_city: orderData.shipping_city,
+      shipping_state: orderData.shipping_state,
+      shipping_zip: orderData.shipping_zip,
     };
 
     // Get email template
