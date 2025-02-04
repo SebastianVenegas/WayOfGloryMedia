@@ -1,66 +1,53 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@vercel/postgres';
-import { getEmailTemplate, formatEmailPreview } from '@/lib/email-templates';
+import { getEmailTemplate, formatEmailPreview, Order as EmailOrder } from '@/lib/email-templates';
+import prisma from '@/lib/prisma';
+import { Decimal } from '@prisma/client/runtime/library';
 
-interface Order {
-  id: number;
-  first_name: string;
-  last_name: string;
-  email: string;
-  total_amount: number | string;
-  installation_date?: string;
-  installation_time?: string;
-  installation_address?: string;
-  installation_city?: string;
-  installation_state?: string;
-  installation_zip?: string;
-  shipping_address?: string;
-  shipping_city?: string;
-  shipping_state?: string;
-  shipping_zip?: string;
-}
+interface Order extends EmailOrder {}
 
-export async function POST(request: NextRequest) {
+export async function POST(
+  request: Request,
+  { params }: { params: { orderId: string } }
+) {
   try {
-    const url = new URL(request.url);
-    const orderId = Number(url.pathname.split('/').slice(-2, -1)[0]); // Extract `[id]` from URL path
+    const { templateId } = await request.json();
+    const orderId = parseInt(params.orderId);
 
     if (!orderId || isNaN(orderId)) {
       return NextResponse.json({ error: "Invalid order ID" }, { status: 400 });
     }
 
-    const { templateId } = await request.json();
-
-    if (!templateId) {
-      return NextResponse.json({ error: "Missing template ID" }, { status: 400 });
-    }
-
-    // Get the order details from the database
-    const { rows: [orderData] } = await sql`
-      SELECT * FROM orders WHERE id = ${orderId}
-    `;
+    // Fetch order details
+    const orderData = await prisma.order.findUnique({
+      where: { id: orderId },
+      select: {
+        id: true,
+        first_name: true,
+        last_name: true,
+        email: true,
+        total_amount: true,
+        installation_date: true,
+        installation_time: true,
+        installation_address: true,
+        installation_city: true,
+        installation_state: true,
+        installation_zip: true,
+        shipping_address: true,
+        shipping_city: true,
+        shipping_state: true,
+        shipping_zip: true,
+      },
+    });
 
     if (!orderData) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 
-    // Cast the database result to Order type
+    // Convert the order data to match the Order interface
     const order: Order = {
-      id: orderData.id,
-      first_name: orderData.first_name,
-      last_name: orderData.last_name,
-      email: orderData.email,
-      total_amount: orderData.total_amount,
-      installation_date: orderData.installation_date,
-      installation_time: orderData.installation_time,
-      installation_address: orderData.installation_address,
-      installation_city: orderData.installation_city,
-      installation_state: orderData.installation_state,
-      installation_zip: orderData.installation_zip,
-      shipping_address: orderData.shipping_address,
-      shipping_city: orderData.shipping_city,
-      shipping_state: orderData.shipping_state,
-      shipping_zip: orderData.shipping_zip,
+      ...orderData,
+      total_amount: orderData.total_amount as unknown as Decimal,
     };
 
     // Get email template
