@@ -153,11 +153,26 @@ export default function EmailComposer({
         throw new Error('Email content cannot be empty');
       }
 
-      // Sanitize and validate content before sending
-      const sanitizedContent = content
+      // Enhanced sanitization for PWA mode
+      const isPWA = typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches;
+      let sanitizedContent = content
         .trim()
         .replace(/[\u200B-\u200D\uFEFF]/g, '') // Remove zero-width spaces
         .replace(/\s+/g, ' '); // Normalize whitespace
+
+      // Additional PWA-specific sanitization
+      if (isPWA) {
+        sanitizedContent = sanitizedContent
+          .replace(/&nbsp;/g, ' ')
+          .replace(/<p><br><\/p>/g, '<p></p>')
+          .replace(/<p><\/p>/g, '<br>')
+          .replace(/\r?\n|\r/g, '');
+      }
+
+      // Validate content structure
+      if (!/^[\s\S]*<[^>]+>[\s\S]*$/.test(sanitizedContent)) {
+        throw new Error('Invalid email content structure');
+      }
 
       const response = await fetch(`/api/admin/orders/${orderId}/send-template/route`, {
         method: 'POST',
@@ -167,11 +182,10 @@ export default function EmailComposer({
         body: JSON.stringify({
           templateId: 'custom',
           customEmail: {
-            subject: "Payment Reminder",
+            subject: subject || "Payment Reminder",
             html: sanitizedContent,
           },
-          // Add PWA context
-          isPWA: typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches
+          isPWA
         }),
       });
 
@@ -185,6 +199,10 @@ export default function EmailComposer({
         description: "Your email has been sent successfully.",
       });
 
+      if (onEmailSent) {
+        onEmailSent();
+      }
+      
       onClose?.();
     } catch (error) {
       console.error('Error sending email:', error);

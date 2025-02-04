@@ -188,30 +188,50 @@ const createEmailWrapper = (content: string) => `
   </div>
 `;
 
-const sanitizeHtml = (html: string) => {
-  return html
+const sanitizeHtml = (html: string, isPWA = false) => {
+  let sanitized = html
     .replace(/\n\s*/g, ' ')  // Replace newlines and following spaces with a single space
     .replace(/>\s+</g, '><')  // Remove spaces between tags
     .replace(/\s{2,}/g, ' ')  // Replace multiple spaces with a single space
     .trim();
+
+  if (isPWA) {
+    sanitized = sanitized
+      .replace(/&nbsp;/g, ' ')
+      .replace(/<p><br><\/p>/g, '<p></p>')
+      .replace(/<p><\/p>/g, '<br>')
+      .replace(/\r?\n|\r/g, '')
+      .replace(/(<br\s*\/?>){3,}/gi, '<br><br>'); // Limit consecutive line breaks
+  }
+
+  return sanitized;
 };
 
-const wrapContent = (content: string) => {
+const wrapContent = (content: string, isPWA = false) => {
+  // Don't wrap if content already has font-family style
   if (content.includes('style="font-family:')) {
-    return content;
+    return isPWA ? sanitizeHtml(content, true) : content;
   }
-  return `
+
+  const wrapped = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; line-height: 1.6;">
       ${content}
     </div>
   `.trim();
+
+  return isPWA ? sanitizeHtml(wrapped, true) : wrapped;
 };
 
-export const getEmailTemplate = (templateId: string, order: Order, customEmail?: { subject: string; html: string }) => {
+export const getEmailTemplate = (
+  templateId: string, 
+  order: Order, 
+  customEmail?: { subject: string; html: string },
+  isPWA = false
+) => {
   // For custom emails, wrap the content in our standard template
   if (templateId === 'custom' && customEmail) {
-    const wrappedHtml = wrapContent(customEmail.html);
-    const cleanHtml = sanitizeHtml(wrappedHtml);
+    const wrappedHtml = wrapContent(customEmail.html, isPWA);
+    const cleanHtml = sanitizeHtml(wrappedHtml, isPWA);
     return {
       subject: customEmail.subject,
       html: `
