@@ -76,6 +76,7 @@ export function Sidebar({ isExpanded, toggleSidebar, pathname, handleLogout }: S
 
   const handleNavigation = (e: React.MouseEvent | React.TouchEvent, href: string) => {
     e.preventDefault()
+    e.stopPropagation()
     router.push(href)
   }
 
@@ -87,6 +88,7 @@ export function Sidebar({ isExpanded, toggleSidebar, pathname, handleLogout }: S
         transition: { duration: 0.3 }
       }}
       className="fixed left-0 top-0 bottom-0 z-[40] bg-white/90 backdrop-blur-md border-r border-gray-100 flex flex-col shadow-sm touch-manipulation"
+      style={{ WebkitTapHighlightColor: 'transparent' }}
     >
       {/* Header */}
       <div className="flex items-center h-20 px-4 border-b border-gray-100 bg-white/80">
@@ -111,8 +113,13 @@ export function Sidebar({ isExpanded, toggleSidebar, pathname, handleLogout }: S
         <Button
           variant="ghost"
           size="icon"
-          onClick={toggleSidebar}
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            toggleSidebar()
+          }}
           className="h-10 w-10 hover:bg-gray-100/80 rounded-xl text-gray-500 touch-manipulation"
+          style={{ WebkitTapHighlightColor: 'transparent' }}
         >
           {isExpanded ? (
             <ChevronLeft className="h-5 w-5" />
@@ -127,15 +134,17 @@ export function Sidebar({ isExpanded, toggleSidebar, pathname, handleLogout }: S
         {navigation.map((item) => {
           const isActive = pathname === item.href
           return (
-            <button
+            <Link
               key={item.name}
+              href={item.href}
               onClick={(e) => handleNavigation(e, item.href)}
               className={cn(
-                "w-full group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 relative overflow-hidden hover:shadow-sm touch-manipulation",
+                "w-full group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 relative overflow-hidden hover:shadow-sm touch-manipulation select-none",
                 isActive 
                   ? "bg-white text-gray-900 shadow-sm" 
                   : "text-gray-600 hover:text-gray-900 hover:bg-white"
               )}
+              style={{ WebkitTapHighlightColor: 'transparent' }}
             >
               <div className={cn(
                 "relative z-10 p-2 rounded-lg transition-colors duration-200",
@@ -170,7 +179,7 @@ export function Sidebar({ isExpanded, toggleSidebar, pathname, handleLogout }: S
                   transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                 />
               )}
-            </button>
+            </Link>
           )
         })}
       </nav>
@@ -178,9 +187,10 @@ export function Sidebar({ isExpanded, toggleSidebar, pathname, handleLogout }: S
       {/* User Section */}
       <div className="p-3 border-t border-gray-100 bg-white/80 backdrop-blur-sm">
         <div className={cn(
-          "flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white hover:shadow-sm transition-all",
+          "flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white hover:shadow-sm transition-all touch-manipulation select-none",
           isExpanded && "cursor-pointer"
-        )}>
+        )}
+        style={{ WebkitTapHighlightColor: 'transparent' }}>
           <div className="relative w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-blue-700 flex items-center justify-center text-white font-medium shadow-sm ring-1 ring-white/20">
             W
           </div>
@@ -209,8 +219,13 @@ export function Sidebar({ isExpanded, toggleSidebar, pathname, handleLogout }: S
             >
               <Button
                 variant="ghost"
-                className="w-full mt-2 text-gray-600 hover:text-gray-900 hover:bg-white justify-start gap-2 rounded-xl h-11 touch-manipulation"
-                onClick={handleLogout}
+                className="w-full mt-2 text-gray-600 hover:text-gray-900 hover:bg-white justify-start gap-2 rounded-xl h-11 touch-manipulation select-none"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  handleLogout()
+                }}
+                style={{ WebkitTapHighlightColor: 'transparent' }}
               >
                 <LogOut className="h-4 w-4" />
                 Sign out
