@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getEmailPrompt } from '@/lib/email-templates'
+import { getEmailPrompt, getEmailTemplate, wrapContent, sanitizeHtml } from '@/lib/email-templates'
 import prisma from '@/lib/prisma'
 import OpenAI from 'openai'
 import { Decimal } from '@prisma/client/runtime/library'
@@ -101,7 +101,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Order not found' }, { status: 404 })
     }
 
-    // Convert Prisma Decimal to string for JSON serialization
+    // Convert Prisma Decimal to proper type
     const orderWithSerializedAmount = {
       ...order,
       total_amount: order.total_amount as unknown as Decimal,
@@ -142,7 +142,22 @@ Please ensure the response maintains a professional tone and includes all necess
       throw new Error('Failed to generate email content')
     }
 
-    return NextResponse.json({ html: generatedContent })
+    // Wrap and sanitize the generated content
+    const wrappedContent = wrapContent(generatedContent, isPWA)
+    const cleanContent = sanitizeHtml(wrappedContent, isPWA)
+
+    // Create the email template
+    const emailTemplate = getEmailTemplate('custom', orderWithSerializedAmount, {
+      subject: templateId === 'custom' ? 'Way of Glory Media - Order Update' : `${templateId.replace(/_/g, ' ')} - Way of Glory Media`,
+      html: cleanContent
+    }, isPWA)
+
+    return NextResponse.json({
+      subject: emailTemplate.subject,
+      html: emailTemplate.html,
+      content: generatedContent,
+      isNewTemplate: true
+    })
   } catch (error) {
     console.error('Error generating email:', error)
     return NextResponse.json(

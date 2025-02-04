@@ -192,7 +192,7 @@ const createEmailWrapper = (content: string) => `
   </div>
 `;
 
-const sanitizeHtml = (html: string, isPWA = false) => {
+export const sanitizeHtml = (html: string, isPWA = false) => {
   let sanitized = html
     .replace(/\n\s*/g, ' ')  // Replace newlines and following spaces with a single space
     .replace(/>\s+</g, '><')  // Remove spaces between tags
@@ -211,7 +211,7 @@ const sanitizeHtml = (html: string, isPWA = false) => {
   return sanitized;
 };
 
-const wrapContent = (content: string, isPWA = false) => {
+export const wrapContent = (content: string, isPWA = false) => {
   // Don't wrap if content already has font-family style
   if (content.includes('style="font-family:')) {
     return isPWA ? sanitizeHtml(content, true) : content;
