@@ -391,11 +391,14 @@ export const getEmailTemplate = (
   return template;
 };
 
-export const formatEmailPreview = async (content: string, order: Order): Promise<string> => {
-  const wrappedContent = wrapContent(content);
-  const cleanContent = sanitizeHtml(wrappedContent);
-  return sanitizeHtml(`
-    ${baseStyle}
-    ${createEmailWrapper(cleanContent)}
-  `);
+export const formatEmailPreview = async (html: string, order: Order) => {
+  // Replace any remaining variables in the HTML
+  const processedHtml = html
+    .replace(/\{customerName\}/g, `${order.first_name} ${order.last_name}`)
+    .replace(/\{orderId\}/g, `${order.id}`)
+    .replace(/\{totalAmount\}/g, `$${order.total_amount.toFixed(2)}`)
+    .replace(/\{installationDate\}/g, order.installation_date || 'Not scheduled')
+    .replace(/\{installationTime\}/g, order.installation_time || 'Not scheduled');
+
+  return processedHtml;
 }; 
