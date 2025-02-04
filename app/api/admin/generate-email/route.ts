@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server'
+import { getEmailPrompt } from '@/lib/email-templates'
+import prisma from '@/lib/prisma'
 import OpenAI from 'openai'
 
-const openai = new OpenAI()
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+})
 
 interface Order {
   id: number;
@@ -53,158 +57,76 @@ function processVariables(content: string, order: any) {
     .replace(/\{contactOnsitePhone\}/g, order.contact_onsite_phone || 'Not provided')
 }
 
-export async function POST(request: Request) {
+export async function POST(req: Request) {
   try {
-    const { prompt, templateType, order, viewMode, variables } = await request.json()
+    const { orderId, templateId = 'custom', content, isPWA = false } = await req.json()
 
-    const systemPrompt = `You are Way of Glory's professional email communication specialist. 
+    // Fetch order details
+    const order = await prisma.order.findUnique({
+      where: { id: Number(orderId) },
+      select: {
+        id: true,
+        first_name: true,
+        last_name: true,
+        email: true,
+        total_amount: true,
+        installation_date: true,
+        installation_time: true,
+        installation_address: true,
+        installation_city: true,
+        installation_state: true,
+        installation_zip: true,
+        shipping_address: true,
+        shipping_city: true,
+        shipping_state: true,
+        shipping_zip: true,
+      },
+    })
 
-Key Company Information:
-- Company Name: Way of Glory
-- Industry: Custom Window Treatments and Installation Services
-- Brand Voice: Professional, warm, and customer-focused
-- Core Values: Excellence in craftsmanship, attention to detail, and exceptional customer service
-- Business Model: Mobile service provider, serving customers at their location
+    if (!order) {
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 })
+    }
 
-Payment Options to Include:
-1. Direct Deposit (Preferred Method):
-   - Bank: Chase Bank
-   - Account Name: Way of Glory
-   - Note: Banking details will be provided securely upon request
-   - Fastest and most secure payment method
+    let prompt = ''
+    if (templateId === 'custom' && content) {
+      // For custom templates, use the provided content as context
+      prompt = `Please help improve and professionally format this email content while maintaining its core message. Make it more engaging and on-brand for Way of Glory Media:
 
-2. Digital Payment Options:
-   - Zelle
-   - Venmo
-   - Note: Payment details provided upon request for security
+${content}
 
-3. Check Payment:
-   - Make checks payable to: "Way of Glory"
-   - Mailing address provided upon request
-   - Please include order number on check memo
-
-4. Cash Payment:
-   - Can be arranged during installation
-   - Or schedule a convenient meetup
-   - Please request cash payment arrangement in advance
-
-Use these variables in your response (replace the placeholders with actual values):
-- {customerName} - Customer's full name
-- {orderId} - Order number (use as #{orderId} for formatting)
-- {orderDate} - Order date
-- {totalAmount} - Total order amount
-- {installationDate} - Installation date
-- {installationTime} - Installation time
-- {installationAddress} - Full installation address
-
-For Payment Reminders:
-1. Emphasize the convenience of digital payments and direct deposit
-2. Always mention all payment options but highlight digital methods first
-3. Keep security in mind - never include full payment details in email
-4. Maintain a helpful, understanding tone
-5. Make it clear we're flexible with payment arrangements
-6. Include our contact information for payment details
-7. Never pressure the customer, keep the tone supportive
-
-Email Guidelines:
-1. ALWAYS use the exact variable format: {variableName}
-2. Start emails with "Dear {customerName},"
-3. Always reference order as "#{orderId}"
-4. Include relevant order details using variables
-5. Maintain a professional yet warm tone
-6. End with contact information: (310) 872-9781 and help@wayofglory.com
-
-Example Payment Reminder Format:
-Subject: Payment Options for Your Order #{orderId}
-
-Dear {customerName},
-
-Thank you for choosing Way of Glory. Regarding your order #{orderId} from {orderDate} for {totalAmount}, we offer several convenient payment options to suit your preference:
-
-1. Direct Deposit (Preferred Method)
-   - Secure bank transfer
-   - Details provided upon request
-
-2. Digital Payments
-   - Zelle or Venmo available
-   - Quick and convenient
-
-3. Check Payment
-   - Payable to "Way of Glory"
-   - Mailing address provided upon request
-
-4. Cash Payment
-   - Can be arranged during installation
-   - Or schedule a convenient meetup
-
-For security reasons, specific payment details will be provided when you choose your preferred method. Please contact us at (310) 872-9781 or help@wayofglory.com to arrange your payment. We're here to make this process as convenient as possible for you.
-
-Best regards,
-Way of Glory Team`
+Please ensure the response maintains a professional tone and includes all necessary information from the original content.`
+    } else {
+      // Use predefined template prompts
+      prompt = getEmailPrompt(templateId, order)
+    }
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4",
       messages: [
         {
           role: "system",
-          content: systemPrompt
+          content: "You are an expert email composer for Way of Glory Media, a professional audio and visual solutions company. Your task is to generate or improve email content that maintains the company's professional image while being clear and engaging."
         },
         {
           role: "user",
           content: prompt
         }
       ],
+      temperature: 0.7,
+      max_tokens: 1000,
     })
 
-    const generatedContent = completion.choices[0]?.message?.content || ''
+    const generatedContent = completion.choices[0].message.content
 
-    // Extract subject and content
-    let subject = ''
-    let content = ''
-
-    if (generatedContent) {
-      const lines = generatedContent.split('\n')
-      const subjectLine = lines.find(line => line.trim().startsWith('Subject:'))
-      
-      if (subjectLine) {
-        subject = subjectLine.replace('Subject:', '').trim()
-        // Process variables in subject
-        subject = processVariables(subject, order)
-        
-        // Get all content after the subject line
-        const contentLines = lines
-          .slice(lines.indexOf(subjectLine) + 1)
-          .map(line => line.trim())
-          .filter(line => line)
-        
-        content = contentLines.join('\n\n')
-        // Process variables in content
-        content = processVariables(content, order)
-      } else {
-        subject = 'Way of Glory - Order Update'
-        content = processVariables(generatedContent, order)
-      }
+    if (!generatedContent) {
+      throw new Error('Failed to generate email content')
     }
 
-    // Format the content for preview
-    const previewHtml = formatEmailPreview({ 
-      subject, 
-      content, 
-      order, 
-      baseStyle 
-    })
-
-    // Return both raw content and formatted HTML
-    return NextResponse.json({
-      subject,
-      content,  // Raw content for edit mode
-      html: previewHtml, // Formatted HTML for preview mode
-      isNewTemplate: false
-    })
+    return NextResponse.json({ html: generatedContent })
   } catch (error) {
-    console.error('Error generating email content:', error)
+    console.error('Error generating email:', error)
     return NextResponse.json(
-      { error: 'Failed to generate email content' },
+      { error: error instanceof Error ? error.message : 'Failed to generate email' },
       { status: 500 }
     )
   }

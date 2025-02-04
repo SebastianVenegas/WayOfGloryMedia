@@ -222,6 +222,61 @@ const wrapContent = (content: string, isPWA = false) => {
   return isPWA ? sanitizeHtml(wrapped, true) : wrapped;
 };
 
+const emailPrompts = {
+  payment_reminder: `Write a professional payment reminder email that:
+    - Addresses the customer by name
+    - Mentions the order number and total amount due
+    - Lists available payment methods
+    - Has a polite but firm tone
+    - Includes a clear call to action
+    - Maintains Way of Glory Media's professional image`,
+
+  installation_details: `Write a detailed installation confirmation email that:
+    - Addresses the customer by name
+    - Confirms the installation date and time
+    - Lists the installation address
+    - Provides preparation instructions
+    - Includes contact information for questions
+    - Maintains a helpful and professional tone`,
+
+  shipping_update: `Write a shipping status update email that:
+    - Addresses the customer by name
+    - Provides current shipping status
+    - Includes tracking information if available
+    - Estimates delivery timeframe
+    - Lists the shipping address
+    - Maintains an informative and professional tone`,
+
+  thank_you: `Write a thank you email that:
+    - Addresses the customer by name
+    - Expresses genuine appreciation for their business
+    - Summarizes their order details
+    - Provides next steps or what to expect
+    - Encourages future engagement
+    - Maintains a warm and professional tone`
+};
+
+export const getEmailPrompt = (templateId: string, order: Order): string => {
+  const prompt = emailPrompts[templateId as keyof typeof emailPrompts];
+  if (!prompt) {
+    throw new Error('Invalid template ID');
+  }
+
+  // Add order-specific context to the prompt
+  return `${prompt}
+
+Order Context:
+- Customer Name: ${order.first_name} ${order.last_name}
+- Order ID: ${order.id}
+- Total Amount: $${order.total_amount}
+${order.installation_date ? `- Installation Date: ${order.installation_date}` : ''}
+${order.installation_time ? `- Installation Time: ${order.installation_time}` : ''}
+${order.installation_address ? `- Installation Address: ${order.installation_address}, ${order.installation_city}, ${order.installation_state} ${order.installation_zip}` : ''}
+${order.shipping_address ? `- Shipping Address: ${order.shipping_address}, ${order.shipping_city}, ${order.shipping_state} ${order.shipping_zip}` : ''}
+
+Please generate a professional email that follows Way of Glory Media's brand voice: friendly, professional, and customer-focused.`;
+};
+
 export const getEmailTemplate = (
   templateId: string, 
   order: Order, 
