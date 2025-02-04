@@ -147,58 +147,118 @@ const baseStyle = `
     body {
       margin: 0;
       padding: 0;
-      background-color: #f4f4f5;
+      background-color: #f8fafc;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-      line-height: 1.5;
-      color: #111827;
+      line-height: 1.6;
+      color: #1e293b;
       -webkit-font-smoothing: antialiased;
     }
+
     .email-container {
       max-width: 600px;
-      margin: 40px auto;
+      margin: 32px auto;
       padding: 40px;
       background-color: #ffffff;
-      border-radius: 8px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      border-radius: 12px;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
     }
-    h1 {
-      font-size: 28px;
+
+    .email-section {
+      margin-bottom: 32px;
+    }
+
+    h1, h2, h3 {
+      color: #0f172a;
       font-weight: 600;
-      margin: 0 0 32px 0;
+      margin: 0 0 24px 0;
       padding: 0;
-      color: #111827;
+      line-height: 1.3;
     }
-    .content {
-      font-size: 16px;
-      line-height: 1.6;
-      color: #374151;
-    }
-    .content p {
+
+    h1 { font-size: 24px; }
+    h2 { font-size: 20px; }
+    h3 { font-size: 16px; }
+
+    p {
       margin: 0 0 16px 0;
       padding: 0;
+      color: #334155;
+      font-size: 16px;
+      line-height: 1.6;
     }
-    .content p:last-child {
-      margin-bottom: 0;
+
+    .highlight-box {
+      background-color: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 24px;
+      margin: 24px 0;
     }
-    .content ul {
-      margin: 16px 0;
-      padding: 0 0 0 24px;
-    }
-    .content li {
+
+    .highlight-box p {
       margin: 8px 0;
-      padding: 0;
-      line-height: 1.5;
     }
-    .footer {
+
+    .spacer {
+      margin: 16px 0;
+      border-top: 1px solid #e2e8f0;
+    }
+
+    .contact-info {
+      color: #475569;
+      background-color: #f1f5f9;
+      padding: 12px;
+      border-radius: 6px;
+      margin-top: 8px;
+    }
+
+    .cta-button {
+      display: inline-block;
+      background-color: #2563eb;
+      color: #ffffff !important;
+      text-decoration: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      font-weight: 500;
+      margin: 24px 0;
+      text-align: center;
+      transition: background-color 0.2s;
+    }
+
+    .cta-button:hover {
+      background-color: #1d4ed8;
+    }
+
+    .signature {
       margin-top: 40px;
       padding-top: 24px;
-      border-top: 1px solid #e5e7eb;
+      border-top: 1px solid #e2e8f0;
+      text-align: center;
     }
-    .footer p {
-      margin: 4px 0;
-      color: #6b7280;
+
+    .signature-name {
+      font-weight: 600;
+      color: #0f172a;
+      margin: 0;
+      font-size: 16px;
+    }
+
+    .signature-title {
+      color: #64748b;
       font-size: 14px;
-      line-height: 1.5;
+      margin: 4px 0;
+    }
+
+    @media screen and (max-width: 600px) {
+      .email-container {
+        margin: 0;
+        padding: 24px;
+        border-radius: 0;
+      }
+      
+      .highlight-box {
+        padding: 16px;
+      }
     }
   </style>
 `
@@ -279,6 +339,12 @@ function formatEmailPreview({ subject, content, order, baseStyle }: {
             font-size: 14px;
             margin: 4px 0;
           }
+          .contact-info {
+            margin-top: 24px;
+            padding: 16px;
+            background: #f8fafc;
+            border-radius: 6px;
+          }
         </style>
       </head>
       <body>
@@ -306,14 +372,18 @@ function formatEmailPreview({ subject, content, order, baseStyle }: {
             ` : ''}
           </div>
 
-          <div class="signature">
-            <img src="https://wayofglory.com/signature.png" alt="Digital Signature" />
-            <p class="signature-name">Way of Glory Team</p>
-            <p class="signature-title">Customer Success Team</p>
-            <p class="signature-contact">
-              Email: support@wayofglory.com<br>
-              Phone: (555) 123-4567
+          <div class="contact-info">
+            <h3>Need Assistance?</h3>
+            <p>Our team is here to help! Contact us:</p>
+            <p>
+              Phone: (310) 872-9781<br>
+              Email: help@wayofglory.com
             </p>
+          </div>
+
+          <div class="signature">
+            <p class="signature-name">Way of Glory Media Team</p>
+            <p class="signature-title">Customer Success</p>
           </div>
         </div>
       </body>
