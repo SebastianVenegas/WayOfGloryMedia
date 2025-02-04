@@ -5,7 +5,7 @@ export interface Order {
   first_name: string;
   last_name: string;
   email: string;
-  total_amount: Decimal;
+  total_amount: number;
   installation_date?: string | null;
   installation_time?: string | null;
   installation_address?: string | null;
