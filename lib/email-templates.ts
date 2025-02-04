@@ -1,19 +1,23 @@
+import { Decimal } from '@prisma/client/runtime/library'
+
 interface Order {
   id: number;
   first_name: string;
   last_name: string;
   email: string;
-  total_amount: number | string;
-  installation_date?: string;
-  installation_time?: string;
-  installation_address?: string;
-  installation_city?: string;
-  installation_state?: string;
-  installation_zip?: string;
-  shipping_address?: string;
-  shipping_city?: string;
-  shipping_state?: string;
-  shipping_zip?: string;
+  total_amount: Decimal;
+  installation_date?: string | null;
+  installation_time?: string | null;
+  installation_address?: string | null;
+  installation_city?: string | null;
+  installation_state?: string | null;
+  installation_zip?: string | null;
+  shipping_address?: string | null;
+  shipping_city?: string | null;
+  shipping_state?: string | null;
+  shipping_zip?: string | null;
+  created_at?: Date;
+  updated_at?: Date;
 }
 
 const baseStyle = `
@@ -261,13 +265,16 @@ export const getEmailPrompt = (templateId: string, order: Order): string => {
     throw new Error('Invalid template ID');
   }
 
+  // Format the total amount to 2 decimal places
+  const formattedAmount = order.total_amount.toFixed(2);
+
   // Add order-specific context to the prompt
   return `${prompt}
 
 Order Context:
 - Customer Name: ${order.first_name} ${order.last_name}
 - Order ID: ${order.id}
-- Total Amount: $${order.total_amount}
+- Total Amount: $${formattedAmount}
 ${order.installation_date ? `- Installation Date: ${order.installation_date}` : ''}
 ${order.installation_time ? `- Installation Time: ${order.installation_time}` : ''}
 
@@ -303,7 +310,7 @@ export const getEmailTemplate = (
           <p>Dear ${order.first_name} ${order.last_name},</p>
           <p>This is a friendly reminder about your pending payment for order #${order.id}.</p>
           <div class="details">
-            <p><strong>Total Amount Due:</strong> $${order.total_amount}</p>
+            <p><strong>Total Amount Due:</strong> $${order.total_amount.toFixed(2)}</p>
             <p><strong>Payment Methods:</strong></p>
             <p>We offer several convenient payment options. Please contact our team to arrange your preferred payment method:</p>
             <p>
@@ -368,7 +375,7 @@ export const getEmailTemplate = (
           <p>Thank you for choosing Way of Glory. We truly appreciate your business and trust in our services.</p>
           <div class="details">
             <p><strong>Order Number:</strong> #${order.id}</p>
-            <p><strong>Total Amount:</strong> $${order.total_amount}</p>
+            <p><strong>Total Amount:</strong> $${order.total_amount.toFixed(2)}</p>
           </div>
           <p>We hope you're completely satisfied with your purchase. If you have any questions or need assistance, please don't hesitate to reach out.</p>
         `)}

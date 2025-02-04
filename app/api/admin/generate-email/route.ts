@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getEmailPrompt } from '@/lib/email-templates'
 import prisma from '@/lib/prisma'
 import OpenAI from 'openai'
+import { Decimal } from '@prisma/client/runtime/library'
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -12,8 +13,19 @@ interface Order {
   first_name: string;
   last_name: string;
   email: string;
-  total_amount: number | string;
-  installation_date?: string;
+  total_amount: Decimal;
+  installation_date?: string | null;
+  installation_time?: string | null;
+  installation_address?: string | null;
+  installation_city?: string | null;
+  installation_state?: string | null;
+  installation_zip?: string | null;
+  shipping_address?: string | null;
+  shipping_city?: string | null;
+  shipping_state?: string | null;
+  shipping_zip?: string | null;
+  created_at?: Date;
+  updated_at?: Date;
 }
 
 interface EmailResponse {
