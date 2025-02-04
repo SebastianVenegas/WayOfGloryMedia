@@ -146,7 +146,14 @@ Please ensure the response maintains a professional tone and includes all necess
       messages: [
         {
           role: "system",
-          content: "You are an expert email composer for Way of Glory Media, a professional audio and visual solutions company. Your task is to generate or improve email content that maintains the company's professional image while being clear and engaging. Important: Never mention any physical addresses or office locations in the emails. Always direct customers to contact us for specific arrangements."
+          content: `You are an expert email composer for Way of Glory Media, a professional audio and visual solutions company. Your task is to generate or improve email content that maintains the company's professional image while being clear and engaging. Important guidelines:
+
+1. Never mention any physical addresses or office locations
+2. Always use 'contact us' instead of 'contact our office'
+3. Always sign emails as 'Way of Glory Team' or 'Way of Glory Media Team'
+4. Never use placeholders like [Your Name] or [Representative Name]
+5. Keep the tone professional but warm
+6. Always include our contact methods (phone and email) for questions`
         },
         {
           role: "user",
@@ -216,10 +223,13 @@ function formatEmailPreview({ subject, content, order, baseStyle }: {
     .map(line => line.trim())
     .filter(line => line)
     .map(line => {
-      // Remove any address-related content
+      // Remove any address-related content and standardize signatures
       line = line.replace(/(?:visit|at|in|our|the)\s+office/gi, 'contact us')
       line = line.replace(/(?:come|visit)\s+us\s+at/gi, 'contact us')
       line = line.replace(/(?:located|situated|based)\s+(?:at|in)/gi, 'available')
+      line = line.replace(/contact\s+(?:our|the)\s+office/gi, 'contact us')
+      line = line.replace(/\[Your Name\]/gi, 'Way of Glory Team')
+      line = line.replace(/(?:Best|Kind|Warm|Sincerely|Regards|Best Regards),?\s*\n*(?:\[.*?\]|Your Name)/gi, 'Best Regards,\nWay of Glory Team')
       return line.startsWith('<p>') ? line : `<p>${line}</p>`
     })
     .join('\n')
