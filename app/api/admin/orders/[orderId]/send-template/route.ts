@@ -1,6 +1,6 @@
 import { sql } from '@vercel/postgres';
 import { NextRequest, NextResponse } from 'next/server';
-import { getEmailTemplate, Order as EmailOrder } from '@/lib/email-templates';
+import { getEmailTemplate } from '@/lib/email-templates';
 import nodemailer from 'nodemailer';
 
 // Check for required environment variables
@@ -41,77 +41,141 @@ const createEmailHtml = (content: string) => {
   `;
 };
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { orderId: string } }
-): Promise<NextResponse> {
+export async function POST(request: NextRequest) {
   try {
-    const { templateId, customEmail, isPWA = false } = await request.json();
-    const orderId = parseInt(params.orderId);
+    const url = new URL(request.url);
+    const orderId = url.pathname.split('/').slice(-2, -1)[0];
 
-    if (!orderId || isNaN(orderId)) {
-      return NextResponse.json({ error: "Invalid order ID" }, { status: 400 });
+    // Log the request URL and orderId for debugging
+    console.log('Request URL:', url.toString());
+    console.log('Order ID:', orderId);
+
+    const { rows: [order] } = await sql.query(
+      `SELECT * FROM orders WHERE id = $1`,
+      [orderId]
+    );
+
+    if (!order) {
+      console.log('Order not found:', orderId);
+      return NextResponse.json(
+        { error: 'Order not found' },
+        { status: 404 }
+      );
     }
 
-    // Fetch order details using Vercel Postgres
-    const { rows } = await sql`
-      SELECT 
-        id,
-        first_name,
-        last_name,
-        email,
-        CAST(total_amount AS FLOAT) as total_amount,
-        installation_date,
-        installation_time,
-        installation_address,
-        installation_city,
-        installation_state,
-        installation_zip,
-        shipping_address,
-        shipping_city,
-        shipping_state,
-        shipping_zip
-      FROM orders 
-      WHERE id = ${orderId}
-    `;
-
-    if (rows.length === 0) {
-      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    let requestBody;
+    try {
+      const text = await request.text();
+      console.log('Raw request body:', text);
+      requestBody = JSON.parse(text);
+    } catch (error) {
+      console.error('Error parsing request body:', error);
+      return NextResponse.json(
+        { error: 'Invalid JSON in request body' },
+        { status: 400 }
+      );
     }
 
-    const orderData = rows[0];
+    const { templateId, customEmail, isPWA } = requestBody;
 
-    // Convert the order data to match the EmailOrder interface
-    const order: EmailOrder = {
-      id: orderData.id,
-      first_name: orderData.first_name,
-      last_name: orderData.last_name,
-      email: orderData.email,
-      total_amount: orderData.total_amount,
-      installation_date: orderData.installation_date,
-      installation_time: orderData.installation_time,
-      installation_address: orderData.installation_address,
-      installation_city: orderData.installation_city,
-      installation_state: orderData.installation_state,
-      installation_zip: orderData.installation_zip,
-      shipping_address: orderData.shipping_address,
-      shipping_city: orderData.shipping_city,
-      shipping_state: orderData.shipping_state,
-      shipping_zip: orderData.shipping_zip,
-    };
-
-    // Get email template
-    const template = getEmailTemplate(templateId, order, customEmail, isPWA);
-
-    if (!template) {
-      return NextResponse.json({ error: "Invalid template ID" }, { status: 400 });
+    if (!templateId) {
+      return NextResponse.json(
+        { error: 'Template ID is required' },
+        { status: 400 }
+      );
     }
 
-    // TODO: Send email using your email service
-    // For now, just return the template
-    return NextResponse.json(template);
+    let emailContent;
+    let subject;
+
+    if (templateId === 'custom' && customEmail) {
+      if (!customEmail.subject || !customEmail.html) {
+        return NextResponse.json(
+          { error: 'Custom email requires both subject and HTML content' },
+          { status: 400 }
+        );
+      }
+
+      // Special handling for PWA requests
+      if (isPWA) {
+        // Additional sanitization for PWA content
+        const sanitizedHtml = customEmail.html
+          .trim()
+          .replace(/[\u200B-\u200D\uFEFF]/g, '') // Remove zero-width spaces
+          .replace(/\s+/g, ' ') // Normalize whitespace
+          .replace(/[^\x20-\x7E\s]/g, ''); // Remove non-printable characters
+
+        // Ensure the content is properly wrapped
+        emailContent = `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; line-height: 1.6; color: #333;">
+            ${sanitizedHtml}
+            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee;">
+              <p style="color: #666; font-size: 14px; margin: 5px 0;">© ${new Date().getFullYear()} Way of Glory</p>
+              <p style="color: #666; font-size: 14px; margin: 5px 0;">
+                <a href="tel:+13108729781" style="color: #2563eb; text-decoration: none;">(310) 872-9781</a> |
+                <a href="mailto:help@wayofglory.com" style="color: #2563eb; text-decoration: none;">help@wayofglory.com</a>
+              </p>
+            </div>
+          </div>
+        `.trim();
+      } else {
+        emailContent = createEmailHtml(customEmail.html);
+      }
+      
+      subject = customEmail.subject;
+    } else {
+      const template = getEmailTemplate(templateId, order);
+      if (!template) {
+        return NextResponse.json(
+          { error: 'Invalid template ID' },
+          { status: 400 }
+        );
+      }
+      subject = template.subject;
+      emailContent = template.html;
+    }
+
+    // Log email details for debugging
+    console.log('Sending email:', {
+      to: order.email,
+      subject: subject,
+      contentLength: emailContent.length,
+      isPWA: isPWA || false
+    });
+
+    try {
+      await transporter.sendMail({
+        from: process.env.GMAIL_USER,
+        to: order.email,
+        subject: subject,
+        html: emailContent,
+      });
+    } catch (emailError) {
+      console.error('Nodemailer error:', emailError);
+      return NextResponse.json(
+        { error: 'Failed to send email: ' + (emailError instanceof Error ? emailError.message : 'Unknown error') },
+        { status: 500 }
+      );
+    }
+
+    await sql.query(
+      `INSERT INTO email_logs (
+        order_id,
+        template_id,
+        subject,
+        content,
+        sent_at,
+        sent_from_pwa
+      ) VALUES ($1, $2, $3, $4, NOW(), $5)`,
+      [orderId, templateId, subject, emailContent, isPWA || false]
+    );
+
+    return NextResponse.json({
+      success: true,
+      message: 'Email sent successfully'
+    });
   } catch (error) {
-    console.error('Error sending email:', error);
+    console.error('Error in send-template:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to send email' },
       { status: 500 }

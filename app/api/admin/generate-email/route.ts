@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server'
 import { getEmailPrompt } from '@/lib/email-templates'
 import prisma from '@/lib/prisma'
 import OpenAI from 'openai'
-import { Decimal } from '@prisma/client/runtime/library'
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -13,17 +12,8 @@ interface Order {
   first_name: string;
   last_name: string;
   email: string;
-  total_amount: Decimal;
-  installation_date?: string | null;
-  installation_time?: string | null;
-  installation_address?: string | null;
-  installation_city?: string | null;
-  installation_state?: string | null;
-  installation_zip?: string | null;
-  shipping_address?: string | null;
-  shipping_city?: string | null;
-  shipping_state?: string | null;
-  shipping_zip?: string | null;
+  total_amount: number | string;
+  installation_date?: string;
 }
 
 interface EmailResponse {
@@ -157,118 +147,58 @@ const baseStyle = `
     body {
       margin: 0;
       padding: 0;
-      background-color: #f8fafc;
+      background-color: #f4f4f5;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-      line-height: 1.6;
-      color: #1e293b;
+      line-height: 1.5;
+      color: #111827;
       -webkit-font-smoothing: antialiased;
     }
-
     .email-container {
       max-width: 600px;
-      margin: 32px auto;
+      margin: 40px auto;
       padding: 40px;
       background-color: #ffffff;
-      border-radius: 12px;
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     }
-
-    .email-section {
-      margin-bottom: 32px;
-    }
-
-    h1, h2, h3 {
-      color: #0f172a;
+    h1 {
+      font-size: 28px;
       font-weight: 600;
-      margin: 0 0 24px 0;
+      margin: 0 0 32px 0;
       padding: 0;
-      line-height: 1.3;
+      color: #111827;
     }
-
-    h1 { font-size: 24px; }
-    h2 { font-size: 20px; }
-    h3 { font-size: 16px; }
-
-    p {
-      margin: 0 0 16px 0;
-      padding: 0;
-      color: #334155;
+    .content {
       font-size: 16px;
       line-height: 1.6;
+      color: #374151;
     }
-
-    .highlight-box {
-      background-color: #f8fafc;
-      border: 1px solid #e2e8f0;
-      border-radius: 8px;
-      padding: 24px;
-      margin: 24px 0;
+    .content p {
+      margin: 0 0 16px 0;
+      padding: 0;
     }
-
-    .highlight-box p {
-      margin: 8px 0;
+    .content p:last-child {
+      margin-bottom: 0;
     }
-
-    .spacer {
+    .content ul {
       margin: 16px 0;
-      border-top: 1px solid #e2e8f0;
+      padding: 0 0 0 24px;
     }
-
-    .contact-info {
-      color: #475569;
-      background-color: #f1f5f9;
-      padding: 12px;
-      border-radius: 6px;
-      margin-top: 8px;
+    .content li {
+      margin: 8px 0;
+      padding: 0;
+      line-height: 1.5;
     }
-
-    .cta-button {
-      display: inline-block;
-      background-color: #2563eb;
-      color: #ffffff !important;
-      text-decoration: none;
-      padding: 12px 24px;
-      border-radius: 6px;
-      font-weight: 500;
-      margin: 24px 0;
-      text-align: center;
-      transition: background-color 0.2s;
-    }
-
-    .cta-button:hover {
-      background-color: #1d4ed8;
-    }
-
-    .signature {
+    .footer {
       margin-top: 40px;
       padding-top: 24px;
-      border-top: 1px solid #e2e8f0;
-      text-align: center;
+      border-top: 1px solid #e5e7eb;
     }
-
-    .signature-name {
-      font-weight: 600;
-      color: #0f172a;
-      margin: 0;
-      font-size: 16px;
-    }
-
-    .signature-title {
-      color: #64748b;
-      font-size: 14px;
+    .footer p {
       margin: 4px 0;
-    }
-
-    @media screen and (max-width: 600px) {
-      .email-container {
-        margin: 0;
-        padding: 24px;
-        border-radius: 0;
-      }
-      
-      .highlight-box {
-        padding: 16px;
-      }
+      color: #6b7280;
+      font-size: 14px;
+      line-height: 1.5;
     }
   </style>
 `

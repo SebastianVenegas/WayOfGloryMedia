@@ -1,32 +1,20 @@
-import { Decimal } from '@prisma/client/runtime/library';
-
-export interface Order {
+interface Order {
   id: number;
   first_name: string;
   last_name: string;
   email: string;
-  total_amount: number;
-  installation_date?: string | null;
-  installation_time?: string | null;
-  installation_address?: string | null;
-  installation_city?: string | null;
-  installation_state?: string | null;
-  installation_zip?: string | null;
-  shipping_address?: string | null;
-  shipping_city?: string | null;
-  shipping_state?: string | null;
-  shipping_zip?: string | null;
+  total_amount: number | string;
+  installation_date?: string;
+  installation_time?: string;
+  installation_address?: string;
+  installation_city?: string;
+  installation_state?: string;
+  installation_zip?: string;
+  shipping_address?: string;
+  shipping_city?: string;
+  shipping_state?: string;
+  shipping_zip?: string;
 }
-
-// Helper function to format currency
-const formatCurrency = (amount: number): string => {
-  return amount.toLocaleString('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  });
-};
 
 const baseStyle = `
   <style>
@@ -235,36 +223,36 @@ const wrapContent = (content: string, isPWA = false) => {
 };
 
 const emailPrompts = {
-  payment_reminder: `Create a concise payment reminder that:
-    • Greets {customerName} warmly
-    • References order #{orderId} and the total amount
-    • Provides our contact information for payment
-    • Maintains a professional, friendly tone
-    • Ends with a clear call to action`,
+  payment_reminder: `Write a professional payment reminder email that:
+    - Addresses the customer by name
+    - Mentions the order number and total amount due
+    - Directs them to contact us for payment arrangements
+    - Has a polite but firm tone
+    - Includes contact information
+    - Maintains Way of Glory Media's professional image`,
 
-  installation_details: `Create a clear installation confirmation that:
-    • Greets {customerName} warmly
-    • Confirms installation details for order #{orderId}
-    • Lists date and time clearly
-    • Provides preparation guidelines
-    • Includes our contact information
-    • Keeps a helpful, professional tone`,
+  installation_details: `Write a detailed installation confirmation email that:
+    - Addresses the customer by name
+    - Confirms the installation date and time
+    - Provides preparation instructions
+    - Includes contact information for questions
+    - Maintains a helpful and professional tone`,
 
-  shipping_update: `Create a brief shipping update that:
-    • Greets {customerName} warmly
-    • Updates on order #{orderId} status
-    • Provides tracking details if available
-    • Estimates delivery timeline
-    • Includes our contact information
-    • Maintains a clear, professional tone`,
+  shipping_update: `Write a shipping status update email that:
+    - Addresses the customer by name
+    - Provides current shipping status
+    - Includes tracking information if available
+    - Estimates delivery timeframe
+    - Includes contact information for questions
+    - Maintains an informative and professional tone`,
 
-  thank_you: `Create a warm thank you message that:
-    • Greets {customerName} personally
-    • Thanks them for order #{orderId}
-    • Confirms their order details
-    • Outlines next steps
-    • Provides our contact information
-    • Keeps a warm, appreciative tone`
+  thank_you: `Write a thank you email that:
+    - Addresses the customer by name
+    - Expresses genuine appreciation for their business
+    - Summarizes their order details
+    - Provides next steps or what to expect
+    - Includes contact information
+    - Maintains a warm and professional tone`
 };
 
 export const getEmailPrompt = (templateId: string, order: Order): string => {
@@ -273,20 +261,17 @@ export const getEmailPrompt = (templateId: string, order: Order): string => {
     throw new Error('Invalid template ID');
   }
 
+  // Add order-specific context to the prompt
   return `${prompt}
 
-Key Details:
-• Customer: ${order.first_name} ${order.last_name}
-• Order: #${order.id}
-• Amount: ${formatCurrency(order.total_amount)}
-${order.installation_date ? `• Installation: ${order.installation_date}` : ''}
-${order.installation_time ? `• Time: ${order.installation_time}` : ''}
+Order Context:
+- Customer Name: ${order.first_name} ${order.last_name}
+- Order ID: ${order.id}
+- Total Amount: $${order.total_amount}
+${order.installation_date ? `- Installation Date: ${order.installation_date}` : ''}
+${order.installation_time ? `- Installation Time: ${order.installation_time}` : ''}
 
-Contact Information:
-• Phone: (310) 872-9781
-• Email: help@wayofglory.com
-
-Please create a professional email that reflects Way of Glory Media's brand voice: friendly, professional, and customer-focused.`;
+Please generate a professional email that follows Way of Glory Media's brand voice: friendly, professional, and customer-focused.`;
 };
 
 export const getEmailTemplate = (
@@ -314,81 +299,62 @@ export const getEmailTemplate = (
       html: sanitizeHtml(`
         ${baseStyle}
         ${createEmailWrapper(`
-          <div class="email-section">
-            <h2>Payment Reminder</h2>
-            <p>Dear ${order.first_name} ${order.last_name},</p>
-            
-            <p>This is a friendly reminder regarding your payment for order #${order.id}.</p>
-            
-            <div class="highlight-box">
-              <p><strong>Amount Due:</strong> ${formatCurrency(order.total_amount)}</p>
-              <p class="spacer"></p>
-              <p><strong>Ready to Pay?</strong></p>
-              <p>Contact our team to arrange your preferred payment method:</p>
-              <p class="contact-info">
-                Phone: (310) 872-9781<br>
-                Email: help@wayofglory.com
-              </p>
-            </div>
-
-            <p>Please reach out to complete your payment. If you've already paid, kindly disregard this reminder.</p>
-            
-            <a href="mailto:help@wayofglory.com" class="cta-button">Contact Us to Pay</a>
+          <h2>Payment Reminder</h2>
+          <p>Dear ${order.first_name} ${order.last_name},</p>
+          <p>This is a friendly reminder about your pending payment for order #${order.id}.</p>
+          <div class="details">
+            <p><strong>Total Amount Due:</strong> $${order.total_amount}</p>
+            <p><strong>Payment Methods:</strong></p>
+            <p>We offer several convenient payment options. Please contact our team to arrange your preferred payment method:</p>
+            <p>
+              <strong>Contact Us:</strong><br>
+              Phone: (310) 872-9781<br>
+              Email: help@wayofglory.com
+            </p>
           </div>
+          <p>Please reach out to complete your payment and proceed with your order. If you've already made the payment, please disregard this reminder.</p>
+          <a href="#" class="cta-button">Contact Us to Complete Payment</a>
         `)}
       `)
     },
     installation_confirmation: {
-      subject: 'Your Installation Details - Way of Glory Media',
+      subject: 'Installation Details for Your Way of Glory Order',
       html: sanitizeHtml(`
         ${baseStyle}
         ${createEmailWrapper(`
-          <div class="email-section">
-            <h2>Installation Details</h2>
-            <p>Dear ${order.first_name} ${order.last_name},</p>
-            
-            <p>We're ready to install your order #${order.id}.</p>
-            
-            <div class="highlight-box">
-              <p><strong>Date:</strong> ${order.installation_date}</p>
-              <p><strong>Time:</strong> ${order.installation_time}</p>
-              <p class="spacer"></p>
-              <p><strong>Questions?</strong></p>
-              <p class="contact-info">
-                Phone: (310) 872-9781<br>
-                Email: help@wayofglory.com
-              </p>
-            </div>
-
-            <p>Our team will arrive during the scheduled window. We'll call you shortly before arrival.</p>
+          <h2>Installation Details</h2>
+          <p>Dear ${order.first_name} ${order.last_name},</p>
+          <p>Your installation for order #${order.id} has been scheduled.</p>
+          <div class="details">
+            <p><strong>Date & Time:</strong><br>
+              ${order.installation_date} at ${order.installation_time}
+            </p>
+            <p><strong>Need to make changes?</strong><br>
+              Contact our team:<br>
+              Phone: (310) 872-9781<br>
+              Email: help@wayofglory.com
+            </p>
           </div>
+          <p>Our installation team will arrive within the scheduled time window. Please ensure someone is available to provide access to the installation area.</p>
         `)}
       `)
     },
     shipping_update: {
-      subject: 'Shipping Update - Way of Glory Media',
+      subject: 'Shipping Update for Your Way of Glory Order',
       html: sanitizeHtml(`
         ${baseStyle}
         ${createEmailWrapper(`
-          <div class="email-section">
-            <h2>Shipping Update</h2>
-            <p>Dear ${order.first_name} ${order.last_name},</p>
-            
-            <p>Great news! Your order #${order.id} is on its way.</p>
-            
-            <div class="highlight-box">
-              <p><strong>Status:</strong> Shipped</p>
-              <p><strong>Expected Delivery:</strong> 2-3 business days</p>
-              <p class="spacer"></p>
-              <p><strong>Need Updates?</strong></p>
-              <p class="contact-info">
-                Phone: (310) 872-9781<br>
-                Email: help@wayofglory.com
-              </p>
-            </div>
-
-            <p>We'll notify you once your order has been delivered.</p>
+          <h2>Shipping Update</h2>
+          <p>Dear ${order.first_name} ${order.last_name},</p>
+          <p>Great news! Your order #${order.id} has been shipped and is on its way to you.</p>
+          <div class="details">
+            <p><strong>Have questions about your delivery?</strong><br>
+              Contact our team:<br>
+              Phone: (310) 872-9781<br>
+              Email: help@wayofglory.com
+            </p>
           </div>
+          <p>We'll notify you once your order has been delivered. If you have any special delivery instructions, please contact us.</p>
         `)}
       `)
     },
@@ -402,7 +368,7 @@ export const getEmailTemplate = (
           <p>Thank you for choosing Way of Glory. We truly appreciate your business and trust in our services.</p>
           <div class="details">
             <p><strong>Order Number:</strong> #${order.id}</p>
-            <p><strong>Total Amount:</strong> ${formatCurrency(order.total_amount)}</p>
+            <p><strong>Total Amount:</strong> $${order.total_amount}</p>
           </div>
           <p>We hope you're completely satisfied with your purchase. If you have any questions or need assistance, please don't hesitate to reach out.</p>
         `)}

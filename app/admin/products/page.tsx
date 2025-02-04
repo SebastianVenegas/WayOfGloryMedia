@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Package, Loader, Search, ChevronLeft, ChevronRight, Filter, Plus, ShoppingBag, Minus, X, LayoutGrid, List, CheckCircle2, Mail, Speaker, Network, GraduationCap, Siren, Mic, Music2, Settings, ArrowRight, Volume2, Check, Pencil, Trash2 } from 'lucide-react'
+import { Package, Loader2, Search, ChevronLeft, ChevronRight, Filter, Plus, ShoppingBag, Minus, X, LayoutGrid, List, CheckCircle2, Mail, Speaker, Network, GraduationCap, Siren, Mic2, Music2, Settings, ArrowRight, WormIcon as WaveformIcon, Check, Pencil, Trash2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 import { Button } from "@/components/ui/button"
@@ -260,9 +260,9 @@ const ServiceCard = ({ service, onSelect }: { service: Product, onSelect: (servi
             {service.title.includes('Network') && <Network className="h-7 w-7 text-blue-600" />}
             {service.title.includes('Training') && <GraduationCap className="h-7 w-7 text-blue-600" />}
             {service.title.includes('Emergency') && <Siren className="h-7 w-7 text-blue-600" />}
-            {service.title.includes('Studio') && <Mic className="h-7 w-7 text-blue-600" />}
+            {service.title.includes('Studio') && <Mic2 className="h-7 w-7 text-blue-600" />}
             {service.title.includes('Event') && <Music2 className="h-7 w-7 text-blue-600" />}
-            {service.title.includes('Acoustics') && <Volume2 className="h-7 w-7 text-blue-600" />}
+            {service.title.includes('Acoustics') && <WaveformIcon className="h-7 w-7 text-blue-600" />}
             {!service.title.match(/(Audio System|Network|Training|Emergency|Studio|Event|Acoustics)/) && 
               <Settings className="h-7 w-7 text-blue-600" />
             }
@@ -692,7 +692,7 @@ export default function ProductsPage() {
   return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <Loader className="h-8 w-8 animate-spin text-blue-600 mx-auto" />
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto" />
           <p className="mt-2 text-sm text-gray-500">Loading...</p>
         </div>
       </div>
@@ -703,7 +703,7 @@ export default function ProductsPage() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <Loader className="h-8 w-8 animate-spin text-blue-600 mx-auto" />
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto" />
           <p className="mt-2 text-sm text-gray-500">Loading products...</p>
         </div>
       </div>

@@ -1,49 +1,51 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@vercel/postgres';
-import { getEmailTemplate, formatEmailPreview, Order as EmailOrder } from '@/lib/email-templates';
+import { getEmailTemplate, formatEmailPreview } from '@/lib/email-templates';
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { orderId: string } }
-): Promise<NextResponse> {
+interface Order {
+  id: number;
+  first_name: string;
+  last_name: string;
+  email: string;
+  total_amount: number | string;
+  installation_date?: string;
+  installation_time?: string;
+  installation_address?: string;
+  installation_city?: string;
+  installation_state?: string;
+  installation_zip?: string;
+  shipping_address?: string;
+  shipping_city?: string;
+  shipping_state?: string;
+  shipping_zip?: string;
+}
+
+export async function POST(request: NextRequest) {
   try {
-    const { templateId } = await request.json();
-    const orderId = parseInt(params.orderId);
+    const url = new URL(request.url);
+    const orderId = Number(url.pathname.split('/').slice(-2, -1)[0]); // Extract `[id]` from URL path
 
     if (!orderId || isNaN(orderId)) {
       return NextResponse.json({ error: "Invalid order ID" }, { status: 400 });
     }
 
-    // Fetch order details using Vercel Postgres
-    const { rows } = await sql`
-      SELECT 
-        id,
-        first_name,
-        last_name,
-        email,
-        CAST(total_amount AS FLOAT) as total_amount,
-        installation_date,
-        installation_time,
-        installation_address,
-        installation_city,
-        installation_state,
-        installation_zip,
-        shipping_address,
-        shipping_city,
-        shipping_state,
-        shipping_zip
-      FROM orders 
-      WHERE id = ${orderId}
+    const { templateId } = await request.json();
+
+    if (!templateId) {
+      return NextResponse.json({ error: "Missing template ID" }, { status: 400 });
+    }
+
+    // Get the order details from the database
+    const { rows: [orderData] } = await sql`
+      SELECT * FROM orders WHERE id = ${orderId}
     `;
 
-    if (rows.length === 0) {
+    if (!orderData) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 
-    const orderData = rows[0];
-
-    // Convert the order data to match the EmailOrder interface
-    const order: EmailOrder = {
+    // Cast the database result to Order type
+    const order: Order = {
       id: orderData.id,
       first_name: orderData.first_name,
       last_name: orderData.last_name,
