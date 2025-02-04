@@ -44,9 +44,9 @@ const createEmailHtml = (content: string) => {
 };
 
 export async function POST(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { orderId: string } }
-) {
+): Promise<NextResponse> {
   try {
     const { templateId, customEmail, isPWA = false } = await request.json();
     const orderId = parseInt(params.orderId);

@@ -5,9 +5,9 @@ import prisma from '@/lib/prisma';
 import { Decimal } from '@prisma/client/runtime/library';
 
 export async function POST(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { orderId: string } }
-) {
+): Promise<NextResponse> {
   try {
     const { templateId } = await request.json();
     const orderId = parseInt(params.orderId);
