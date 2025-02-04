@@ -71,7 +71,12 @@ function processVariables(content: string, order: any) {
 
 export async function POST(req: Request) {
   try {
-    const { orderId, templateId = 'custom', content, isPWA = false } = await req.json()
+    const body = await req.json()
+    const { orderId, templateId = 'custom', content, isPWA = false } = body
+
+    if (!orderId) {
+      return NextResponse.json({ error: 'Order ID is required' }, { status: 400 })
+    }
 
     // Fetch order details
     const order = await prisma.order.findUnique({
@@ -136,20 +141,15 @@ Please ensure the response maintains a professional tone and includes all necess
       max_tokens: 1000,
     })
 
-    const generatedContent = completion.choices[0].message.content
-
+    const generatedContent = completion.choices[0]?.message?.content
     if (!generatedContent) {
-      throw new Error('Failed to generate email content')
+      return NextResponse.json({ error: 'Failed to generate email content' }, { status: 500 })
     }
-
-    // Wrap and sanitize the generated content
-    const wrappedContent = wrapContent(generatedContent, isPWA)
-    const cleanContent = sanitizeHtml(wrappedContent, isPWA)
 
     // Create the email template
     const emailTemplate = getEmailTemplate('custom', orderWithSerializedAmount, {
       subject: templateId === 'custom' ? 'Way of Glory Media - Order Update' : `${templateId.replace(/_/g, ' ')} - Way of Glory Media`,
-      html: cleanContent
+      html: generatedContent
     }, isPWA)
 
     return NextResponse.json({
@@ -160,10 +160,11 @@ Please ensure the response maintains a professional tone and includes all necess
     })
   } catch (error) {
     console.error('Error generating email:', error)
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to generate email' },
-      { status: 500 }
-    )
+    return NextResponse.json({ 
+      error: error instanceof Error ? error.message : 'Failed to generate email'
+    }, { 
+      status: 500 
+    })
   }
 }
 
