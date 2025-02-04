@@ -55,10 +55,6 @@ function processVariables(content: string, order: any) {
     // Installation Information
     .replace(/\{installationDate\}/g, order.installation_date || 'To be scheduled')
     .replace(/\{installationTime\}/g, order.installation_time || 'To be scheduled')
-    .replace(/\{installationAddress\}/g, order.installation_address || 'Not provided')
-    .replace(/\{installationCity\}/g, order.installation_city || '')
-    .replace(/\{installationState\}/g, order.installation_state || '')
-    .replace(/\{installationZip\}/g, order.installation_zip || '')
     .replace(/\{installationInstructions\}/g, order.installation_instructions || 'No special instructions provided')
 
     // Contact Information
@@ -150,7 +146,7 @@ Please ensure the response maintains a professional tone and includes all necess
       messages: [
         {
           role: "system",
-          content: "You are an expert email composer for Way of Glory Media, a professional audio and visual solutions company. Your task is to generate or improve email content that maintains the company's professional image while being clear and engaging."
+          content: "You are an expert email composer for Way of Glory Media, a professional audio and visual solutions company. Your task is to generate or improve email content that maintains the company's professional image while being clear and engaging. Important: Never mention any physical addresses or office locations in the emails. Always direct customers to contact us for specific arrangements."
         },
         {
           role: "user",
@@ -219,7 +215,13 @@ function formatEmailPreview({ subject, content, order, baseStyle }: {
     .split('\n')
     .map(line => line.trim())
     .filter(line => line)
-    .map(line => line.startsWith('<p>') ? line : `<p>${line}</p>`)
+    .map(line => {
+      // Remove any address-related content
+      line = line.replace(/(?:visit|at|in|our|the)\s+office/gi, 'contact us')
+      line = line.replace(/(?:come|visit)\s+us\s+at/gi, 'contact us')
+      line = line.replace(/(?:located|situated|based)\s+(?:at|in)/gi, 'available')
+      return line.startsWith('<p>') ? line : `<p>${line}</p>`
+    })
     .join('\n')
 
   return `
@@ -266,21 +268,12 @@ function formatEmailPreview({ subject, content, order, baseStyle }: {
             padding-top: 24px;
             border-top: 1px solid #e2e8f0;
           }
-          .signature img {
-            height: 60px;
-            margin-bottom: 12px;
-          }
           .signature-name {
             font-weight: 600;
             color: #0f172a;
             margin: 0;
           }
           .signature-title {
-            color: #64748b;
-            font-size: 14px;
-            margin: 4px 0;
-          }
-          .signature-contact {
             color: #64748b;
             font-size: 14px;
             margin: 4px 0;
