@@ -218,7 +218,8 @@ function formatEmailPreview({ subject, content, order, baseStyle }: {
   order: Order;
   baseStyle: string;
 }): string {
-  const formattedContent = content
+  // First, clean and standardize the content
+  let formattedContent = content
     .split('\n')
     .map(line => line.trim())
     .filter(line => line)
@@ -230,9 +231,129 @@ function formatEmailPreview({ subject, content, order, baseStyle }: {
       line = line.replace(/contact\s+(?:our|the)\s+office/gi, 'contact us')
       line = line.replace(/\[Your Name\]/gi, 'Way of Glory Team')
       line = line.replace(/(?:Best|Kind|Warm|Sincerely|Regards|Best Regards),?\s*\n*(?:\[.*?\]|Your Name)/gi, 'Best Regards,\nWay of Glory Team')
-      return line.startsWith('<p>') ? line : `<p>${line}</p>`
+      
+      // Ensure consistent paragraph formatting
+      if (!line.startsWith('<')) {
+        line = `<p>${line}</p>`
+      }
+      
+      return line
     })
     .join('\n')
+
+  // Ensure consistent spacing between sections
+  formattedContent = formattedContent
+    .replace(/<\/p>\s*<p>/g, '</p>\n<p>') // Add newline between paragraphs
+    .replace(/(<\/div>)\s*(<div)/g, '$1\n$2') // Add newline between divs
+    .replace(/(<\/h\d>)\s*(<p)/g, '$1\n$2') // Add newline after headers
+    .replace(/(<\/p>)\s*(<h\d)/g, '$1\n$2') // Add newline before headers
+
+  // Add consistent styling
+  const styles = `
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+        line-height: 1.6;
+        color: #374151;
+        background-color: #f9fafb;
+      }
+      .email-container {
+        max-width: 600px;
+        margin: 40px auto;
+        padding: 32px;
+        background-color: #ffffff;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      }
+      h1, h2, h3 {
+        color: #111827;
+        margin-bottom: 16px;
+        font-weight: 600;
+      }
+      h1 {
+        font-size: 24px;
+        margin-bottom: 24px;
+      }
+      h2 {
+        font-size: 20px;
+      }
+      h3 {
+        font-size: 16px;
+      }
+      p {
+        margin-bottom: 16px;
+        line-height: 1.6;
+      }
+      .content {
+        margin-bottom: 32px;
+      }
+      .order-card {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 24px;
+        margin: 24px 0;
+      }
+      .order-detail {
+        display: flex;
+        justify-content: space-between;
+        padding: 12px 0;
+        border-bottom: 1px solid #e2e8f0;
+      }
+      .order-detail:last-child {
+        border-bottom: none;
+      }
+      .order-label {
+        color: #64748b;
+        font-size: 14px;
+      }
+      .order-value {
+        color: #0f172a;
+        font-size: 14px;
+        font-weight: 500;
+      }
+      .contact-info {
+        margin-top: 32px;
+        padding: 24px;
+        background: #f8fafc;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+      }
+      .contact-info h3 {
+        margin-bottom: 12px;
+      }
+      .contact-info p {
+        margin-bottom: 8px;
+      }
+      .signature {
+        margin-top: 32px;
+        padding-top: 24px;
+        border-top: 1px solid #e2e8f0;
+        text-align: left;
+      }
+      .signature-name {
+        font-weight: 600;
+        color: #111827;
+        margin-bottom: 4px;
+      }
+      .signature-title {
+        color: #64748b;
+        font-size: 14px;
+      }
+      ul, ol {
+        margin: 16px 0;
+        padding-left: 24px;
+      }
+      li {
+        margin: 8px 0;
+      }
+    </style>
+  `
 
   return `
     <!DOCTYPE html>
@@ -240,61 +361,7 @@ function formatEmailPreview({ subject, content, order, baseStyle }: {
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        ${baseStyle}
-        <style>
-          .order-card {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 20px;
-            margin: 24px 0;
-          }
-          .order-card h3 {
-            color: #1e293b;
-            font-size: 16px;
-            font-weight: 600;
-            margin: 0 0 12px 0;
-          }
-          .order-detail {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 0;
-            border-bottom: 1px solid #e2e8f0;
-          }
-          .order-detail:last-child {
-            border-bottom: none;
-          }
-          .order-label {
-            color: #64748b;
-            font-size: 14px;
-          }
-          .order-value {
-            color: #0f172a;
-            font-size: 14px;
-            font-weight: 500;
-          }
-          .signature {
-            margin-top: 32px;
-            padding-top: 24px;
-            border-top: 1px solid #e2e8f0;
-          }
-          .signature-name {
-            font-weight: 600;
-            color: #0f172a;
-            margin: 0;
-          }
-          .signature-title {
-            color: #64748b;
-            font-size: 14px;
-            margin: 4px 0;
-          }
-          .contact-info {
-            margin-top: 24px;
-            padding: 16px;
-            background: #f8fafc;
-            border-radius: 6px;
-          }
-        </style>
+        ${styles}
       </head>
       <body>
         <div class="email-container">
