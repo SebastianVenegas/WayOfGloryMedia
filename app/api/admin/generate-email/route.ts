@@ -92,11 +92,19 @@ export async function POST(req: Request) {
         shipping_city: true,
         shipping_state: true,
         shipping_zip: true,
+        created_at: true,
+        updated_at: true,
       },
     })
 
     if (!order) {
       return NextResponse.json({ error: 'Order not found' }, { status: 404 })
+    }
+
+    // Convert Prisma Decimal to string for JSON serialization
+    const orderWithSerializedAmount = {
+      ...order,
+      total_amount: order.total_amount as unknown as Decimal,
     }
 
     let prompt = ''
@@ -109,7 +117,7 @@ ${content}
 Please ensure the response maintains a professional tone and includes all necessary information from the original content.`
     } else {
       // Use predefined template prompts
-      prompt = getEmailPrompt(templateId, order)
+      prompt = getEmailPrompt(templateId, orderWithSerializedAmount)
     }
 
     const completion = await openai.chat.completions.create({
@@ -314,7 +322,7 @@ function formatEmailPreview({ subject, content, order, baseStyle }: {
             </div>
             <div class="order-detail">
               <span class="order-label">Total Amount</span>
-              <span class="order-value">$${order.total_amount}</span>
+              <span class="order-value">$${order.total_amount.toFixed(2)}</span>
             </div>
             ${order.installation_date ? `
             <div class="order-detail">
