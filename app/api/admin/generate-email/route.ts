@@ -93,7 +93,14 @@ export async function POST(req: Request) {
     })
 
     if (!order) {
-      return NextResponse.json({ error: 'Order not found' }, { status: 404 })
+      return NextResponse.json({
+        success: false,
+        error: 'Order not found',
+        subject: '',
+        content: '',
+        html: '',
+        isNewTemplate: false
+      }, { status: 404 })
     }
 
     // Convert Decimal to string and null values to undefined
@@ -114,14 +121,12 @@ export async function POST(req: Request) {
 
     let prompt = ''
     if (templateId === 'custom' && content) {
-      // For custom templates, use the provided content as context
       prompt = `Please help improve and professionally format this email content while maintaining its core message. Make it more engaging and on-brand for Way of Glory Media:
 
 ${content}
 
 Please ensure the response maintains a professional tone and includes all necessary information from the original content.`
     } else {
-      // Use predefined template prompts
       prompt = getEmailPrompt(templateId, orderWithStringAmount)
     }
 
@@ -141,25 +146,41 @@ Please ensure the response maintains a professional tone and includes all necess
       max_tokens: 1000,
     })
 
-    const generatedContent = completion.choices[0].message.content
+    const generatedContent = completion.choices[0]?.message?.content
 
     if (!generatedContent) {
-      throw new Error('Failed to generate email content')
+      return NextResponse.json({
+        success: false,
+        error: 'Failed to generate email content',
+        subject: '',
+        content: '',
+        html: '',
+        isNewTemplate: false
+      }, { status: 500 })
     }
 
-    // Return the complete response object that the frontend expects
+    const subject = templateId === 'custom' 
+      ? 'Custom Email' 
+      : `Way of Glory Media - ${templateId.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}`
+
     return NextResponse.json({
-      subject: templateId === 'custom' ? 'Custom Email' : `Way of Glory Media - ${templateId.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}`,
+      success: true,
+      error: null,
+      subject,
       content: generatedContent,
       html: generatedContent,
       isNewTemplate: false
     })
   } catch (error) {
     console.error('Error generating email:', error)
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to generate email' },
-      { status: 500 }
-    )
+    return NextResponse.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to generate email',
+      subject: '',
+      content: '',
+      html: '',
+      isNewTemplate: false
+    }, { status: 500 })
   }
 }
 
