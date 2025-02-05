@@ -45,7 +45,7 @@ export default function QuoteSection() {
   }
 
   return (
-    <section id="quote" className="py-32 bg-gray-50/50 relative overflow-hidden">
+    <section id="quote" className="py-24 bg-white">
       {/* Decorative Elements */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#00000005_1px,transparent_1px),linear-gradient(to_bottom,#00000005_1px,transparent_1px)] bg-[size:4rem_4rem]" />
       <div className="absolute top-0 left-0 w-[40rem] h-[40rem] bg-blue-100/30 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" />

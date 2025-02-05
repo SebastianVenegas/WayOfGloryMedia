@@ -37,7 +37,7 @@ export default async function RootLayout({
       </head>
       <body className={inter.className} suppressHydrationWarning>
         <SidebarProvider>
-          <div className="relative min-h-screen">
+          <div className="flex flex-col min-h-screen">
             {children}
             <Analytics />
             <SpeedInsights />

@@ -6,13 +6,6 @@ import { MessageCircle, Phone, ArrowRight, Star } from 'lucide-react'
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 
-const trustedChurches = [
-  { name: "Calvary Chapel Costa Mesa", location: "Costa Mesa" },
-  { name: "Saddleback Church", location: "Lake Forest" },
-  { name: "Rock Harbor", location: "Costa Mesa" },
-  { name: "Mariners Church", location: "Irvine" },
-]
-
 const backgroundImages = [
   {
     url: 'https://images.unsplash.com/photo-1522327646852-4e28586a40dd?q=80&w=3542&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
@@ -25,6 +18,10 @@ const backgroundImages = [
   {
     url: 'https://images.unsplash.com/photo-1613031729579-ace1feefda4c?q=80&w=3540&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
     alt: 'Church sound system setup'
+  },
+  {
+    url: 'https://images.unsplash.com/photo-1467232004584-a241de8bcf5d?q=80&w=3538&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+    alt: 'Website development'
   }
 ]
 
@@ -32,13 +29,11 @@ export default function HeroSection() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [currentTitleIndex, setCurrentTitleIndex] = useState(0)
   
-  const titles = ["Sound", "Video"]
+  const titles = ["Websites", "Apps", "Sound", "Video"]
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentImageIndex((prevIndex) => 
-        prevIndex === backgroundImages.length - 1 ? 0 : prevIndex + 1
-      )
+      setCurrentImageIndex((prevIndex) => (prevIndex + 1) % backgroundImages.length)
     }, 5000)
 
     return () => clearInterval(interval)
@@ -57,7 +52,7 @@ export default function HeroSection() {
   }
 
   return (
-    <section className="relative min-h-[90vh] flex items-center">
+    <section className="relative min-h-[90vh] flex items-center pt-24">
       {/* Background Images with Overlay */}
       {backgroundImages.map((image, index) => (
         <div
@@ -86,7 +81,7 @@ export default function HeroSection() {
             <div className="inline-flex items-center rounded-full border border-white/20 bg-white/5 backdrop-blur-sm px-3 py-1.5 text-sm text-white">
               <span className="flex items-center">
                 <Star className="w-4 h-4 text-white mr-2" />
-                Southern California's Trusted Church Audio Partner
+                Southern California's Trusted Church Technology Partner
               </span>
             </div>
 
@@ -98,7 +93,7 @@ export default function HeroSection() {
                 Worship Experience
                 <br />
                 with Crystal Clear{' '}
-                <span className="relative inline-block">
+                <span className="relative inline-flex items-center min-h-[1.1em] min-w-[3em] translate-y-[0.20em]">
                   <AnimatePresence mode="wait">
                     <motion.span
                       key={titles[currentTitleIndex]}
@@ -109,7 +104,7 @@ export default function HeroSection() {
                         y: { type: "spring", stiffness: 300, damping: 30 },
                         opacity: { duration: 0.2 }
                       }}
-                      className="inline-block"
+                      className="absolute whitespace-nowrap"
                     >
                       {titles[currentTitleIndex]}
                     </motion.span>
@@ -120,7 +115,8 @@ export default function HeroSection() {
 
             {/* Enhanced Subheading */}
             <p className="text-xl md:text-2xl text-white/90 max-w-2xl leading-relaxed">
-              Empowering Southern California churches with professional sound and streaming solutions. From intimate gatherings to full congregations, we help you create an immersive worship experience.
+              Empowering Southern California churches with professional websites, apps, sound, and streaming solutions. 
+              From modern digital platforms to immersive audio experiences, we help you connect with your congregation both online and in person.
             </p>
 
             {/* CTA Buttons with Enhanced Styling */}
@@ -141,31 +137,6 @@ export default function HeroSection() {
                 (951) 448-6409
                 <ArrowRight className="ml-2 w-5 h-5 opacity-0 transition-transform duration-200 group-hover:opacity-100 group-hover:translate-x-1" />
               </Link>
-            </div>
-
-            {/* Enhanced Trust Badges Section */}
-            <div className="pt-12 border-t border-white/10 mt-12">
-              <p className="text-white/60 text-sm mb-6 uppercase tracking-wider font-medium">
-                TRUSTED BY LOCAL CHURCHES IN ALL OF CALIFORNIA
-              </p>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 items-center">
-                {[
-                  { name: "Calvary Chapel Costa Mesa", location: "Costa Mesa" },
-                  { name: "Saddleback Church", location: "Lake Forest" },
-                  { name: "Rock Harbor", location: "Costa Mesa" },
-                  { name: "Mariners Church", location: "Irvine" }
-                ].map((church) => (
-                  <div 
-                    key={church.name}
-                    className="group h-[4.5rem] bg-white/5 rounded-xl backdrop-blur-sm flex items-center justify-center border border-white/10 hover:bg-white/10 transition-all duration-300 transform px-4"
-                  >
-                    <div className="flex flex-col items-center text-center">
-                      <span className="text-white/90 font-semibold text-sm">{church.name}</span>
-                      <span className="text-white/50 text-xs mt-1">{church.location}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
             </div>
           </div>
         </div>
