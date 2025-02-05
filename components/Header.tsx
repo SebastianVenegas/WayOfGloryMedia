@@ -102,7 +102,7 @@ export default function Header() {
                 {item.name}
               </Link>
             ))}
-            <div className="pt-2">
+            <div className="pt-2 mt-2 border-t border-gray-100">
               <button
                 onClick={scrollToQuote}
                 className="w-full px-6 py-3 bg-[#0F172A] text-white rounded-xl font-medium 
