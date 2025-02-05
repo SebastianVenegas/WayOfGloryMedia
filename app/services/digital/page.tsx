@@ -157,7 +157,7 @@ export default function DigitalServicesPage() {
       
       <main className="flex-grow">
         {/* Hero Section - Modernized */}
-        <section className="relative min-h-[90vh] flex items-center py-20 overflow-hidden">
+        <section className="relative min-h-[90vh] flex items-center py-12 sm:py-20 overflow-hidden">
           {/* Modern Background */}
           <div className="absolute inset-0">
             <div className="absolute inset-0 bg-[#FAFAFA]"></div>
@@ -179,20 +179,15 @@ export default function DigitalServicesPage() {
           </div>
 
           <div className="container relative mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid lg:grid-cols-2 gap-20 items-center">
+            <div className="grid lg:grid-cols-2 gap-8 lg:gap-20 items-center">
               {/* Left Content */}
-              <motion.div 
-                variants={slideInFromLeft}
-                initial="initial"
-                animate="animate"
-                className="relative z-10"
-              >
+              <motion.div className="relative z-10">
                 {/* Modern Badge */}
                 <motion.div 
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.3 }}
-                  className="inline-flex items-center gap-2 bg-white pl-2 pr-4 py-2 rounded-full shadow-md mb-8"
+                  className="inline-flex items-center gap-2 bg-white pl-2 pr-4 py-2 rounded-full shadow-md mb-6 sm:mb-8"
                 >
                   <div className="bg-gradient-to-r from-[#1E3A8A] to-[#1E3A8A] rounded-full p-1">
                     <Star className="w-4 h-4 text-white" />
@@ -203,12 +198,8 @@ export default function DigitalServicesPage() {
                 </motion.div>
 
                 {/* Main Heading */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.4 }}
-                >
-                  <h1 className="text-6xl lg:text-7xl font-bold text-gray-900 tracking-tight leading-[1.1] mb-8">
+                <motion.div>
+                  <h1 className="text-4xl sm:text-5xl lg:text-7xl font-bold text-gray-900 tracking-tight leading-[1.1] mb-6 sm:mb-8">
                     Transform Your
                     <div className="mt-2 relative inline-flex flex-col">
                       <span className="bg-gradient-to-r from-[#1E3A8A] to-[#1E3A8A] bg-clip-text text-transparent">
@@ -225,23 +216,13 @@ export default function DigitalServicesPage() {
                 </motion.div>
 
                 {/* Description */}
-                <motion.p 
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.5 }}
-                  className="text-xl text-gray-600 mb-12 leading-relaxed max-w-xl"
-                >
+                <motion.p className="text-lg sm:text-xl text-gray-600 mb-8 sm:mb-12 leading-relaxed max-w-xl">
                   Create meaningful connections with your congregation through beautiful websites
                   and engaging mobile apps. We build digital solutions that bring your community together.
                 </motion.p>
 
                 {/* CTA Buttons */}
-                <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.6 }}
-                  className="flex flex-wrap gap-6"
-                >
+                <motion.div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
                   <motion.button 
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
@@ -271,12 +252,7 @@ export default function DigitalServicesPage() {
                 </motion.div>
 
                 {/* Stats Section */}
-                <motion.div 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.8 }}
-                  className="mt-16 grid grid-cols-3 gap-8"
-                >
+                <motion.div className="mt-12 sm:mt-16 grid grid-cols-2 sm:grid-cols-3 gap-6 sm:gap-8">
                   {[
                     { number: "50+", label: "Churches" },
                     { number: "100+", label: "Projects" },
@@ -298,12 +274,7 @@ export default function DigitalServicesPage() {
               </motion.div>
 
               {/* Right Content - Image Section */}
-              <motion.div 
-                variants={slideInFromRight}
-                initial="initial"
-                animate="animate"
-                className="relative lg:ml-12"
-              >
+              <motion.div className="relative lg:ml-12 hidden sm:block">
                 {/* Main Image Grid */}
                 <div className="relative grid grid-cols-12 grid-rows-6 gap-4 h-[600px]">
                   {/* Large Main Image */}
@@ -545,12 +516,55 @@ export default function DigitalServicesPage() {
                   ))}
                 </motion.div>
               </motion.div>
+
+              {/* Mobile-only image */}
+              <motion.div 
+                variants={slideInFromRight}
+                initial="initial"
+                animate="animate"
+                className="relative sm:hidden"
+              >
+                <div className="relative h-[300px] rounded-3xl overflow-hidden shadow-2xl">
+                  <Image
+                    src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=2426&auto=format&fit=crop"
+                    alt="Digital Services"
+                    fill
+                    className="object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-gray-900/90 via-gray-900/30 to-transparent"></div>
+                  
+                  {/* Mobile Icon Overlay */}
+                  <div className="absolute inset-0 flex items-center justify-center z-20">
+                    <motion.div 
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.5 }}
+                      className="relative"
+                    >
+                      <div className="absolute inset-0 bg-[#1E3A8A]/20 blur-3xl rounded-full w-24 h-24 -translate-x-1/2 -translate-y-1/2"></div>
+                      <motion.div
+                        animate={{
+                          scale: [1, 1.1, 1],
+                          opacity: [0.8, 1, 0.8],
+                        }}
+                        transition={{
+                          duration: 4,
+                          repeat: Infinity,
+                          ease: "easeInOut"
+                        }}
+                      >
+                        <Globe className="w-12 h-12 text-white/90 relative z-10 transform -translate-y-4" />
+                      </motion.div>
+                    </motion.div>
+                  </div>
+                </div>
+              </motion.div>
             </div>
           </div>
         </section>
 
         {/* Features Section - Enhanced */}
-        <section className="py-32 bg-white relative">
+        <section className="py-20 sm:py-32 bg-white relative">
           <div className="absolute inset-0">
             <div className="absolute inset-0 bg-[url('/noise.png')] opacity-[0.03]"></div>
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[80%] h-1/2 bg-gradient-to-b from-blue-50/50 to-transparent rounded-full blur-3xl"></div>
@@ -558,12 +572,12 @@ export default function DigitalServicesPage() {
 
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative">
             <ScrollAnimation type="fade-up">
-              <div className="text-center mb-20">
+              <div className="text-center mb-12 sm:mb-20">
                 <div className="inline-flex items-center rounded-full border border-[#1E3A8A]/20 bg-gradient-to-r from-[#1E3A8A]/10 to-[#1E3A8A]/10 px-4 py-1.5 text-sm text-[#1E3A8A] mb-8 backdrop-blur-sm">
                   <Code className="w-4 h-4 mr-2" />
                   <span className="font-medium">Our Services</span>
                 </div>
-                <h2 className="text-4xl lg:text-6xl font-bold text-gray-900 mb-8 leading-tight tracking-tight">
+                <h2 className="text-3xl sm:text-4xl lg:text-6xl font-bold text-gray-900 mb-6 sm:mb-8 leading-tight tracking-tight">
                   Comprehensive
                   <span className="relative mx-4">
                     <span className="relative z-10 bg-gradient-to-r from-[#1E3A8A] to-[#1E3A8A] bg-clip-text text-transparent">Digital</span>
@@ -572,27 +586,27 @@ export default function DigitalServicesPage() {
                   </span>
                   Solutions
                 </h2>
-                <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+                <p className="text-lg sm:text-xl text-gray-600 max-w-3xl mx-auto">
                   From custom websites to mobile apps, we provide end-to-end digital solutions
                   that help churches connect with their congregation in meaningful ways.
                 </p>
               </div>
             </ScrollAnimation>
 
-            <div className="grid md:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 gap-6 sm:gap-8">
               {features.map((feature, index) => (
                 <ScrollAnimation 
                   key={feature.title}
                   type="fade-up"
                   delay={0.2 * index}
                 >
-                  <div className="group relative bg-gradient-to-br from-gray-50 to-white rounded-3xl p-8 border border-gray-100
+                  <div className="group relative bg-gradient-to-br from-gray-50 to-white rounded-3xl p-6 sm:p-8 border border-gray-100
                                 hover:border-[#1E3A8A]/20 transition-all duration-500 overflow-hidden">
                     {/* Hover Effect Background */}
                     <div className="absolute inset-0 bg-gradient-to-r from-blue-50 to-blue-50 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                     
-                    <div className="relative flex items-start gap-6">
-                      <div className="flex-shrink-0 relative">
+                    <div className="relative flex flex-col sm:flex-row items-start gap-6">
+                      <div className="flex-shrink-0 relative mb-4 sm:mb-0">
                         <div className="w-16 h-16 rounded-2xl bg-[#1E3A8A] flex items-center justify-center
                                     transform group-hover:scale-110 transition-transform duration-500">
                           <feature.icon className="w-8 h-8 text-white" />
@@ -602,7 +616,7 @@ export default function DigitalServicesPage() {
                       </div>
 
                       <div className="flex-grow">
-                        <h3 className="text-2xl font-bold text-gray-900 mb-4 tracking-tight">{feature.title}</h3>
+                        <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 tracking-tight">{feature.title}</h3>
                         <p className="text-gray-600 mb-6 leading-relaxed">{feature.description}</p>
                         <ul className="space-y-3">
                           {feature.details.map((detail) => (
@@ -625,7 +639,7 @@ export default function DigitalServicesPage() {
         </section>
 
         {/* Portfolio Section - Enhanced */}
-        <section id="portfolio" className="py-32 bg-gray-50 relative overflow-hidden">
+        <section id="portfolio" className="py-20 sm:py-32 bg-gray-50 relative overflow-hidden">
           <div className="absolute inset-0">
             <div className="absolute inset-0 bg-[url('/noise.png')] opacity-[0.03]"></div>
             <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-blue-50/50 to-transparent"></div>
@@ -655,7 +669,7 @@ export default function DigitalServicesPage() {
               </div>
             </ScrollAnimation>
 
-            <div className="grid md:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
               {portfolioItems.map((item, index) => (
                 <ScrollAnimation
                   key={item.title}
@@ -698,7 +712,7 @@ export default function DigitalServicesPage() {
         </section>
 
         {/* Technologies Section - Enhanced */}
-        <section className="py-32 bg-white relative overflow-hidden">
+        <section className="py-20 sm:py-32 bg-white relative overflow-hidden">
           <div className="absolute inset-0">
             <div className="absolute inset-0 bg-[url('/noise.png')] opacity-[0.03]"></div>
             <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[80%] h-1/2 bg-gradient-to-t from-blue-50/50 to-transparent rounded-full blur-3xl"></div>
@@ -726,7 +740,7 @@ export default function DigitalServicesPage() {
               </div>
             </ScrollAnimation>
 
-            <div className="grid md:grid-cols-4 gap-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
               {technologies.map((tech, index) => (
                 <ScrollAnimation
                   key={tech.name}
@@ -758,7 +772,7 @@ export default function DigitalServicesPage() {
       </main>
 
       {/* Quote Section and Footer with dark background */}
-      <div className="bg-[#0F172A]">
+      <div className="bg-[#0F172A] pt-12 sm:pt-0">
         <div id="quote">
           <QuoteSection />
         </div>
