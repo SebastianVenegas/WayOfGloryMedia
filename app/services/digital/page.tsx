@@ -1,13 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Header from '../../../components/Header'
 import Footer from '../../../components/Footer'
 import { Globe, Smartphone, Code, Gauge, Layout, Users, Server, Shield, ChevronRight, Star } from 'lucide-react'
 import Image from 'next/image'
 import ScrollAnimation from '../../../components/ui/scroll-animation'
 import QuoteSection from '../../../components/QuoteSection'
-import { motion } from 'framer-motion'
+import { motion, useAnimation, type AnimationControls } from 'framer-motion'
+import { LazyMotion, domAnimation } from 'framer-motion'
+import { useInView } from 'react-intersection-observer'
 
 const features = [
   {
@@ -148,16 +150,47 @@ const scaleIn = {
   animate: { scale: 1, opacity: 1, transition: { duration: 0.6 } }
 }
 
+// Add this at the top of the file after imports
+const imageLoader = ({ src, width, quality = 75 }: { src: string; width: number; quality?: number }) => {
+  return `${src}?w=${width}&q=${quality}&auto=format`
+}
+
 export default function DigitalServicesPage() {
   const [selectedTab, setSelectedTab] = useState('websites')
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
+
+  // Update mobile menu to prevent body scroll when open
+  useEffect(() => {
+    if (isMenuOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = 'unset'
+    }
+    return () => {
+      document.body.style.overflow = 'unset'
+    }
+  }, [isMenuOpen])
+
+  // Add intersection observer for animations with proper typing
+  const controls: AnimationControls = useAnimation()
+  const [ref, inView] = useInView({
+    triggerOnce: true,
+    threshold: 0.1
+  })
+
+  useEffect(() => {
+    if (inView) {
+      controls.start('animate')
+    }
+  }, [controls, inView])
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#FAFAFA]">
+    <div className="flex flex-col min-h-screen bg-[#FAFAFA] overflow-x-hidden">
       <Header />
       
       <main className="flex-grow">
         {/* Hero Section - Modernized */}
-        <section className="relative min-h-[90vh] flex items-center py-12 sm:py-20 overflow-hidden">
+        <section className="relative min-h-[90vh] flex items-center py-12 sm:py-20 overflow-hidden overscroll-none">
           {/* Modern Background */}
           <div className="absolute inset-0">
             <div className="absolute inset-0 bg-[#FAFAFA]"></div>
@@ -291,7 +324,11 @@ export default function DigitalServicesPage() {
                       src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=2426&auto=format&fit=crop"
                       alt="Digital Services"
                       fill
+                      loader={imageLoader}
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                       className="object-cover"
+                      loading="eager"
+                      priority={true}
                     />
                     
                     {/* Modern Overlay with Blur */}
@@ -358,7 +395,11 @@ export default function DigitalServicesPage() {
                       src="https://images.unsplash.com/photo-1555421689-491a97ff2040?q=80&w=2340&auto=format&fit=crop"
                       alt="Mobile Development"
                       fill
+                      loader={imageLoader}
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                       className="object-cover"
+                      loading="eager"
+                      priority={true}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-blue-800/90 via-blue-800/30 to-transparent"></div>
                     
@@ -403,7 +444,11 @@ export default function DigitalServicesPage() {
                       src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2340&auto=format&fit=crop"
                       alt="Analytics Dashboard"
                       fill
+                      loader={imageLoader}
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                       className="object-cover"
+                      loading="eager"
+                      priority={true}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-blue-900/90 via-blue-900/30 to-transparent"></div>
                     
@@ -529,7 +574,11 @@ export default function DigitalServicesPage() {
                     src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=2426&auto=format&fit=crop"
                     alt="Digital Services"
                     fill
+                    loader={imageLoader}
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     className="object-cover"
+                    loading="eager"
+                    priority={true}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-gray-900/90 via-gray-900/30 to-transparent"></div>
                   
@@ -565,77 +614,79 @@ export default function DigitalServicesPage() {
 
         {/* Features Section - Enhanced */}
         <section className="py-20 sm:py-32 bg-white relative">
-          <div className="absolute inset-0">
-            <div className="absolute inset-0 bg-[url('/noise.png')] opacity-[0.03]"></div>
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[80%] h-1/2 bg-gradient-to-b from-blue-50/50 to-transparent rounded-full blur-3xl"></div>
-          </div>
+          <LazyMotion features={domAnimation}>
+            <div className="absolute inset-0">
+              <div className="absolute inset-0 bg-[url('/noise.png')] opacity-[0.03]"></div>
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[80%] h-1/2 bg-gradient-to-b from-blue-50/50 to-transparent rounded-full blur-3xl"></div>
+            </div>
 
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative">
-            <ScrollAnimation type="fade-up">
-              <div className="text-center mb-12 sm:mb-20">
-                <div className="inline-flex items-center rounded-full border border-[#1E3A8A]/20 bg-gradient-to-r from-[#1E3A8A]/10 to-[#1E3A8A]/10 px-4 py-1.5 text-sm text-[#1E3A8A] mb-8 backdrop-blur-sm">
-                  <Code className="w-4 h-4 mr-2" />
-                  <span className="font-medium">Our Services</span>
+            <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative">
+              <ScrollAnimation type="fade-up">
+                <div className="text-center mb-12 sm:mb-20">
+                  <div className="inline-flex items-center rounded-full border border-[#1E3A8A]/20 bg-gradient-to-r from-[#1E3A8A]/10 to-[#1E3A8A]/10 px-4 py-1.5 text-sm text-[#1E3A8A] mb-8 backdrop-blur-sm">
+                    <Code className="w-4 h-4 mr-2" />
+                    <span className="font-medium">Our Services</span>
+                  </div>
+                  <h2 className="text-3xl sm:text-4xl lg:text-6xl font-bold text-gray-900 mb-6 sm:mb-8 leading-tight tracking-tight">
+                    Comprehensive
+                    <span className="relative mx-4">
+                      <span className="relative z-10 bg-gradient-to-r from-[#1E3A8A] to-[#1E3A8A] bg-clip-text text-transparent">Digital</span>
+                      <span className="absolute -bottom-1.5 left-0 w-full h-1.5 bg-gradient-to-r from-[#1E3A8A]/40 to-[#1E3A8A]/40 blur-sm"></span>
+                      <span className="absolute -bottom-1 left-0 w-full h-1 bg-gradient-to-r from-[#1E3A8A] to-[#1E3A8A]"></span>
+                    </span>
+                    Solutions
+                  </h2>
+                  <p className="text-lg sm:text-xl text-gray-600 max-w-3xl mx-auto">
+                    From custom websites to mobile apps, we provide end-to-end digital solutions
+                    that help churches connect with their congregation in meaningful ways.
+                  </p>
                 </div>
-                <h2 className="text-3xl sm:text-4xl lg:text-6xl font-bold text-gray-900 mb-6 sm:mb-8 leading-tight tracking-tight">
-                  Comprehensive
-                  <span className="relative mx-4">
-                    <span className="relative z-10 bg-gradient-to-r from-[#1E3A8A] to-[#1E3A8A] bg-clip-text text-transparent">Digital</span>
-                    <span className="absolute -bottom-1.5 left-0 w-full h-1.5 bg-gradient-to-r from-[#1E3A8A]/40 to-[#1E3A8A]/40 blur-sm"></span>
-                    <span className="absolute -bottom-1 left-0 w-full h-1 bg-gradient-to-r from-[#1E3A8A] to-[#1E3A8A]"></span>
-                  </span>
-                  Solutions
-                </h2>
-                <p className="text-lg sm:text-xl text-gray-600 max-w-3xl mx-auto">
-                  From custom websites to mobile apps, we provide end-to-end digital solutions
-                  that help churches connect with their congregation in meaningful ways.
-                </p>
-              </div>
-            </ScrollAnimation>
+              </ScrollAnimation>
 
-            <div className="grid grid-cols-1 gap-6 sm:gap-8">
-              {features.map((feature, index) => (
-                <ScrollAnimation 
-                  key={feature.title}
-                  type="fade-up"
-                  delay={0.2 * index}
-                >
-                  <div className="group relative bg-gradient-to-br from-gray-50 to-white rounded-3xl p-6 sm:p-8 border border-gray-100
-                                hover:border-[#1E3A8A]/20 transition-all duration-500 overflow-hidden">
-                    {/* Hover Effect Background */}
-                    <div className="absolute inset-0 bg-gradient-to-r from-blue-50 to-blue-50 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                    
-                    <div className="relative flex flex-col sm:flex-row items-start gap-6">
-                      <div className="flex-shrink-0 relative mb-4 sm:mb-0">
-                        <div className="w-16 h-16 rounded-2xl bg-[#1E3A8A] flex items-center justify-center
-                                    transform group-hover:scale-110 transition-transform duration-500">
-                          <feature.icon className="w-8 h-8 text-white" />
+              <div className="grid grid-cols-1 gap-6 sm:gap-8">
+                {features.map((feature, index) => (
+                  <ScrollAnimation 
+                    key={feature.title}
+                    type="fade-up"
+                    delay={0.2 * index}
+                  >
+                    <div className="group relative bg-gradient-to-br from-gray-50 to-white rounded-3xl p-6 sm:p-8 border border-gray-100
+                                  hover:border-[#1E3A8A]/20 transition-all duration-500 overflow-hidden">
+                      {/* Hover Effect Background */}
+                      <div className="absolute inset-0 bg-gradient-to-r from-blue-50 to-blue-50 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                      
+                      <div className="relative flex flex-col sm:flex-row items-start gap-6">
+                        <div className="flex-shrink-0 relative mb-4 sm:mb-0">
+                          <div className="w-16 h-16 rounded-2xl bg-[#1E3A8A] flex items-center justify-center
+                                      transform group-hover:scale-110 transition-transform duration-500">
+                            <feature.icon className="w-8 h-8 text-white" />
+                          </div>
+                          {/* Decorative dot */}
+                          <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-blue-500 border-2 border-white"></div>
                         </div>
-                        {/* Decorative dot */}
-                        <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-blue-500 border-2 border-white"></div>
-                      </div>
 
-                      <div className="flex-grow">
-                        <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 tracking-tight">{feature.title}</h3>
-                        <p className="text-gray-600 mb-6 leading-relaxed">{feature.description}</p>
-                        <ul className="space-y-3">
-                          {feature.details.map((detail) => (
-                            <li key={detail} className="flex items-center text-gray-600 group/item">
-                              <div className="mr-3 w-6 h-6 rounded-full bg-blue-50 flex items-center justify-center
-                                          group-hover/item:bg-blue-100 transition-colors duration-300">
-                                <ChevronRight className="w-4 h-4 text-[#1E3A8A] group-hover/item:translate-x-0.5 transition-transform" />
-                              </div>
-                              <span className="group-hover/item:text-gray-900 transition-colors">{detail}</span>
-                            </li>
-                          ))}
-                        </ul>
+                        <div className="flex-grow">
+                          <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 tracking-tight">{feature.title}</h3>
+                          <p className="text-gray-600 mb-6 leading-relaxed">{feature.description}</p>
+                          <ul className="space-y-3">
+                            {feature.details.map((detail) => (
+                              <li key={detail} className="flex items-center text-gray-600 group/item">
+                                <div className="mr-3 w-6 h-6 rounded-full bg-blue-50 flex items-center justify-center
+                                            group-hover/item:bg-blue-100 transition-colors duration-300">
+                                  <ChevronRight className="w-4 h-4 text-[#1E3A8A] group-hover/item:translate-x-0.5 transition-transform" />
+                                </div>
+                                <span className="group-hover/item:text-gray-900 transition-colors">{detail}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </ScrollAnimation>
-              ))}
+                  </ScrollAnimation>
+                ))}
+              </div>
             </div>
-          </div>
+          </LazyMotion>
         </section>
 
         {/* Portfolio Section - Enhanced */}
@@ -684,7 +735,11 @@ export default function DigitalServicesPage() {
                         src={item.image}
                         alt={item.title}
                         fill
+                        loader={imageLoader}
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                         className="object-cover transform group-hover:scale-105 transition-transform duration-700"
+                        loading="eager"
+                        priority={true}
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/50 to-transparent 
                                     opacity-90 group-hover:opacity-75 transition-opacity duration-500"></div>

@@ -28,16 +28,27 @@ export default async function RootLayout({
   const isAdmin = headersList.has('x-is-admin') && headersList.get('x-is-admin') === '1'
 
   return (
-    <html lang="en" className="light">
+    <html lang="en" className="light scroll-smooth">
       <head>
         <meta charSet="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="theme-color" content="#000000" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
+        <meta name="theme-color" content="#1E3A8A" />
         <link rel="icon" href="/favicon.ico" />
+        
+        {/* Preload critical assets */}
+        <link 
+          rel="preconnect" 
+          href="https://fonts.googleapis.com" 
+        />
+        <link 
+          rel="preconnect" 
+          href="https://fonts.gstatic.com" 
+          crossOrigin="anonymous" 
+        />
       </head>
-      <body className={inter.className} suppressHydrationWarning>
+      <body className={`${inter.className} antialiased overflow-x-hidden w-full`} suppressHydrationWarning>
         <SidebarProvider>
-          <div className="flex flex-col min-h-screen">
+          <div className="flex flex-col min-h-screen w-full relative">
             {children}
             <Analytics />
             <SpeedInsights />

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Menu, X } from 'lucide-react'
 
@@ -17,8 +17,26 @@ export default function Header() {
 
   const scrollToQuote = (e: React.MouseEvent) => {
     e.preventDefault()
+    setIsOpen(false)
     document.getElementById('quote')?.scrollIntoView({ behavior: 'smooth' })
   }
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const nav = document.getElementById('mobile-nav')
+      if (nav && !nav.contains(event.target as Node)) {
+        setIsOpen(false)
+      }
+    }
+
+    if (isOpen) {
+      document.addEventListener('click', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('click', handleClickOutside)
+    }
+  }, [isOpen])
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-200">
@@ -31,13 +49,13 @@ export default function Header() {
           </div>
           <div className="hidden md:flex items-center space-x-8">
             {navigation.map((item) => (
-                <Link
+              <Link
                 key={item.name}
                 href={item.href}
-                  className="text-gray-600 hover:text-[#1E3A8A] transition-colors duration-300"
-                >
+                className="text-gray-600 hover:text-[#1E3A8A] transition-colors duration-300"
+              >
                 {item.name}
-                </Link>
+              </Link>
             ))}
             <button
               onClick={scrollToQuote}
@@ -54,7 +72,9 @@ export default function Header() {
               className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 
                        hover:text-gray-500 hover:bg-gray-100 focus:outline-none 
                        focus:ring-2 focus:ring-inset focus:ring-blue-500"
+              aria-expanded={isOpen}
             >
+              <span className="sr-only">Open main menu</span>
               {isOpen ? (
                 <X className="block h-6 w-6" />
               ) : (
@@ -63,30 +83,34 @@ export default function Header() {
             </button>
           </div>
         </div>
-        {isOpen && (
-          <div className="md:hidden">
-            <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-              {navigation.map((item) => (
-                        <Link
-                  key={item.name}
-                  href={item.href}
-                  className="block px-3 py-2 rounded-md text-base font-medium 
-                           text-gray-600 hover:text-[#1E3A8A] hover:bg-gray-50"
-                        >
-                  {item.name}
-                        </Link>
 
-                      ))}
-              <button
-                onClick={scrollToQuote}
-                className="w-full text-left px-3 py-2 rounded-md text-base font-medium 
+        <div
+          id="mobile-nav"
+          className={`md:hidden fixed inset-x-0 top-16 bg-white/95 backdrop-blur-md transform transition-transform duration-300 ease-in-out ${
+            isOpen ? 'translate-y-0' : '-translate-y-full'
+          }`}
+        >
+          <div className="px-4 pt-2 pb-3 space-y-1 border-t border-gray-200">
+            {navigation.map((item) => (
+              <Link
+                key={item.name}
+                href={item.href}
+                onClick={() => setIsOpen(false)}
+                className="block px-3 py-2 rounded-md text-base font-medium 
                          text-gray-600 hover:text-[#1E3A8A] hover:bg-gray-50"
               >
-                Book a Consultation
-              </button>
-            </div>
+                {item.name}
+              </Link>
+            ))}
+            <button
+              onClick={scrollToQuote}
+              className="w-full mt-4 px-6 py-3 bg-[#0F172A] text-white rounded-xl font-medium 
+                       hover:bg-[#1E293B] transition-all duration-200 text-center"
+            >
+              Book a Consultation
+            </button>
           </div>
-        )}
+        </div>
       </nav>
     </header>
   )

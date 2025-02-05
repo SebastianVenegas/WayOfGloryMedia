@@ -6,13 +6,24 @@ import { Music2, Mail, Users, MessageSquare } from 'lucide-react'
 export default function QuoteSection() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle')
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
-  const [churchName, setChurchName] = useState('')
-  const [message, setMessage] = useState('')
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    churchName: '',
+    message: ''
+  })
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }))
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setIsSubmitting(true)
     setSubmitStatus('submitting')
 
     try {
@@ -21,12 +32,7 @@ export default function QuoteSection() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          name,
-          email,
-          churchName,
-          message
-        }),
+        body: JSON.stringify(formData),
       })
 
       if (!response.ok) {
@@ -34,43 +40,49 @@ export default function QuoteSection() {
       }
 
       setSubmitStatus('success')
-      setName('')
-      setEmail('')
-      setChurchName('')
-      setMessage('')
+      setFormData({
+        name: '',
+        email: '',
+        churchName: '',
+        message: ''
+      })
     } catch (error) {
       console.error('Error:', error)
       setSubmitStatus('error')
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
   return (
-    <section id="quote" className="py-24 bg-white">
-      {/* Decorative Elements */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#00000005_1px,transparent_1px),linear-gradient(to_bottom,#00000005_1px,transparent_1px)] bg-[size:4rem_4rem]" />
-      <div className="absolute top-0 left-0 w-[40rem] h-[40rem] bg-blue-100/30 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" />
-      <div className="absolute bottom-0 right-0 w-[40rem] h-[40rem] bg-indigo-100/30 rounded-full blur-3xl translate-x-1/2 translate-y-1/2" />
+    <section id="quote" className="py-16 sm:py-24 bg-white relative overflow-hidden">
+      {/* Decorative Elements - Optimized for performance */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#00000005_1px,transparent_1px),linear-gradient(to_bottom,#00000005_1px,transparent_1px)] bg-[size:4rem_4rem]" />
+        <div className="absolute top-0 left-0 w-[40rem] h-[40rem] bg-blue-100/30 rounded-full blur-[100px] -translate-x-1/2 -translate-y-1/2" />
+        <div className="absolute bottom-0 right-0 w-[40rem] h-[40rem] bg-indigo-100/30 rounded-full blur-[100px] translate-x-1/2 translate-y-1/2" />
+      </div>
 
       <div className="container relative mx-auto px-4 sm:px-6 lg:px-8">
         <div className="max-w-[800px] mx-auto">
           {/* Header */}
-          <div className="text-center mb-16">
+          <div className="text-center mb-12 sm:mb-16">
             <div className="inline-flex items-center justify-center space-x-2 mb-4">
               <div className="p-2 bg-blue-50 rounded-lg">
                 <Music2 className="w-5 h-5 text-blue-500" />
               </div>
               <span className="text-blue-600 font-medium">Get Started</span>
             </div>
-            <h2 className="text-4xl md:text-[2.75rem] font-bold text-gray-900 mb-4 tracking-tight leading-tight">
-              Ready to Transform Your Church's<br />Audio Experience?
+            <h2 className="text-3xl sm:text-4xl md:text-[2.75rem] font-bold text-gray-900 mb-4 tracking-tight leading-tight">
+              Ready to Transform Your Church's<br className="hidden sm:block" />Audio Experience?
             </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            <p className="text-base sm:text-lg text-gray-600 max-w-2xl mx-auto">
               Let's discuss how we can help enhance your worship services with professional audio solutions.
             </p>
           </div>
 
           {/* Form */}
-          <div className="bg-white rounded-2xl shadow-xl shadow-gray-200/50 p-8 relative">
+          <div className="bg-white rounded-2xl shadow-xl shadow-gray-200/50 p-6 sm:p-8 relative">
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Input Grid */}
               <div className="grid md:grid-cols-2 gap-6">
@@ -85,8 +97,8 @@ export default function QuoteSection() {
                       required
                       type="text"
                       name="name"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
+                      value={formData.name}
+                      onChange={handleChange}
                       className="block w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl
                                text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500/20 
                                focus:border-blue-500/40 transition-all duration-200"
@@ -106,8 +118,8 @@ export default function QuoteSection() {
                       required
                       type="email"
                       name="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      value={formData.email}
+                      onChange={handleChange}
                       className="block w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl
                                text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500/20 
                                focus:border-blue-500/40 transition-all duration-200"
@@ -126,9 +138,9 @@ export default function QuoteSection() {
                     <input
                       required
                       type="text"
-                      name="church"
-                      value={churchName}
-                      onChange={(e) => setChurchName(e.target.value)}
+                      name="churchName"
+                      value={formData.churchName}
+                      onChange={handleChange}
                       className="block w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl
                                text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500/20 
                                focus:border-blue-500/40 transition-all duration-200"
@@ -148,8 +160,8 @@ export default function QuoteSection() {
                       required
                       name="message"
                       rows={4}
-                      value={message}
-                      onChange={(e) => setMessage(e.target.value)}
+                      value={formData.message}
+                      onChange={handleChange}
                       className="block w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl
                                text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500/20 
                                focus:border-blue-500/40 transition-all duration-200 resize-none"
@@ -164,7 +176,7 @@ export default function QuoteSection() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="inline-flex items-center justify-center px-8 py-3 bg-[#0F172A] text-white 
+                  className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-3 bg-[#0F172A] text-white 
                            rounded-xl font-medium min-w-[200px] hover:bg-[#1E293B] transform hover:-translate-y-0.5 
                            hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none 
                            disabled:shadow-none transition-all duration-200"
@@ -174,12 +186,12 @@ export default function QuoteSection() {
 
                 {/* Status Messages */}
                 {submitStatus === 'success' && (
-                  <p className="text-green-600 font-medium">
+                  <p className="text-green-600 font-medium text-center">
                     Message sent successfully! We'll be in touch soon.
                   </p>
                 )}
                 {submitStatus === 'error' && (
-                  <p className="text-red-600 font-medium">
+                  <p className="text-red-600 font-medium text-center">
                     Failed to send message. Please try again or contact us directly.
                   </p>
                 )}
