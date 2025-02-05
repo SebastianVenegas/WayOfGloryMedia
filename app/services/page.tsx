@@ -370,9 +370,9 @@ export default function ServicesPage(): ReactElement {
       </div>
 
       {/* Services Grid Section */}
-      <section className="py-24 bg-gradient-to-b from-white via-neutral-50/20 to-neutral-100">
+      <section className="py-12 sm:py-24 bg-gradient-to-b from-white via-neutral-50/20 to-neutral-100">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
             {services.map((service, index) => (
               <ScrollAnimation 
                 key={service.id}
@@ -380,11 +380,11 @@ export default function ServicesPage(): ReactElement {
                 className="scroll-mt-24"
                 id={service.id}
               >
-                <div className="bg-white rounded-3xl shadow-sm hover:shadow-lg transition-all duration-300 
+                <div className="bg-white rounded-2xl sm:rounded-3xl shadow-sm hover:shadow-lg transition-all duration-300 
                               overflow-hidden border border-neutral-100 h-full flex flex-col 
                               transform hover:-translate-y-1">
                   {/* Service Image */}
-                  <div className="relative h-48">
+                  <div className="relative h-40 sm:h-48">
                     <Image
                       src={service.image}
                       alt={service.title}
@@ -392,28 +392,28 @@ export default function ServicesPage(): ReactElement {
                       className="object-cover"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
-                    <div className="absolute bottom-4 left-4 right-4">
+                    <div className="absolute bottom-3 left-3 right-3">
                       <div className="flex items-center space-x-2">
-                        <div className="p-2 bg-white/10 backdrop-blur-sm rounded-lg">
-                          <service.icon className="w-4 h-4 text-white" />
+                        <div className="p-1.5 sm:p-2 bg-white/10 backdrop-blur-sm rounded-lg">
+                          <service.icon className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
                         </div>
-                        <span className="text-white/90 text-sm font-medium">{service.subtitle}</span>
+                        <span className="text-white/90 text-xs sm:text-sm font-medium">{service.subtitle}</span>
                       </div>
                     </div>
                   </div>
 
                   {/* Service Content */}
-                  <div className="p-8 flex-grow flex flex-col">
-                    <h3 className="text-xl font-bold text-gray-900 mb-3">{service.title}</h3>
-                    <p className="text-gray-600 text-sm mb-8">{service.description}</p>
+                  <div className="p-4 sm:p-6 lg:p-8 flex-grow flex flex-col">
+                    <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2 sm:mb-3">{service.title}</h3>
+                    <p className="text-gray-600 text-sm mb-6 sm:mb-8">{service.description}</p>
 
                     {/* Features */}
-                    <div className="space-y-8">
+                    <div className="space-y-6 sm:space-y-8">
                       <div>
-                        <h4 className="text-sm font-semibold text-gray-900 mb-4">Features & Capabilities</h4>
-                        <ul className="space-y-2.5">
+                        <h4 className="text-xs sm:text-sm font-semibold text-gray-900 mb-3 sm:mb-4">Features & Capabilities</h4>
+                        <ul className="space-y-2">
                           {service.features.map((feature, idx) => (
-                            <li key={idx} className="flex items-start text-sm text-gray-600">
+                            <li key={idx} className="flex items-start text-xs sm:text-sm text-gray-600">
                               <div className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-neutral-900 mt-1.5 mr-2"></div>
                               <span>{feature}</span>
                             </li>
@@ -423,10 +423,10 @@ export default function ServicesPage(): ReactElement {
 
                       {/* Benefits */}
                       <div>
-                        <h4 className="text-sm font-semibold text-gray-900 mb-4">Key Benefits</h4>
-                        <ul className="space-y-2.5">
+                        <h4 className="text-xs sm:text-sm font-semibold text-gray-900 mb-3 sm:mb-4">Key Benefits</h4>
+                        <ul className="space-y-2">
                           {service.benefits.map((benefit, idx) => (
-                            <li key={idx} className="flex items-start text-sm text-gray-600">
+                            <li key={idx} className="flex items-start text-xs sm:text-sm text-gray-600">
                               <div className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-emerald-600 mt-1.5 mr-2"></div>
                               <span>{benefit}</span>
                             </li>

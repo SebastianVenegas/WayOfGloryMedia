@@ -42,7 +42,7 @@ export default function Header() {
     <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-200">
       <nav className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          <div className="flex items-center">
+          <div className="flex-1 flex items-center">
             <Link href="/" className="text-xl font-bold text-[#1E3A8A]">
               WayofGlory
             </Link>
@@ -66,7 +66,7 @@ export default function Header() {
               Book a Consultation
             </button>
           </div>
-          <div className="md:hidden">
+          <div className="flex-1 flex justify-end md:hidden">
             <button
               onClick={() => setIsOpen(!isOpen)}
               className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 
@@ -102,13 +102,15 @@ export default function Header() {
                 {item.name}
               </Link>
             ))}
-            <button
-              onClick={scrollToQuote}
-              className="w-full mt-4 px-6 py-3 bg-[#0F172A] text-white rounded-xl font-medium 
-                       hover:bg-[#1E293B] transition-all duration-200 text-center"
-            >
-              Book a Consultation
-            </button>
+            <div className="pt-2">
+              <button
+                onClick={scrollToQuote}
+                className="w-full px-6 py-3 bg-[#0F172A] text-white rounded-xl font-medium 
+                         hover:bg-[#1E293B] transition-all duration-200 text-center"
+              >
+                Book a Consultation
+              </button>
+            </div>
           </div>
         </div>
       </nav>
