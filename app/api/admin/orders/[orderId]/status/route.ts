@@ -4,36 +4,36 @@ import { sql } from '@vercel/postgres'
 // Define valid status types
 type OrderStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'delayed'
 
+type RouteContext = {
+  params: {
+    orderId: string
+  }
+}
+
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { orderId: string } }
+  context: RouteContext
 ) {
   try {
     // Parse request body
     const body = await request.json()
     const { status } = body as { status: OrderStatus }
-    const orderId = parseInt(params.orderId)
+    const orderId = parseInt(context.params.orderId)
 
     // Validate orderId
     if (isNaN(orderId)) {
-      return new NextResponse(
-        JSON.stringify({ error: 'Invalid order ID' }),
-        { 
-          status: 400,
-          headers: { 'Content-Type': 'application/json' }
-        }
+      return NextResponse.json(
+        { error: 'Invalid order ID' },
+        { status: 400 }
       )
     }
 
     // Validate status
     const validStatuses = ['pending', 'confirmed', 'completed', 'cancelled', 'delayed']
     if (!validStatuses.includes(status)) {
-      return new NextResponse(
-        JSON.stringify({ error: 'Invalid status value. Must be one of: ' + validStatuses.join(', ') }),
-        { 
-          status: 400,
-          headers: { 'Content-Type': 'application/json' }
-        }
+      return NextResponse.json(
+        { error: 'Invalid status value. Must be one of: ' + validStatuses.join(', ') },
+        { status: 400 }
       )
     }
 
@@ -45,35 +45,26 @@ export async function PATCH(
     `
 
     if (rowCount === 0) {
-      return new NextResponse(
-        JSON.stringify({ error: 'Order not found' }),
-        { 
-          status: 404,
-          headers: { 'Content-Type': 'application/json' }
-        }
+      return NextResponse.json(
+        { error: 'Order not found' },
+        { status: 404 }
       )
     }
 
-    return new NextResponse(
-      JSON.stringify({ 
+    return NextResponse.json(
+      { 
         success: true,
         message: `Order status updated to ${status}` 
-      }),
-      { 
-        status: 200,
-        headers: { 'Content-Type': 'application/json' }
-      }
+      },
+      { status: 200 }
     )
   } catch (error) {
     console.error('Error updating order status:', error)
-    return new NextResponse(
-      JSON.stringify({ 
-        error: error instanceof Error ? error.message : 'Failed to update order status' 
-      }),
+    return NextResponse.json(
       { 
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      }
+        error: error instanceof Error ? error.message : 'Failed to update order status' 
+      },
+      { status: 500 }
     )
   }
 } 
