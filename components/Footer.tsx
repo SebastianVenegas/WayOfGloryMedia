@@ -38,7 +38,7 @@ export default function Footer() {
                 alt="Way of Glory Media, Inc."
                 width={200}
                 height={50}
-                className="brightness-0 invert"
+                className=""
               />
             </Link>
             <div className="flex gap-4 mt-6">
