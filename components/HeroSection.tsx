@@ -69,8 +69,8 @@ export default function HeroSection() {
             priority={index === 0}
           />
           {/* Animated Gradient Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-r from-[#22d3ee]/80 via-[#22d3ee]/60 to-transparent"></div>
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(34,211,238,0.6),transparent_70%)]"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-brand-blue/80 via-brand-blue/60 to-transparent"></div>
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(30,58,138,0.6),transparent_70%)]"></div>
         </div>
       ))}
 
@@ -78,9 +78,9 @@ export default function HeroSection() {
         <div className="max-w-5xl">
           <div className="space-y-8">
             {/* Animated Badge */}
-            <div className="inline-flex items-center rounded-full border border-white/20 bg-[#22d3ee]/10 backdrop-blur-sm px-3 py-1.5 text-sm text-white">
+            <div className="inline-flex items-center rounded-full border border-white/20 bg-white/5 backdrop-blur-sm px-3 py-1.5 text-sm text-white">
               <span className="flex items-center">
-                <Star className="w-4 h-4 text-[#67e8f9] mr-2" />
+                <Star className="w-4 h-4 text-white mr-2" />
                 Southern California's Trusted Church Technology Partner
               </span>
             </div>
@@ -104,7 +104,7 @@ export default function HeroSection() {
                         y: { type: "spring", stiffness: 300, damping: 30 },
                         opacity: { duration: 0.2 }
                       }}
-                      className="absolute whitespace-nowrap bg-gradient-to-r from-[#67e8f9] via-[#22d3ee] to-[#0ea5e9] text-transparent bg-clip-text"
+                      className="absolute whitespace-nowrap text-[#03C9FF] drop-shadow-[0_0_25px_rgba(3,201,255,0.3)]"
                     >
                       {titles[currentTitleIndex]}
                     </motion.span>
@@ -123,7 +123,7 @@ export default function HeroSection() {
             <div className="flex flex-col sm:flex-row gap-4 pt-8">
               <button 
                 onClick={scrollToQuote}
-                className="group relative bg-white hover:bg-white/90 text-[#22d3ee] px-8 py-4 rounded-xl text-lg font-semibold inline-flex items-center justify-center transition-all duration-300 hover:scale-105 hover:shadow-lg"
+                className="group relative bg-white hover:bg-white/90 text-brand-blue px-8 py-4 rounded-xl text-lg font-semibold inline-flex items-center justify-center transition-all duration-300 hover:scale-105 hover:shadow-lg"
               >
                 <MessageCircle className="mr-2 w-5 h-5" />
                 Schedule Free Consultation
@@ -131,7 +131,7 @@ export default function HeroSection() {
               </button>
               <Link 
                 href="tel:+19514486409" 
-                className="group bg-[#22d3ee]/10 backdrop-blur-sm hover:bg-[#22d3ee]/20 border border-[#67e8f9]/20 text-white px-8 py-4 rounded-xl text-lg font-semibold inline-flex items-center justify-center transition-all duration-300 hover:scale-105 hover:shadow-lg"
+                className="group bg-white/10 backdrop-blur-sm hover:bg-white/20 border border-white/10 text-white px-8 py-4 rounded-xl text-lg font-semibold inline-flex items-center justify-center transition-all duration-300 hover:scale-105 hover:shadow-lg"
               >
                 <Phone className="mr-2 w-5 h-5 group-hover:rotate-12 transition-transform duration-300" />
                 (951) 448-6409
@@ -150,8 +150,8 @@ export default function HeroSection() {
             onClick={() => setCurrentImageIndex(index)}
             className={`transition-all duration-300 ${
               index === currentImageIndex 
-                ? 'h-12 bg-[#67e8f9]' 
-                : 'h-12 bg-[#67e8f9]/30 hover:bg-[#67e8f9]/50'
+                ? 'h-12 bg-white' 
+                : 'h-12 bg-white/30 hover:bg-white/50'
             } w-1.5 rounded-full`}
             aria-label={`Go to slide ${index + 1}`}
           />
