@@ -104,7 +104,7 @@ export default function HeroSection() {
                         y: { type: "spring", stiffness: 300, damping: 30 },
                         opacity: { duration: 0.2 }
                       }}
-                      className="absolute whitespace-nowrap bg-gradient-to-r from-blue-400 via-blue-500 to-blue-600 text-transparent bg-clip-text"
+                      className="absolute whitespace-nowrap bg-gradient-to-r from-[#67e8f9] via-[#22d3ee] to-[#0ea5e9] text-transparent bg-clip-text"
                     >
                       {titles[currentTitleIndex]}
                     </motion.span>
