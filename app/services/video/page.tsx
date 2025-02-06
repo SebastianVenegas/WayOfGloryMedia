@@ -272,6 +272,70 @@ export default function VideoServicesPage(): ReactElement {
         </div>
       </section>
 
+      {/* Consultation Card - Floating Design */}
+      <div className="relative z-10 -mt-32 mb-24">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <ScrollAnimation
+            type="fade-up"
+            className="scroll-mt-24"
+            delay={0.2}
+          >
+            <div className="max-w-2xl mx-auto bg-white rounded-2xl shadow-2xl p-8 border border-[#40B5E5]/10
+                          hover:shadow-3xl hover:border-[#40B5E5]/20 transition-all duration-300">
+              {/* Header */}
+              <div className="flex items-center gap-4 mb-8">
+                <div className="p-3 bg-[#40B5E5]/10 rounded-xl">
+                  <MessageCircle className="w-6 h-6 text-[#40B5E5]" />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-bold text-gray-900">Expert Consultation</h3>
+                  <p className="text-gray-600">Custom Video Production Assessment</p>
+                </div>
+              </div>
+
+              {/* Description */}
+              <p className="text-gray-600 mb-8 text-lg leading-relaxed">
+                Get a personalized video production and streaming solution designed 
+                specifically for your church's unique needs. Our experts will create 
+                a custom plan that maximizes your impact.
+              </p>
+
+              {/* Features List */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-[#40B5E5]/10 rounded-lg">
+                    <Video className="w-5 h-5 text-[#40B5E5]" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-900">Expert Assessment</h4>
+                    <p className="text-sm text-gray-600">Comprehensive evaluation of your needs</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-[#40B5E5]/10 rounded-lg">
+                    <Settings className="w-5 h-5 text-[#40B5E5]" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-900">Custom Solution</h4>
+                    <p className="text-sm text-gray-600">Tailored to your requirements</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* CTA Button */}
+              <button 
+                onClick={() => document.getElementById('quote-section')?.scrollIntoView({ behavior: 'smooth' })}
+                className="w-full py-4 bg-[#0F172A] text-white rounded-xl font-medium text-lg
+                         hover:bg-[#1E293B] transform hover:-translate-y-0.5 
+                         transition-all duration-300 shadow-lg hover:shadow-xl"
+              >
+                Schedule Your Free Consultation
+              </button>
+            </div>
+          </ScrollAnimation>
+        </div>
+      </div>
+
       {/* Quote Section */}
       <div id="quote-section">
         <QuoteSection />
