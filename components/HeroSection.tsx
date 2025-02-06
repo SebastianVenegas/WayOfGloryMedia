@@ -104,7 +104,7 @@ export default function HeroSection() {
                         y: { type: "spring", stiffness: 300, damping: 30 },
                         opacity: { duration: 0.2 }
                       }}
-                      className="absolute whitespace-nowrap text-[#1E3A8A] bg-white/90 px-4 py-1 rounded-xl"
+                      className="absolute whitespace-nowrap bg-gradient-to-r from-[#40B5E5] to-[#7DD3F7] text-transparent bg-clip-text font-extrabold drop-shadow-lg"
                     >
                       {titles[currentTitleIndex]}
                     </motion.span>
