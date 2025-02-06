@@ -299,55 +299,52 @@ export default function ServicesPage(): ReactElement {
             className="scroll-mt-24"
             delay={0.2}
           >
-            <div className="max-w-md mx-auto bg-white rounded-xl shadow-xl p-6 border border-[#40B5E5]/10
+            <div className="max-w-md mx-auto bg-white rounded-xl shadow-xl p-8 border border-[#40B5E5]/10
                           hover:shadow-2xl hover:border-[#40B5E5]/20 transition-all duration-300">
               {/* Header */}
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 bg-[#40B5E5] rounded-lg shadow-md">
-                  <MessageCircle className="w-5 h-5 text-white" />
+              <div className="flex items-center gap-4 mb-8">
+                <div className="p-3 bg-[#40B5E5]/10 rounded-xl">
+                  <MessageCircle className="w-6 h-6 text-[#40B5E5]" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-gray-900">Expert Consultation</h3>
-                  <p className="text-sm text-gray-600">Custom Audio & Streaming Assessment</p>
+                  <h3 className="text-2xl font-bold text-gray-900">Expert Consultation</h3>
+                  <p className="text-gray-600">Custom Audio & Streaming Solutions</p>
                 </div>
-              </div>
-
-              {/* Price Box */}
-              <div className="bg-gradient-to-br from-[#40B5E5]/5 to-[#7DD3F7]/5 rounded-lg p-4 mb-6">
-                <div className="flex items-baseline gap-2 mb-1">
-                  <span className="text-3xl font-bold text-[#40B5E5]">$250</span>
-                  <span className="text-gray-500 text-sm">/consultation</span>
-                </div>
-                <p className="text-xs text-gray-600">Value credited towards your custom bundle</p>
               </div>
 
               {/* Description */}
-              <p className="text-sm text-gray-600 mb-6">
+              <p className="text-gray-600 mb-8">
                 Get a personalized streaming and audio solution designed by our experts
                 to perfectly match your church's needs and budget.
               </p>
 
               {/* Features List */}
-              <ul className="space-y-3 mb-6">
-                <li className="flex items-center gap-2 text-sm text-gray-700">
-                  <div className="w-1 h-1 rounded-full bg-[#40B5E5]"></div>
-                  <span>Expert evaluation of your needs</span>
-                  </li>
-                <li className="flex items-center gap-2 text-sm text-gray-700">
-                  <div className="w-1 h-1 rounded-full bg-[#40B5E5]"></div>
-                  <span>Custom streaming & audio bundle</span>
-                  </li>
-                <li className="flex items-center gap-2 text-sm text-gray-700">
-                  <div className="w-1 h-1 rounded-full bg-[#40B5E5]"></div>
-                  <span>Professional recommendations</span>
-                  </li>
-                </ul>
+              <ul className="space-y-4 mb-8">
+                <li className="flex items-center gap-3">
+                  <div className="p-2 bg-[#40B5E5]/10 rounded-lg">
+                    <Users className="w-4 h-4 text-[#40B5E5]" />
+                  </div>
+                  <span className="text-gray-700">Expert evaluation of your needs</span>
+                </li>
+                <li className="flex items-center gap-3">
+                  <div className="p-2 bg-[#40B5E5]/10 rounded-lg">
+                    <Settings className="w-4 h-4 text-[#40B5E5]" />
+                  </div>
+                  <span className="text-gray-700">Custom solution design</span>
+                </li>
+                <li className="flex items-center gap-3">
+                  <div className="p-2 bg-[#40B5E5]/10 rounded-lg">
+                    <Star className="w-4 h-4 text-[#40B5E5]" />
+                  </div>
+                  <span className="text-gray-700">Professional recommendations</span>
+                </li>
+              </ul>
 
               {/* CTA Button */}
               <button 
                 onClick={scrollToQuote}
-                className="w-full py-3 bg-[#40B5E5] text-white rounded-lg font-medium text-sm
-                         hover:bg-[#7DD3F7] transition-all duration-300 shadow-md 
+                className="w-full py-4 bg-[#0F172A] text-white rounded-xl font-medium text-lg
+                         hover:bg-[#1E293B] transition-all duration-300 shadow-md 
                          hover:shadow-lg transform hover:-translate-y-0.5"
               >
                 Schedule Your Expert Consultation
