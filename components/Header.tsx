@@ -41,11 +41,12 @@ export default function Header() {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-200">
       <nav className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+        {/* Desktop Navigation */}
+        <div className="hidden md:flex items-center justify-between h-16">
           <Link href="/" className="text-xl font-bold text-[#1E3A8A]">
             WayofGlory
           </Link>
-          <div className="hidden md:flex items-center space-x-8">
+          <div className="flex items-center space-x-8">
             {navigation.map((item) => (
               <Link
                 key={item.name}
@@ -64,9 +65,16 @@ export default function Header() {
               Book a Consultation
             </button>
           </div>
+        </div>
+
+        {/* Mobile Navigation */}
+        <div className="md:hidden flex items-center justify-between h-16">
+          <Link href="/" className="text-xl font-bold text-[#1E3A8A]">
+            WayofGlory
+          </Link>
           <button
             onClick={() => setIsOpen(!isOpen)}
-            className="md:hidden inline-flex items-center justify-center p-2 rounded-md text-gray-400 
+            className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 
                      hover:text-gray-500 hover:bg-gray-100 focus:outline-none 
                      focus:ring-2 focus:ring-inset focus:ring-blue-500"
             aria-expanded={isOpen}
@@ -80,6 +88,7 @@ export default function Header() {
           </button>
         </div>
 
+        {/* Mobile Menu */}
         <div
           id="mobile-nav"
           className={`md:hidden fixed inset-x-0 top-16 bg-white/95 backdrop-blur-md transform transition-transform duration-300 ease-in-out ${
