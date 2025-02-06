@@ -15,7 +15,20 @@ export const metadata: Metadata = {
   title: 'Way of Glory Media',
   description: 'Professional Audio and Video Services for Churches',
   icons: {
-    icon: '/favicon.ico'
+    icon: [
+      {
+        url: '/favicon-light.png',
+        sizes: '192x192',
+        type: 'image/png',
+        media: '(prefers-color-scheme: light)'
+      },
+      {
+        url: '/favicon-dark.png',
+        sizes: '192x192',
+        type: 'image/png',
+        media: '(prefers-color-scheme: dark)'
+      }
+    ]
   }
 }
 
@@ -26,6 +39,7 @@ export default async function RootLayout({
 }) {
   const headersList = await headers()
   const isAdmin = headersList.has('x-is-admin') && headersList.get('x-is-admin') === '1'
+  const version = Date.now() // Add a version to force cache busting
 
   return (
     <html lang="en" className="light scroll-smooth">
@@ -33,12 +47,20 @@ export default async function RootLayout({
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#1E3A8A" />
-        <link rel="shortcut icon" href="/favicon.ico" />
-        
-        {/* Favicon */}
-        <link rel="icon" href="/favicon.ico" sizes="any" />
-        <link rel="icon" type="image/png" href="/icon.png" />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <link 
+          rel="icon" 
+          type="image/png" 
+          sizes="192x192" 
+          href={`/favicon-light.png?v=${version}`}
+          media="(prefers-color-scheme: light)"
+        />
+        <link 
+          rel="icon" 
+          type="image/png" 
+          sizes="192x192" 
+          href={`/favicon-dark.png?v=${version}`}
+          media="(prefers-color-scheme: dark)"
+        />
         
         {/* Preload critical assets */}
         <link 
