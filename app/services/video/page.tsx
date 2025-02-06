@@ -111,11 +111,11 @@ export default function VideoServicesPage(): ReactElement {
   const [activeTab, setActiveTab] = useState('live')
 
   return (
-    <main className="min-h-screen bg-gray-50 overflow-x-hidden">
+    <main className="min-h-screen bg-gray-50 overflow-x-hidden overscroll-none">
       <Header />
       
       {/* Hero Section */}
-      <section className="relative min-h-screen pt-24 md:pt-32 flex items-center overflow-hidden">
+      <section className="relative min-h-screen pt-24 md:pt-32 flex items-center overflow-hidden overscroll-none touch-none">
         {/* Background Video/Image */}
         <div className="absolute inset-0">
           <Image

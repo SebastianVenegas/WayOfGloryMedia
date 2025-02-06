@@ -57,7 +57,7 @@ export default async function RootLayout({
           `}
         </style>
       </head>
-      <body className={`${inter.className} antialiased overflow-x-hidden w-full`} suppressHydrationWarning>
+      <body className={`${inter.className} antialiased overflow-x-hidden w-full overscroll-none`} suppressHydrationWarning>
         <SidebarProvider>
           <div className="flex flex-col min-h-screen w-full relative">
             {children}
