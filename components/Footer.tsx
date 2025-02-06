@@ -1,16 +1,16 @@
 import Link from 'next/link'
-import { Facebook, Youtube, Instagram, Music } from 'lucide-react'
+import { Facebook, Youtube, Instagram, Globe } from 'lucide-react'
+import Image from 'next/image'
 
 const quickLinks = [
   { name: 'Services', href: '/services' },
   { name: 'Digital', href: '/services/digital' },
   { name: 'Products', href: '/products' },
-  { name: 'About Us', href: '/about' },
-  { name: 'Contact', href: '/contact' },
 ]
 
 const services = [
   { name: 'Digital Services', href: '/services/digital' },
+  { name: 'Video Services', href: '/services/video' },
   { name: 'Sound System Optimization', href: '/services#sound-optimization' },
   { name: 'Live Streaming Setup', href: '/services#live-streaming' },
   { name: 'Equipment Consultation', href: '/services#equipment-consultation' },
@@ -25,9 +25,16 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
           {/* Brand Section */}
           <div>
-            <Link href="/" className="flex items-center space-x-2">
-              <Music className="w-8 h-8" />
-              <span className="text-xl font-bold">WayofGlory</span>
+            <Link href="/" className="block">
+              <div className="relative w-56 h-16">
+                <Image
+                  src="/images/logo/logo.png"
+                  alt="WayofGlory Logo"
+                  fill
+                  className="object-contain brightness-0 invert"
+                  priority
+                />
+              </div>
             </Link>
             <div className="mt-6 flex space-x-4">
               <a href="https://facebook.com" target="_blank" rel="noopener noreferrer"
