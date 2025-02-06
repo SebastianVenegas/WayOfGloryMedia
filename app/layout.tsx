@@ -14,9 +14,30 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'Way of Glory Media',
   description: 'Professional Audio and Video Services for Churches',
-  icons: {
-    icon: '/favicon.ico'
-  }
+  icons: [
+    {
+      rel: 'icon',
+      type: 'image/x-icon',
+      url: '/favicon.ico'
+    },
+    {
+      rel: 'apple-touch-icon',
+      sizes: '180x180',
+      url: '/apple-touch-icon.png'
+    },
+    {
+      rel: 'icon',
+      type: 'image/png',
+      sizes: '32x32',
+      url: '/favicon-32x32.png'
+    },
+    {
+      rel: 'icon', 
+      type: 'image/png',
+      sizes: '16x16',
+      url: '/favicon-16x16.png'
+    }
+  ]
 }
 
 export default async function RootLayout({
@@ -26,6 +47,7 @@ export default async function RootLayout({
 }) {
   const headersList = await headers()
   const isAdmin = headersList.has('x-is-admin') && headersList.get('x-is-admin') === '1'
+  const version = Date.now() // Add a version to force cache busting
 
   return (
     <html lang="en" className="light scroll-smooth">
@@ -33,7 +55,6 @@ export default async function RootLayout({
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#1E3A8A" />
-        <link rel="icon" href="/favicon.ico" />
         
         {/* Preload critical assets */}
         <link 
@@ -60,4 +81,3 @@ export default async function RootLayout({
     </html>
   )
 }
-
