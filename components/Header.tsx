@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Menu, X } from 'lucide-react'
 
 const navigation = [
@@ -43,8 +44,14 @@ export default function Header() {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         {/* Mobile Header - Only Logo and Hamburger */}
         <div className="flex md:hidden items-center justify-between h-16">
-          <Link href="/" className="text-xl font-bold text-[#1E3A8A]">
-            WayofGlory
+          <Link href="/" className="relative w-32 h-8">
+            <Image
+              src="/logo/logo.png"
+              alt="WayofGlory Logo"
+              fill
+              className="object-contain"
+              priority
+            />
           </Link>
           <button
             onClick={() => setIsOpen(!isOpen)}
@@ -61,8 +68,14 @@ export default function Header() {
 
         {/* Desktop Header */}
         <div className="hidden md:flex items-center justify-between h-16">
-          <Link href="/" className="text-xl font-bold text-[#1E3A8A]">
-            WayofGlory
+          <Link href="/" className="relative w-40 h-10">
+            <Image
+              src="/logo/logo.png"
+              alt="WayofGlory Logo"
+              fill
+              className="object-contain"
+              priority
+            />
           </Link>
           <div className="flex items-center space-x-8">
             {navigation.map((item) => (
