@@ -4,15 +4,19 @@ import { sql } from '@vercel/postgres'
 // Define valid status types
 type OrderStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'delayed'
 
+interface RouteSegment {
+  orderId: string
+}
+
 export async function PATCH(
-  req: Request,
-  { params }: { params: { orderId: string } }
+  request: NextRequest,
+  context: { params: RouteSegment }
 ) {
   try {
     // Parse request body
-    const body = await req.json()
+    const body = await request.json()
     const { status } = body as { status: OrderStatus }
-    const orderId = parseInt(params.orderId)
+    const orderId = parseInt(context.params.orderId)
 
     // Validate orderId
     if (isNaN(orderId)) {
