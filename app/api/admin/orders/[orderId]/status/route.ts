@@ -1,19 +1,20 @@
-import { NextRequest } from 'next/server'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { sql } from '@vercel/postgres'
 
 // Define valid status types
 type OrderStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'delayed'
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { orderId: string } }
-) {
+export const runtime = 'edge'
+export const dynamic = 'force-dynamic'
+
+export async function PATCH(request: NextRequest) {
   try {
+    const url = new URL(request.url)
+    const orderId = Number(url.pathname.split('/').slice(-3, -2)[0]) // Extract orderId from URL
+
     // Parse request body
     const body = await request.json()
     const { status } = body as { status: OrderStatus }
-    const orderId = parseInt(params.orderId)
 
     // Validate orderId
     if (isNaN(orderId)) {
