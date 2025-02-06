@@ -16,11 +16,16 @@ export const metadata: Metadata = {
   description: 'Professional Audio and Video Services for Churches',
   icons: {
     icon: [
-      { url: '/favicon-large.png', sizes: '192x192', type: 'image/png' },
-      { url: '/favicon-large.png', sizes: '144x144', type: 'image/png' },
-      { url: '/favicon-large.png', sizes: '96x96', type: 'image/png' },
-      { url: '/favicon.ico', sizes: '48x48', type: 'image/x-icon' },
-      { url: '/favicon.ico', sizes: '32x32', type: 'image/x-icon' }
+      {
+        url: '/favicon-light.png',
+        sizes: '192x192',
+        media: '(prefers-color-scheme: light)'
+      },
+      {
+        url: '/favicon-dark.png',
+        sizes: '192x192',
+        media: '(prefers-color-scheme: dark)'
+      }
     ]
   }
 }
@@ -40,11 +45,20 @@ export default async function RootLayout({
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#1E3A8A" />
-        <link rel="icon" type="image/png" sizes="192x192" href={`/favicon-large.png?v=${version}`} />
-        <link rel="icon" type="image/png" sizes="144x144" href={`/favicon-large.png?v=${version}`} />
-        <link rel="icon" type="image/png" sizes="96x96" href={`/favicon-large.png?v=${version}`} />
-        <link rel="icon" type="image/x-icon" sizes="48x48" href={`/favicon.ico?v=${version}`} />
-        <link rel="icon" type="image/x-icon" sizes="32x32" href={`/favicon.ico?v=${version}`} />
+        <link 
+          rel="icon" 
+          type="image/png" 
+          sizes="192x192" 
+          href={`/favicon-light.png?v=${version}`}
+          media="(prefers-color-scheme: light)"
+        />
+        <link 
+          rel="icon" 
+          type="image/png" 
+          sizes="192x192" 
+          href={`/favicon-dark.png?v=${version}`}
+          media="(prefers-color-scheme: dark)"
+        />
         
         {/* Preload critical assets */}
         <link 
