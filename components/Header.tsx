@@ -118,13 +118,13 @@ export default function Header() {
 
       {/* Mobile Menu Dropdown */}
       <div 
-        className={`md:hidden fixed inset-y-0 right-0 w-full max-w-sm bg-white shadow-2xl z-50 
+        className={`md:hidden fixed inset-y-0 right-0 w-full max-w-sm bg-[#0F172A] shadow-2xl z-50 
                    transform transition-transform duration-300 ease-out ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
         {/* Menu Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-100">
+        <div className="flex items-center justify-between p-6 border-b border-gray-800">
           <Link href="/" onClick={closeMenu} className="relative w-48 h-12">
             <Image
               src="/images/logo/logo.png"
@@ -136,10 +136,10 @@ export default function Header() {
           </Link>
           <button
             onClick={closeMenu}
-            className="p-2 rounded-xl hover:bg-gray-100 transition-colors"
+            className="p-2 rounded-xl hover:bg-white/10 transition-colors"
             aria-label="Close menu"
           >
-            <X className="h-6 w-6 text-gray-700" />
+            <X className="h-6 w-6 text-white" />
           </button>
         </div>
 
@@ -151,8 +151,8 @@ export default function Header() {
                   key={item.name}
                   href={item.href}
                   onClick={closeMenu}
-                  className="block px-4 py-4 text-lg font-medium text-gray-900 rounded-xl
-                           hover:bg-gray-100 transition-all duration-200 transform hover:translate-x-1"
+                  className="block px-4 py-4 text-lg font-medium text-gray-300 rounded-xl
+                           hover:bg-white/10 hover:text-white transition-all duration-200 transform hover:translate-x-1"
                 >
                   {item.name}
                 </Link>
@@ -160,12 +160,12 @@ export default function Header() {
             </div>
 
             {/* Bottom Section with CTA */}
-            <div className="mt-8 pt-8 border-t border-gray-100">
+            <div className="mt-8 pt-8 border-t border-gray-800">
               <div className="space-y-6">
                 <button
                   onClick={scrollToQuote}
-                  className="w-full px-6 py-4 bg-[#0F172A] text-white rounded-xl font-medium 
-                           hover:bg-[#1E293B] transform hover:scale-[1.02] 
+                  className="w-full px-6 py-4 bg-[#40B5E5] text-white rounded-xl font-medium 
+                           hover:bg-[#7DD3F7] transform hover:scale-[1.02] 
                            transition-all duration-200 text-lg shadow-lg"
                 >
                   Book a Consultation
@@ -173,10 +173,10 @@ export default function Header() {
                 
                 {/* Contact Info */}
                 <div className="text-center">
-                  <p className="text-gray-600 mb-2">Need immediate assistance?</p>
+                  <p className="text-gray-400 mb-2">Need immediate assistance?</p>
                   <a 
                     href="tel:+19514486409" 
-                    className="text-[#1E3A8A] font-medium hover:underline"
+                    className="text-[#40B5E5] font-medium hover:text-[#7DD3F7]"
                   >
                     (951) 448-6409
                   </a>
