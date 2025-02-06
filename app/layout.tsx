@@ -13,7 +13,10 @@ const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'Way of Glory Media',
-  description: 'Professional Audio and Video Services for Churches'
+  description: 'Professional Audio and Video Services for Churches',
+  icons: {
+    icon: '/favicon.ico'
+  }
 }
 
 export default async function RootLayout({
@@ -29,8 +32,8 @@ export default async function RootLayout({
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="theme-color" content="#1E3A8A" media="(prefers-color-scheme: light)" />
-        <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+        <meta name="theme-color" content="#1E3A8A" />
+        <link rel="shortcut icon" href="/favicon.ico" />
         
         {/* Favicon */}
         <link rel="icon" href="/favicon.ico" sizes="any" />
