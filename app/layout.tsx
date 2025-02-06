@@ -17,12 +17,12 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       {
-        url: '/favicon-light.png',
+        url: '/favicon-dark.png',
         sizes: '192x192',
         media: '(prefers-color-scheme: light)'
       },
       {
-        url: '/favicon-dark.png',
+        url: '/favicon-light.png',
         sizes: '192x192',
         media: '(prefers-color-scheme: dark)'
       }
@@ -49,14 +49,14 @@ export default async function RootLayout({
           rel="icon" 
           type="image/png" 
           sizes="192x192" 
-          href={`/favicon-light.png?v=${version}`}
+          href={`/favicon-dark.png?v=${version}`}
           media="(prefers-color-scheme: light)"
         />
         <link 
           rel="icon" 
           type="image/png" 
           sizes="192x192" 
-          href={`/favicon-dark.png?v=${version}`}
+          href={`/favicon-light.png?v=${version}`}
           media="(prefers-color-scheme: dark)"
         />
         
