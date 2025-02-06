@@ -43,10 +43,10 @@ export default function Header() {
     <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-200">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         {/* Mobile Header - Only Logo and Hamburger */}
-        <div className="flex md:hidden items-center justify-between h-16">
-          <Link href="/" className="relative w-56 h-14">
+        <div className="flex md:hidden items-center justify-between h-24">
+          <Link href="/" className="relative w-80 h-20">
             <Image
-              src="/logo/logo.png"
+              src="/images/logo/logo.png"
               alt="WayofGlory Logo"
               fill
               className="object-contain"
@@ -65,12 +65,11 @@ export default function Header() {
             )}
           </button>
         </div>
-
         {/* Desktop Header */}
         <div className="hidden md:flex items-center justify-between h-20">
-          <Link href="/" className="relative w-72 h-16">
+          <Link href="/" className="relative w-56 h-20">
             <Image
-              src="/logo/logo.png"
+              src="/images/logo/logo.png"
               alt="WayofGlory Logo"
               fill
               className="object-contain"

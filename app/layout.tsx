@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Inter, Plus_Jakarta_Sans } from 'next/font/google'
 import './globals.css'
 import { Analytics } from '@vercel/analytics/react'
 import { SpeedInsights } from '@vercel/speed-insights/next'
@@ -10,6 +10,10 @@ import { SidebarProvider } from '@/contexts/SidebarContext'
 import { PWARegister } from './pwa'
 
 const inter = Inter({ subsets: ['latin'] })
+const plusJakarta = Plus_Jakarta_Sans({ 
+  subsets: ['latin'],
+  variable: '--font-plus-jakarta'
+})
 
 export const metadata: Metadata = {
   title: 'Way of Glory Media',
@@ -28,7 +32,7 @@ export default async function RootLayout({
   const isAdmin = headersList.has('x-is-admin') && headersList.get('x-is-admin') === '1'
 
   return (
-    <html lang="en" className="light scroll-smooth">
+    <html lang="en" className={`light scroll-smooth ${plusJakarta.variable}`}>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
