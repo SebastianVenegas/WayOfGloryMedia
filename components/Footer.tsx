@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { Facebook, Youtube, Instagram } from 'lucide-react'
 import Image from 'next/image'
+import { useRouter } from 'next/navigation'
 
 const quickLinks = [
   { name: 'Services', href: '/services' },
@@ -19,13 +20,19 @@ const services = [
 ]
 
 export default function Footer() {
+  const router = useRouter()
+
+  const handleNavigation = (href: string) => {
+    router.push(href)
+  }
+
   return (
     <footer className="bg-[#0F172A] text-gray-400">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
           {/* Logo and Social Links */}
           <div>
-            <Link href="/">
+            <Link href="/" onClick={() => handleNavigation('/')}>
               <Image
                 src="/images/logo/logo.png"
                 alt="Way of Glory Media, Inc."
@@ -56,10 +63,12 @@ export default function Footer() {
             <ul className="space-y-4">
               {quickLinks.map((link) => (
                 <li key={link.name}>
-                  <Link href={link.href} 
-                        className="hover:text-white transition-colors">
+                  <button
+                    onClick={() => handleNavigation(link.href)}
+                    className="text-gray-400 hover:text-white transition-colors cursor-pointer"
+                  >
                     {link.name}
-                  </Link>
+                  </button>
                 </li>
               ))}
             </ul>
@@ -71,10 +80,12 @@ export default function Footer() {
             <ul className="space-y-4">
               {services.map((service) => (
                 <li key={service.name}>
-                  <Link href={service.href}
-                        className="hover:text-white transition-colors">
+                  <button
+                    onClick={() => handleNavigation(service.href)}
+                    className="text-gray-400 hover:text-white transition-colors cursor-pointer"
+                  >
                     {service.name}
-                  </Link>
+                  </button>
                 </li>
               ))}
             </ul>
