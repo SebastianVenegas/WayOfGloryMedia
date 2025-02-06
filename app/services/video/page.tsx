@@ -129,106 +129,41 @@ export default function VideoServicesPage(): ReactElement {
         </div>
 
         <div className="container relative mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            {/* Left Content */}
-            <div>
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
+          <div className="max-w-4xl mx-auto text-center">
+            {/* Badge */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full mb-8">
+                <Film className="w-4 h-4 text-[#40B5E5]" />
+                <span className="text-white/80 text-sm">Professional Video Production</span>
+              </div>
+
+              <h1 className="text-5xl md:text-7xl font-bold text-white mb-8 leading-tight">
+                Bring Your
+                <span className="block text-[#40B5E5]">Vision to Life</span>
+              </h1>
+
+              <p className="text-xl text-white/80 mb-12">
+                Professional video production and live streaming solutions for churches. 
+                Create engaging content that connects with your congregation.
+              </p>
+
+              <button
+                onClick={() => document.getElementById('quote-section')?.scrollIntoView({ behavior: 'smooth' })}
+                className="group relative overflow-hidden px-8 py-4 bg-[#40B5E5] rounded-xl 
+                         text-white font-medium inline-flex items-center justify-center shadow-lg shadow-[#40B5E5]/20
+                         hover:bg-[#40B5E5]/90 transition-all duration-300"
               >
-                <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full mb-8">
-                  <Film className="w-4 h-4 text-[#40B5E5]" />
-                  <span className="text-white/80 text-sm">Professional Video Production</span>
-                </div>
-
-                <h1 className="text-5xl md:text-7xl font-bold text-white mb-8 leading-tight">
-                  Bring Your
-                  <span className="block text-[#40B5E5]">Vision to Life</span>
-                </h1>
-
-                <p className="text-xl text-white/80 mb-12 max-w-xl">
-                  Professional video production and live streaming solutions for churches. 
-                  Create engaging content that connects with your congregation.
-                </p>
-
-                <button
-                  onClick={() => document.getElementById('quote-section')?.scrollIntoView({ behavior: 'smooth' })}
-                  className="group relative overflow-hidden px-8 py-4 bg-[#40B5E5] rounded-xl 
-                           text-white font-medium inline-flex items-center justify-center shadow-lg shadow-[#40B5E5]/20
-                           hover:bg-[#40B5E5]/90 transition-all duration-300"
-                >
-                  <div className="absolute inset-0 bg-white/20 translate-y-12 group-hover:translate-y-0 transition-transform duration-300" />
-                  <span className="relative flex items-center">
-                    Start Your Project
-                    <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                  </span>
-                </button>
-              </motion.div>
-            </div>
-
-            {/* Right Content - Service Tabs */}
-            <div className="relative">
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.4 }}
-                className="bg-white/95 backdrop-blur-md rounded-2xl p-8 shadow-xl border border-gray-100"
-              >
-                {/* Tab Navigation */}
-                <div className="flex gap-4 mb-8">
-                  {[
-                    { id: 'live', label: 'Live Streaming', icon: Video },
-                    { id: 'production', label: 'Video Production', icon: Film },
-                    { id: 'equipment', label: 'Equipment', icon: Camera }
-                  ].map((tab) => (
-                    <button
-                      key={tab.id}
-                      onClick={() => setActiveTab(tab.id)}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${
-                        activeTab === tab.id
-                          ? 'bg-[#40B5E5] text-white shadow-md'
-                          : 'text-gray-600 hover:bg-[#40B5E5]/10'
-                      }`}
-                    >
-                      <tab.icon className="w-4 h-4" />
-                      <span className="hidden sm:inline">{tab.label}</span>
-                    </button>
-                  ))}
-                </div>
-
-                {/* Tab Content */}
-                <div className="space-y-6">
-                  {services.map((service) => (
-                    <div
-                      key={service.id}
-                      className={`transition-all duration-300 ${
-                        (activeTab === 'live' && service.id === '201') ||
-                        (activeTab === 'production' && service.id === '202') ||
-                        (activeTab === 'equipment' && service.id === '203')
-                          ? 'opacity-100 translate-x-0'
-                          : 'opacity-0 translate-x-4 hidden'
-                      }`}
-                    >
-                      <h3 className="text-2xl font-bold text-gray-900 mb-4">{service.title}</h3>
-                      <p className="text-gray-600 mb-6">{service.description}</p>
-                      
-                      <div className="grid sm:grid-cols-2 gap-4">
-                        {service.features.slice(0, 4).map((feature, index) => (
-                          <div
-                            key={index}
-                            className="flex items-start gap-3 bg-[#40B5E5]/5 rounded-xl p-4 hover:bg-[#40B5E5]/10 transition-colors"
-                          >
-                            <div className="w-1.5 h-1.5 rounded-full bg-[#40B5E5] mt-2" />
-                            <span className="text-sm text-gray-600">{feature}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </motion.div>
-            </div>
+                <div className="absolute inset-0 bg-white/20 translate-y-12 group-hover:translate-y-0 transition-transform duration-300" />
+                <span className="relative flex items-center">
+                  Start Your Project
+                  <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </span>
+              </button>
+            </motion.div>
           </div>
         </div>
       </section>
