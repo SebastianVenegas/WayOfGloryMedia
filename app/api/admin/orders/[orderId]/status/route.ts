@@ -7,13 +7,13 @@ type OrderStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'delaye
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { orderId: string } }
+  context: { params: { orderId: string } }
 ) {
   try {
     // Parse request body
     const body = await request.json()
     const { status } = body as { status: OrderStatus }
-    const orderId = parseInt(params.orderId)
+    const orderId = parseInt(context.params.orderId)
 
     // Validate orderId
     if (isNaN(orderId)) {
