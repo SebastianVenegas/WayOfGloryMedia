@@ -1,7 +1,7 @@
 'use client'
 
 import Image from 'next/image'
-import { Headphones, Video, Settings, ChevronRight, Speaker, Globe, Smartphone, ArrowRight } from 'lucide-react'
+import { Headphones, Video, Settings, ChevronRight, Speaker, Globe, Smartphone, ArrowRight, DollarSign } from 'lucide-react'
 import ScrollAnimation from './ui/scroll-animation'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -33,6 +33,19 @@ const services = [
     ],
     image: "https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?q=80&w=2340&auto=format&fit=crop",
     href: "/services/digital#app-development"
+  },
+  {
+    title: "Financial Solutions",
+    description: "Streamline your church's donations and financial management with secure, integrated solutions.",
+    icon: DollarSign,
+    features: [
+      "Online donation platform",
+      "Recurring giving options",
+      "Financial reporting",
+      "Multi-payment methods"
+    ],
+    image: "https://images.unsplash.com/photo-1563013544-824ae1b704d3?q=80&w=2340&auto=format&fit=crop",
+    href: "/services/digital#financial-solutions"
   },
   {
     title: "Audio System Design",
@@ -103,131 +116,66 @@ export default function ServicesOverview() {
           </div>
         </ScrollAnimation>
 
-        {/* Services Grid - Special layout for 5 items */}
+        {/* Services Grid - 3x2 layout */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
-          {/* First Row - 3 items */}
-          <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {services.slice(0, 3).map((service, index) => (
-              <ScrollAnimation 
-                key={service.title}
-                type="fade-up"
-                delay={0.1 * index}
+          {services.map((service, index) => (
+            <ScrollAnimation 
+              key={service.title}
+              type="fade-up"
+              delay={0.1 * index}
+            >
+              <motion.div
+                whileHover={{ y: -4 }}
+                className="group relative bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl 
+                          transition-all duration-300 h-full border border-gray-100"
               >
-                <motion.div
-                  whileHover={{ y: -4 }}
-                  className="group relative bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl 
-                            transition-all duration-300 h-full border border-gray-100"
-                >
-                  {/* Image Container */}
-                  <div className="relative h-48 overflow-hidden">
-                    <Image
-                      src={service.image}
-                      alt={service.title}
-                      fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-500"
-                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                    />
-                    <div className="absolute inset-0 bg-gray-900/60 group-hover:bg-gray-900/50 transition-colors duration-300" />
-                    
-                    {/* Icon Badge */}
-                    <div className="absolute top-4 left-4">
-                      <div className="p-2 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20">
-                        <service.icon className="w-6 h-6 text-white" />
-                      </div>
+                {/* Image Container */}
+                <div className="relative h-48 overflow-hidden">
+                  <Image
+                    src={service.image}
+                    alt={service.title}
+                    fill
+                    className="object-cover group-hover:scale-105 transition-transform duration-500"
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                  />
+                  <div className="absolute inset-0 bg-gray-900/60 group-hover:bg-gray-900/50 transition-colors duration-300" />
+                  
+                  {/* Icon Badge */}
+                  <div className="absolute top-4 left-4">
+                    <div className="p-2 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20">
+                      <service.icon className="w-6 h-6 text-white" />
                     </div>
                   </div>
+                </div>
 
-                  {/* Content */}
-                  <div className="p-6">
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">{service.title}</h3>
-                    <p className="text-gray-600 mb-6">{service.description}</p>
-                    
-                    {/* Features */}
-                    <ul className="space-y-3 mb-6">
-                      {service.features.map((feature) => (
-                        <li key={feature} className="flex items-center space-x-2">
-                          <div className="w-1 h-1 rounded-full bg-[#40B5E5]" />
-                          <span className="text-sm text-gray-600">{feature}</span>
-                        </li>
-                      ))}
-                    </ul>
+                {/* Content */}
+                <div className="p-6">
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">{service.title}</h3>
+                  <p className="text-gray-600 mb-6">{service.description}</p>
+                  
+                  {/* Features */}
+                  <ul className="space-y-3 mb-6">
+                    {service.features.map((feature) => (
+                      <li key={feature} className="flex items-center space-x-2">
+                        <div className="w-1 h-1 rounded-full bg-[#40B5E5]" />
+                        <span className="text-sm text-gray-600">{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
 
-                    {/* Learn More Link */}
-                    <Link 
-                      href={service.href}
-                      className="inline-flex items-center text-[#40B5E5] font-medium hover:text-[#7DD3F7] 
-                               transition-colors group/link"
-                    >
-                      Learn More
-                      <ChevronRight className="w-4 h-4 ml-1 group-hover/link:translate-x-1 transition-transform" />
-                    </Link>
-                  </div>
-                </motion.div>
-              </ScrollAnimation>
-            ))}
-          </div>
-
-          {/* Second Row - 2 items */}
-          <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-8 md:max-w-3xl lg:mx-auto">
-            {services.slice(3).map((service, index) => (
-              <ScrollAnimation 
-                key={service.title}
-                type="fade-up"
-                delay={0.1 * (index + 3)}
-              >
-                <motion.div
-                  whileHover={{ y: -4 }}
-                  className="group relative bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl 
-                            transition-all duration-300 h-full border border-gray-100"
-                >
-                  {/* Image Container */}
-                  <div className="relative h-48 overflow-hidden">
-                    <Image
-                      src={service.image}
-                      alt={service.title}
-                      fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-500"
-                      sizes="(max-width: 768px) 100vw, 50vw"
-                    />
-                    <div className="absolute inset-0 bg-gray-900/60 group-hover:bg-gray-900/50 transition-colors duration-300" />
-                    
-                    {/* Icon Badge */}
-                    <div className="absolute top-4 left-4">
-                      <div className="p-2 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20">
-                        <service.icon className="w-6 h-6 text-white" />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Content */}
-                  <div className="p-6">
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">{service.title}</h3>
-                    <p className="text-gray-600 mb-6">{service.description}</p>
-                    
-                    {/* Features */}
-                    <ul className="space-y-3 mb-6">
-                      {service.features.map((feature) => (
-                        <li key={feature} className="flex items-center space-x-2">
-                          <div className="w-1 h-1 rounded-full bg-[#40B5E5]" />
-                          <span className="text-sm text-gray-600">{feature}</span>
-                        </li>
-                      ))}
-                    </ul>
-
-                    {/* Learn More Link */}
-                    <Link 
-                      href={service.href}
-                      className="inline-flex items-center text-[#40B5E5] font-medium hover:text-[#7DD3F7] 
-                               transition-colors group/link"
-                    >
-                      Learn More
-                      <ChevronRight className="w-4 h-4 ml-1 group-hover/link:translate-x-1 transition-transform" />
-                    </Link>
-                  </div>
-                </motion.div>
-              </ScrollAnimation>
-            ))}
-          </div>
+                  {/* Learn More Link */}
+                  <Link 
+                    href={service.href}
+                    className="inline-flex items-center text-[#40B5E5] font-medium hover:text-[#7DD3F7] 
+                             transition-colors group/link"
+                  >
+                    Learn More
+                    <ChevronRight className="w-4 h-4 ml-1 group-hover/link:translate-x-1 transition-transform" />
+                  </Link>
+                </div>
+              </motion.div>
+            </ScrollAnimation>
+          ))}
         </div>
 
         {/* CTA Section */}
