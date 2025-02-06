@@ -5,14 +5,9 @@ import { sql } from '@vercel/postgres'
 // Define valid status types
 type OrderStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'delayed'
 
-type RouteSegmentProps = {
-  params: { orderId: string }
-  searchParams: { [key: string]: string | string[] | undefined }
-}
-
 export async function PATCH(
   request: NextRequest,
-  { params }: RouteSegmentProps
+  { params }: { params: { orderId: string } }
 ) {
   try {
     // Parse request body
@@ -29,7 +24,7 @@ export async function PATCH(
     }
 
     // Validate status
-    const validStatuses = ['pending', 'confirmed', 'completed', 'cancelled', 'delayed']
+    const validStatuses: OrderStatus[] = ['pending', 'confirmed', 'completed', 'cancelled', 'delayed']
     if (!validStatuses.includes(status)) {
       return NextResponse.json(
         { error: 'Invalid status value. Must be one of: ' + validStatuses.join(', ') },
