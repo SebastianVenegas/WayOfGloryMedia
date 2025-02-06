@@ -1,20 +1,14 @@
-import { NextRequest } from 'next/server'
+import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
 import { sql } from '@vercel/postgres'
 
 // Define valid status types
 type OrderStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'delayed'
 
-type RouteSegmentProps = {
-  params: {
-    orderId: string
-  }
-}
-
 export async function PATCH(
   req: NextRequest,
-  { params }: RouteSegmentProps
-) {
+  { params }: { params: { orderId: string } }
+): Promise<NextResponse> {
   try {
     // Parse request body
     const body = await req.json()
