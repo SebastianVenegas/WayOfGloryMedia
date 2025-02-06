@@ -46,7 +46,7 @@ export default function Header() {
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 z-40 bg-white/80 backdrop-blur-md border-b border-gray-200">
+      <header className="fixed top-0 left-0 right-0 z-40 bg-[#0F172A] border-b border-gray-800">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           {/* Mobile Header - Only Logo and Hamburger */}
           <div className="flex md:hidden items-center justify-between h-24">
@@ -55,21 +55,21 @@ export default function Header() {
                 src="/images/logo/logo.png"
                 alt="WayofGlory Logo"
                 fill
-                className="object-contain"
+                className="object-contain brightness-0 invert"
                 priority
               />
             </Link>
             <button
               onClick={toggleMenu}
-              className="w-12 h-12 flex items-center justify-center rounded-xl bg-gray-100 hover:bg-gray-200 
+              className="w-12 h-12 flex items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 
                        transition-all duration-300 hover:scale-105 active:scale-95"
               aria-expanded={isOpen}
               aria-label="Toggle menu"
             >
               {isOpen ? (
-                <X className="h-6 w-6 text-gray-700" />
+                <X className="h-6 w-6 text-white" />
               ) : (
-                <Menu className="h-6 w-6 text-gray-700" />
+                <Menu className="h-6 w-6 text-white" />
               )}
             </button>
           </div>
@@ -81,7 +81,7 @@ export default function Header() {
                 src="/images/logo/logo.png"
                 alt="WayofGlory Logo"
                 fill
-                className="object-contain"
+                className="object-contain brightness-0 invert"
                 priority
               />
             </Link>
@@ -90,15 +90,15 @@ export default function Header() {
                 <Link
                   key={item.name}
                   href={item.href}
-                  className="text-gray-600 hover:text-[#1E3A8A] transition-colors duration-300"
+                  className="text-gray-300 hover:text-white transition-colors duration-300"
                 >
                   {item.name}
                 </Link>
               ))}
               <button
                 onClick={scrollToQuote}
-                className="px-6 py-2.5 bg-[#0F172A] text-white rounded-xl font-medium 
-                         hover:bg-[#1E293B] transform hover:-translate-y-0.5 
+                className="px-6 py-2.5 bg-[#40B5E5] text-white rounded-xl font-medium 
+                         hover:bg-[#7DD3F7] transform hover:-translate-y-0.5 
                          transition-all duration-200"
               >
                 Book a Consultation
