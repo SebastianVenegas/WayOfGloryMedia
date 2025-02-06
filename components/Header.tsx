@@ -108,14 +108,9 @@ export default function Header() {
 
         {/* Mobile Menu Dropdown */}
         <div 
-          className={`md:hidden fixed inset-x-0 top-24 bottom-0 bg-white shadow-2xl transform transition-all duration-300 ease-in-out ${
+          className={`md:hidden fixed inset-x-0 top-24 bottom-0 bg-white/95 backdrop-blur-lg transform transition-transform duration-300 ease-in-out ${
             isOpen ? 'translate-x-0' : 'translate-x-full'
-          }`}
-          style={{ 
-            backdropFilter: 'blur(16px)',
-            WebkitBackdropFilter: 'blur(16px)',
-            backgroundColor: 'rgba(255, 255, 255, 0.98)'
-          }}
+          } shadow-2xl`}
         >
           <nav className="h-full px-6 py-8 overflow-y-auto">
             <div className="flex flex-col h-full">
