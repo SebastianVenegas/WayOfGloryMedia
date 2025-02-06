@@ -111,11 +111,11 @@ export default function VideoServicesPage(): ReactElement {
   const [activeTab, setActiveTab] = useState('live')
 
   return (
-    <main className="min-h-screen bg-gray-50">
+    <main className="min-h-screen bg-gray-50 overflow-x-hidden">
       <Header />
       
       {/* Hero Section */}
-      <section className="relative min-h-[90vh] flex items-center">
+      <section className="relative min-h-screen pt-24 md:pt-32 flex items-center overflow-hidden">
         {/* Background Video/Image */}
         <div className="absolute inset-0">
           <Image
@@ -151,11 +151,11 @@ export default function VideoServicesPage(): ReactElement {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
             >
-              <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight">
+              <h1 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight">
                 Bring Your Vision to Life with
                 <span className="text-[#40B5E5]"> Professional Video</span>
               </h1>
-              <p className="text-xl text-white/90 max-w-2xl mx-auto mb-12">
+              <p className="text-lg sm:text-xl text-white/90 max-w-2xl mx-auto mb-12">
                 Create engaging content that connects with your congregation through
                 professional video production and live streaming solutions.
                 Expert support every step of the way.
@@ -167,12 +167,13 @@ export default function VideoServicesPage(): ReactElement {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6 }}
+              className="mb-12 sm:mb-16"
             >
               <button 
                 onClick={() => document.getElementById('quote-section')?.scrollIntoView({ behavior: 'smooth' })}
-                className="inline-flex items-center px-10 py-5 bg-[#40B5E5] text-white rounded-xl 
+                className="inline-flex items-center px-8 sm:px-10 py-4 sm:py-5 bg-[#40B5E5] text-white rounded-xl 
                          font-medium hover:bg-[#7DD3F7] transition-all duration-300 
-                         transform hover:-translate-y-1 shadow-lg hover:shadow-xl"
+                         transform hover:-translate-y-1 shadow-lg hover:shadow-xl text-base sm:text-lg"
               >
                 Get Your Free Consultation
                 <ArrowRight className="ml-2 w-5 h-5" />
@@ -184,21 +185,21 @@ export default function VideoServicesPage(): ReactElement {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.8 }}
-              className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-16"
+              className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mt-8 sm:mt-16"
             >
               {highlights.map((highlight, index) => (
                 <div 
                   key={highlight.title}
-                  className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-6 
+                  className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-4 sm:p-6 
                            hover:bg-white/20 transition-all duration-300"
                 >
                   <div className="flex items-center justify-center gap-4">
-                    <div className="p-3 bg-[#40B5E5]/20 rounded-xl">
-                      <highlight.icon className="w-6 h-6 text-[#40B5E5]" />
+                    <div className="p-2 sm:p-3 bg-[#40B5E5]/20 rounded-xl">
+                      <highlight.icon className="w-5 h-5 sm:w-6 sm:h-6 text-[#40B5E5]" />
                     </div>
                     <div>
                       <h3 className="text-white font-semibold mb-1">{highlight.title}</h3>
-                      <p className="text-white/80 text-sm">{highlight.description}</p>
+                      <p className="text-white/80 text-xs sm:text-sm">{highlight.description}</p>
                     </div>
                   </div>
                 </div>
