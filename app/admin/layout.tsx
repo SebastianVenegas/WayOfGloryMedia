@@ -20,18 +20,30 @@ export const metadata: Metadata = {
   formatDetection: {
     telephone: false,
   },
-  icons: {
-    apple: [
-      { url: '/icons/admin-icon-192x192.png' },
-      { url: '/icons/admin-icon-152x152.png', sizes: '152x152' },
-      { url: '/icons/admin-icon-180x180.png', sizes: '180x180' },
-      { url: '/icons/admin-icon-167x167.png', sizes: '167x167' },
-    ],
-    icon: [
-      { url: '/icons/admin-icon-32x32.png', sizes: '32x32', type: 'image/png' },
-      { url: '/icons/admin-icon-16x16.png', sizes: '16x16', type: 'image/png' },
-    ]
-  }
+  icons: [
+    {
+      rel: 'icon',
+      type: 'image/x-icon',
+      url: '/favicon.ico'
+    },
+    {
+      rel: 'apple-touch-icon',
+      sizes: '180x180',
+      url: '/apple-touch-icon.png'
+    },
+    {
+      rel: 'icon',
+      type: 'image/png',
+      sizes: '32x32',
+      url: '/favicon-32x32.png'
+    },
+    {
+      rel: 'icon', 
+      type: 'image/png',
+      sizes: '16x16',
+      url: '/favicon-16x16.png'
+    }
+  ]
 }
 
 import AdminClient from './client'
