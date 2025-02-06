@@ -13,68 +13,68 @@ import { motion } from 'framer-motion'
 const services = [
   {
     id: "201",
-    title: "Live Service Broadcasting",
-    subtitle: "Professional Live Streaming",
-    description: "Expand your church's reach with professional live broadcasting. Our team ensures high-quality, reliable streaming for every service.",
+    title: "Event Coverage",
+    subtitle: "Comprehensive Event Services",
+    description: "Professional coverage for all your church events, from regular services to special occasions.",
     icon: Video,
     image: "/images/about/broadcasting.jpg",
     features: [
-      "Multi-Camera Live Production: Dynamic views and professional transitions",
-      "Platform Integration: Stream to Facebook, YouTube, and your website",
-      "Real-Time Quality Monitoring: Ensure consistent streaming quality",
-      "Professional Graphics: Lower thirds, announcements, and song lyrics",
-      "Audio Integration: Synchronized high-quality audio feed",
-      "Recording & Archive: Save broadcasts for future use"
+      "Church Services: Weekly worship and special services",
+      "Weddings: Professional wedding videography",
+      "Conferences: Multi-camera event coverage",
+      "Concerts: High-quality audio and video recording",
+      "Seminars: Detailed content capture",
+      "Special Announcements: Professional promotional content"
     ],
     benefits: [
-      "Wider ministry reach",
-      "Professional broadcast quality",
-      "Reliable streaming",
-      "Enhanced viewer experience"
+      "Professional quality",
+      "Multiple camera angles",
+      "High-quality audio",
+      "Quick turnaround"
     ]
   },
   {
     id: "202",
-    title: "Video Production",
-    subtitle: "Cinematic Content Creation",
-    description: "Create compelling video content for your church. From promotional videos to sermon series, we deliver cinematic quality that engages your audience.",
+    title: "Custom Video Productions",
+    subtitle: "Professional Content Creation",
+    description: "From sermon recordings to promotional content, we create high-quality video productions tailored to your ministry's needs.",
     icon: Film,
     image: "https://images.unsplash.com/photo-1584224549374-995cbac1ab62?q=80&w=2792&auto=format&fit=crop",
     features: [
-      "Professional Filming: High-end cameras and equipment",
-      "Creative Direction: Storytelling and concept development",
-      "Post-Production: Expert editing and color grading",
-      "Motion Graphics: Custom animations and effects",
-      "Sound Design: Professional audio mixing",
-      "Content Strategy: Maximize impact and engagement"
+      "Sermon recordings and series",
+      "Testimonial videos",
+      "Ministry promotional content",
+      "Educational and training videos",
+      "Custom content creation",
+      "Professional editing and post-production"
     ],
     benefits: [
-      "Cinematic quality",
-      "Engaging storytelling",
-      "Professional polish",
-      "Memorable content"
+      "Engaging content",
+      "Professional quality",
+      "Custom solutions",
+      "Expert guidance"
     ]
   },
   {
     id: "203",
-    title: "Equipment Setup",
-    subtitle: "Technical Infrastructure",
-    description: "Get the right equipment and setup for your video needs. We design and implement complete video systems tailored to your church.",
+    title: "Equipment & Expertise",
+    subtitle: "Technical Excellence",
+    description: "State-of-the-art technology and years of experience in live streaming and media production, including installation and management.",
     icon: Camera,
     image: "https://images.unsplash.com/photo-1471999796791-874f5de3b3f4?q=80&w=2880&auto=format&fit=crop",
     features: [
-      "System Design: Custom video production setup",
-      "Camera Selection: Professional camera systems",
-      "Switching Equipment: Multi-camera production capability",
-      "Streaming Hardware: Reliable broadcast equipment",
-      "Control Room Setup: Professional monitoring station",
-      "Infrastructure Planning: Cables, mounts, and accessories"
+      "Professional cameras and video switchers",
+      "High-quality microphones and audio mixers",
+      "Lighting equipment for optimal video quality",
+      "Streaming encoders and software",
+      "On-site technical support",
+      "Complete system installation"
     ],
     benefits: [
-      "Professional setup",
-      "Future-proof system",
-      "Reliable performance",
-      "Easy operation"
+      "Latest technology",
+      "Expert support",
+      "Complete solutions",
+      "Reliable performance"
     ]
   }
 ]
@@ -97,13 +97,13 @@ const heroImages = [
 const highlights = [
   {
     icon: Video,
-    title: "Professional Video",
-    description: "Cinematic quality production"
+    title: "All Events Covered",
+    description: "From services to special events"
   },
   {
     icon: MonitorPlay,
-    title: "Live Streaming",
-    description: "Reliable broadcast solutions"
+    title: "Professional Equipment",
+    description: "State-of-the-art technology"
   }
 ]
 
@@ -152,13 +152,13 @@ export default function VideoServicesPage(): ReactElement {
               transition={{ delay: 0.4 }}
             >
               <h1 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight">
-                Bring Your Vision to Life with
-                <span className="text-[#40B5E5]"> Professional Video</span>
+                We Cover All Your
+                <span className="text-[#40B5E5]"> Events</span>
               </h1>
               <p className="text-lg sm:text-xl text-white/90 max-w-2xl mx-auto mb-12">
-                Create engaging content that connects with your congregation through
-                professional video production and live streaming solutions.
-                Expert support every step of the way.
+                From sermon recordings to promotional content, our team creates high-quality video productions 
+                tailored to your ministry's needs. We work closely with pastors and church leaders to ensure 
+                your message is conveyed effectively and engagingly.
               </p>
             </motion.div>
 
@@ -175,7 +175,7 @@ export default function VideoServicesPage(): ReactElement {
                          font-medium hover:bg-[#7DD3F7] transition-all duration-300 
                          transform hover:-translate-y-1 shadow-lg hover:shadow-xl text-base sm:text-lg"
               >
-                Get Your Free Consultation
+                Ready to Amplify Your Ministry's Reach?
                 <ArrowRight className="ml-2 w-5 h-5" />
               </button>
             </motion.div>
