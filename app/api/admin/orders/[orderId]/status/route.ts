@@ -4,21 +4,15 @@ import { sql } from '@vercel/postgres'
 // Define valid status types
 type OrderStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'delayed'
 
-type Props = {
-  params: {
-    orderId: string
-  }
-}
-
 export async function PATCH(
-  request: NextRequest,
-  props: Props
-): Promise<NextResponse> {
+  req: Request,
+  { params }: { params: { orderId: string } }
+) {
   try {
     // Parse request body
-    const body = await request.json()
+    const body = await req.json()
     const { status } = body as { status: OrderStatus }
-    const orderId = parseInt(props.params.orderId)
+    const orderId = parseInt(params.orderId)
 
     // Validate orderId
     if (isNaN(orderId)) {
