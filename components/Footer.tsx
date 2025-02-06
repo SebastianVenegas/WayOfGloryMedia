@@ -38,7 +38,7 @@ export default function Footer() {
                  className="text-gray-400 hover:text-white transition-colors">
                 <Youtube className="w-5 h-5" />
               </a>
-              <a href="https://instagram.com" target="_blank" rel="noopener noreferrer"
+              <a href="https://instagram.com/wayofglorymedia" target="_blank" rel="noopener noreferrer"
                  className="text-gray-400 hover:text-white transition-colors">
                 <Instagram className="w-5 h-5" />
               </a>
