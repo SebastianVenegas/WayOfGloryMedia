@@ -130,39 +130,76 @@ export default function VideoServicesPage(): ReactElement {
 
         <div className="container relative mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-4xl mx-auto text-center">
-            {/* Badge */}
+            {/* Trust Badge */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
+              className="inline-flex items-center rounded-full border border-[#40B5E5]/20 bg-[#40B5E5]/10 
+                       backdrop-blur-md px-4 py-2 text-sm text-white mb-8"
             >
-              <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full mb-8">
-                <Film className="w-4 h-4 text-[#40B5E5]" />
-                <span className="text-white/80 text-sm">Professional Video Production</span>
-              </div>
+              <Star className="w-4 h-4 text-[#40B5E5] mr-2" />
+              <span>Professional Video Production & Live Streaming</span>
+            </motion.div>
 
-              <h1 className="text-5xl md:text-7xl font-bold text-white mb-8 leading-tight">
-                Bring Your
-                <span className="block text-[#40B5E5]">Vision to Life</span>
+            {/* Main Content */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+            >
+              <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight">
+                Bring Your Vision to Life with
+                <span className="text-[#40B5E5]"> Professional Video</span>
               </h1>
-
-              <p className="text-xl text-white/80 mb-12">
-                Professional video production and live streaming solutions for churches. 
-                Create engaging content that connects with your congregation.
+              <p className="text-xl text-white/90 max-w-2xl mx-auto mb-12">
+                Create engaging content that connects with your congregation through
+                professional video production and live streaming solutions.
+                Expert support every step of the way.
               </p>
+            </motion.div>
 
-              <button
+            {/* CTA Button */}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6 }}
+            >
+              <button 
                 onClick={() => document.getElementById('quote-section')?.scrollIntoView({ behavior: 'smooth' })}
-                className="group relative overflow-hidden px-8 py-4 bg-[#40B5E5] rounded-xl 
-                         text-white font-medium inline-flex items-center justify-center shadow-lg shadow-[#40B5E5]/20
-                         hover:bg-[#40B5E5]/90 transition-all duration-300"
+                className="inline-flex items-center px-10 py-5 bg-[#40B5E5] text-white rounded-xl 
+                         font-medium hover:bg-[#7DD3F7] transition-all duration-300 
+                         transform hover:-translate-y-1 shadow-lg hover:shadow-xl"
               >
-                <div className="absolute inset-0 bg-white/20 translate-y-12 group-hover:translate-y-0 transition-transform duration-300" />
-                <span className="relative flex items-center">
-                  Start Your Project
-                  <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                </span>
+                Get Your Free Consultation
+                <ArrowRight className="ml-2 w-5 h-5" />
               </button>
+            </motion.div>
+
+            {/* Service Highlights */}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.8 }}
+              className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-16"
+            >
+              {highlights.map((highlight, index) => (
+                <div 
+                  key={highlight.title}
+                  className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-6 
+                           hover:bg-white/20 transition-all duration-300"
+                >
+                  <div className="flex items-center justify-center gap-4">
+                    <div className="p-3 bg-[#40B5E5]/20 rounded-xl">
+                      <highlight.icon className="w-6 h-6 text-[#40B5E5]" />
+                    </div>
+                    <div>
+                      <h3 className="text-white font-semibold mb-1">{highlight.title}</h3>
+                      <p className="text-white/80 text-sm">{highlight.description}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </motion.div>
           </div>
         </div>
