@@ -44,7 +44,7 @@ export default function Header() {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         {/* Mobile Header - Only Logo and Hamburger */}
         <div className="flex md:hidden items-center justify-between h-16">
-          <Link href="/" className="relative w-32 h-8">
+          <Link href="/" className="relative w-44 h-10">
             <Image
               src="/logo/logo.png"
               alt="WayofGlory Logo"
@@ -68,7 +68,7 @@ export default function Header() {
 
         {/* Desktop Header */}
         <div className="hidden md:flex items-center justify-between h-16">
-          <Link href="/" className="relative w-40 h-10">
+          <Link href="/" className="relative w-56 h-12">
             <Image
               src="/logo/logo.png"
               alt="WayofGlory Logo"
