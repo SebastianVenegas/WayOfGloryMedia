@@ -28,7 +28,7 @@ export default async function RootLayout({
   const isAdmin = headersList.has('x-is-admin') && headersList.get('x-is-admin') === '1'
 
   return (
-    <html lang="en" className="light scroll-smooth">
+    <html lang="en" className="light scroll-smooth overscroll-none">
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
@@ -45,6 +45,17 @@ export default async function RootLayout({
           href="https://fonts.gstatic.com" 
           crossOrigin="anonymous" 
         />
+        <style>
+          {`
+            html {
+              overscroll-behavior: none;
+            }
+            body {
+              overscroll-behavior-y: none;
+              -webkit-overflow-scrolling: touch;
+            }
+          `}
+        </style>
       </head>
       <body className={`${inter.className} antialiased overflow-x-hidden w-full`} suppressHydrationWarning>
         <SidebarProvider>

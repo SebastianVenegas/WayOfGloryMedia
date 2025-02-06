@@ -3,11 +3,13 @@
 import { type ReactElement } from 'react'
 import Header from '../../components/Header'
 import Footer from '../../components/Footer'
-import { Headphones, Video, Settings, Users, Wrench, Speaker, Mic, Music, MessageCircle } from 'lucide-react'
+import { Headphones, Video, Settings, Users, Wrench, Speaker, Mic, Music, MessageCircle, Star, ArrowRight, Phone } from 'lucide-react'
 import Image from 'next/image'
 import ScrollAnimation from '../../components/ui/scroll-animation'
 import { useState, useEffect } from 'react'
 import QuoteSection from '../../components/QuoteSection'
+import Link from 'next/link'
+import { motion } from 'framer-motion'
 
 const services = [
   {
@@ -99,28 +101,6 @@ const services = [
     ]
   },
   {
-    id: "150",
-    title: "Live Service Broadcasting Support",
-    subtitle: "Professional Streaming",
-    description: "Expand Your Reach with Professional Live Broadcasting. Enhance your church's reach with our live broadcasting assistance.",
-    icon: Video,
-    image: '/images/about/broadcasting.jpg',
-    features: [
-      "Comprehensive Streaming Setup: Integrate video and audio for seamless broadcasts",
-      "Platform Configuration: Setup and optimize streaming on Facebook, YouTube, and your website",
-      "Real-Time Monitoring: Ensure smooth streaming with live oversight",
-      "Quality Control: Monitor and adjust broadcast quality",
-      "Multi-Platform Management: Coordinate streaming across platforms",
-      "Technical Support: Immediate assistance for streaming issues"
-    ],
-    benefits: [
-      "Professional broadcast quality",
-      "Wider ministry reach",
-      "Reliable streaming",
-      "Technical peace of mind"
-    ]
-  },
-  {
     id: "151",
     title: "Audio Equipment Training",
     subtitle: "Expert Team Development",
@@ -146,16 +126,29 @@ const services = [
 
 const heroImages = [
   {
-    src: "/images/hero1 2.jpg",
-    alt: "Professional church audio"
+    src: "https://images.unsplash.com/photo-1598653222000-6b7b7a552625?q=80&w=3270&auto=format&fit=crop",
+    alt: "Professional audio system"
   },
   {
-    src: "/images/hero2 2.jpg",
+    src: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=3270&auto=format&fit=crop",
     alt: "Live streaming setup"
   },
   {
-    src: "/images/hero3 2.jpg",
-    alt: "Audio equipment"
+    src: "https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?q=80&w=3270&auto=format&fit=crop",
+    alt: "Church service"
+  }
+]
+
+const highlights = [
+  {
+    icon: Headphones,
+    title: "Professional Audio",
+    description: "Crystal-clear sound for every service"
+  },
+  {
+    icon: Users,
+    title: "Expert Support",
+    description: "24/7 technical assistance"
   }
 ]
 
@@ -185,7 +178,7 @@ export default function ServicesPage(): ReactElement {
       <div className="fixed inset-0 bg-gradient-to-br from-neutral-50/30 via-transparent to-stone-50/20 pointer-events-none" />
       
       {/* Hero Section */}
-      <section className="relative min-h-[80vh] flex items-center">
+      <section className="relative min-h-[90vh] flex items-center">
         {/* Background Images */}
         {heroImages.map((image, index) => (
           <div
@@ -198,110 +191,164 @@ export default function ServicesPage(): ReactElement {
               src={image.src}
               alt={image.alt}
               fill
-              className="object-cover brightness-[0.45] backdrop-blur-[2px]"
+              className="object-cover brightness-[0.3]"
               priority={index === 0}
             />
-            <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px]"></div>
+            <div className="absolute inset-0 bg-gradient-to-br from-[#0F172A]/80 via-[#0F172A]/60 to-transparent" />
           </div>
         ))}
 
-        <div className="container relative mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <div className="container relative mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="max-w-4xl mx-auto text-center">
           {/* Trust Badge */}
-          <div className="inline-flex items-center rounded-full border border-white/20 bg-white/10 backdrop-blur-md px-6 py-2.5 text-sm text-white mb-8">
-            <span className="flex items-center">
-              Trusted by 50+ Churches in Southern California
-            </span>
-          </div>
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="inline-flex items-center rounded-full border border-[#40B5E5]/20 bg-[#40B5E5]/10 
+                       backdrop-blur-md px-4 py-2 text-sm text-white mb-8"
+            >
+              <Star className="w-4 h-4 text-[#40B5E5] mr-2" />
+              <span>Southern California's Premier Church Audio Solutions</span>
+            </motion.div>
 
           {/* Main Content */}
-          <h1 className="text-4xl md:text-5xl lg:text-7xl font-bold text-white mb-8 leading-tight">
-            Professional Church<br />Audio Solutions
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+            >
+              <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight">
+                Professional Church<br />
+                <span className="text-[#40B5E5]">Audio Solutions</span>
           </h1>
-          <p className="text-xl text-white/90 max-w-3xl mx-auto mb-10 backdrop-blur-sm">
+              <p className="text-xl text-white/90 max-w-2xl mx-auto mb-12">
             From sound system design to live streaming setup, we provide
             comprehensive solutions to enhance your worship experience.
-          </p>
+                Expert support every step of the way.
+              </p>
+            </motion.div>
 
-          <button 
-            onClick={scrollToQuote}
-            className="inline-flex items-center px-10 py-5 bg-white text-gray-900 rounded-xl font-medium 
-                     hover:bg-white/90 transition-all duration-300 shadow-lg hover:shadow-xl 
-                     transform hover:-translate-y-1"
-          >
-            Get Your Free Quote
+            {/* Single CTA Button */}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6 }}
+            >
+              <button 
+                onClick={scrollToQuote}
+                className="inline-flex items-center px-10 py-5 bg-[#40B5E5] text-white rounded-xl 
+                         font-medium hover:bg-[#7DD3F7] transition-all duration-300 
+                         transform hover:-translate-y-1 shadow-lg hover:shadow-xl"
+              >
+                Get Your Free Consultation
+                <ArrowRight className="ml-2 w-5 h-5" />
           </button>
+            </motion.div>
 
-          {/* Dot Navigation */}
-          <div className="flex justify-center gap-4 mt-16">
+            {/* Service Highlights */}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.8 }}
+              className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-16"
+            >
+              {highlights.map((highlight, index) => (
+                <div 
+                  key={highlight.title}
+                  className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-6 
+                           hover:bg-white/20 transition-all duration-300"
+                >
+                  <div className="flex items-center justify-center gap-4">
+                    <div className="p-3 bg-[#40B5E5]/20 rounded-xl">
+                      <highlight.icon className="w-6 h-6 text-[#40B5E5]" />
+                    </div>
+                    <div>
+                      <h3 className="text-white font-semibold mb-1">{highlight.title}</h3>
+                      <p className="text-white/80 text-sm">{highlight.description}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </motion.div>
+          </div>
+        </div>
+
+        {/* Image Navigation */}
+        <div className="absolute right-8 top-1/2 -translate-y-1/2 flex flex-col space-y-3">
             {heroImages.map((_, index) => (
               <button
                 key={index}
                 onClick={() => setCurrentImageIndex(index)}
-                className={`w-3 h-3 rounded-full transition-all duration-300 ${
-                  index === currentImageIndex ? 'bg-white scale-125' : 'bg-white/50 hover:bg-white/70'
-                }`}
+              className={`w-1.5 h-12 rounded-full transition-all duration-300 ${
+                index === currentImageIndex 
+                  ? 'bg-[#40B5E5]' 
+                  : 'bg-white/30 hover:bg-white/50'
+              }`}
+              aria-label={`Go to slide ${index + 1}`}
               />
             ))}
-          </div>
         </div>
       </section>
 
       {/* Consultation Card */}
-      <div className="relative z-10 -mt-32">
+      <div className="relative z-10 -mt-16">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <ScrollAnimation
             type="fade-up"
             className="scroll-mt-24"
             delay={0.2}
           >
-            <div className="max-w-lg mx-auto bg-white rounded-3xl shadow-2xl p-10 border border-blue-100/50 
-                          hover:shadow-2xl hover:scale-[1.02] transition-all duration-300">
-              <div className="flex items-start gap-6 mb-8">
-                <div className="p-3.5 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl shadow-md">
-                  <MessageCircle className="w-8 h-8 text-white" />
+            <div className="max-w-md mx-auto bg-white rounded-xl shadow-xl p-6 border border-[#40B5E5]/10
+                          hover:shadow-2xl hover:border-[#40B5E5]/20 transition-all duration-300">
+              {/* Header */}
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 bg-[#40B5E5] rounded-lg shadow-md">
+                  <MessageCircle className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-2xl font-bold text-gray-900 mb-2">Expert Consultation</h3>
-                  <p className="text-lg text-gray-600">Custom Audio & Streaming Assessment</p>
+                  <h3 className="text-xl font-bold text-gray-900">Expert Consultation</h3>
+                  <p className="text-sm text-gray-600">Custom Audio & Streaming Assessment</p>
                 </div>
               </div>
 
-              <p className="text-gray-700 mb-8 leading-relaxed">
+              {/* Price Box */}
+              <div className="bg-gradient-to-br from-[#40B5E5]/5 to-[#7DD3F7]/5 rounded-lg p-4 mb-6">
+                <div className="flex items-baseline gap-2 mb-1">
+                  <span className="text-3xl font-bold text-[#40B5E5]">$250</span>
+                  <span className="text-gray-500 text-sm">/consultation</span>
+                </div>
+                <p className="text-xs text-gray-600">Value credited towards your custom bundle</p>
+              </div>
+
+              {/* Description */}
+              <p className="text-sm text-gray-600 mb-6">
                 Get a personalized streaming and audio solution designed by our experts
                 to perfectly match your church's needs and budget.
               </p>
 
-              <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-xl p-8 mb-8 border border-blue-100/50">
-                <h4 className="text-xl font-semibold text-gray-900 mb-3">Professional Assessment</h4>
-                <div className="flex items-baseline gap-1 mb-3">
-                  <span className="text-4xl font-bold text-blue-600">$250</span>
-                  <span className="text-gray-500 font-medium">/consultation</span>
-                </div>
-                <p className="text-sm text-gray-600 font-medium">Value credited towards your custom bundle</p>
-              </div>
-
-              <div className="mb-8">
-                <ul className="space-y-4">
-                  <li className="flex items-center gap-4 text-gray-700">
-                    <div className="w-2 h-2 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full"></div>
-                    <span className="font-medium">Expert evaluation of your needs</span>
+              {/* Features List */}
+              <ul className="space-y-3 mb-6">
+                <li className="flex items-center gap-2 text-sm text-gray-700">
+                  <div className="w-1 h-1 rounded-full bg-[#40B5E5]"></div>
+                  <span>Expert evaluation of your needs</span>
                   </li>
-                  <li className="flex items-center gap-4 text-gray-700">
-                    <div className="w-2 h-2 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full"></div>
-                    <span className="font-medium">Custom streaming & audio bundle</span>
+                <li className="flex items-center gap-2 text-sm text-gray-700">
+                  <div className="w-1 h-1 rounded-full bg-[#40B5E5]"></div>
+                  <span>Custom streaming & audio bundle</span>
                   </li>
-                  <li className="flex items-center gap-4 text-gray-700">
-                    <div className="w-2 h-2 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full"></div>
-                    <span className="font-medium">Professional recommendations</span>
+                <li className="flex items-center gap-2 text-sm text-gray-700">
+                  <div className="w-1 h-1 rounded-full bg-[#40B5E5]"></div>
+                  <span>Professional recommendations</span>
                   </li>
                 </ul>
-              </div>
 
+              {/* CTA Button */}
               <button 
                 onClick={scrollToQuote}
-                className="w-full py-4 bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-xl 
-                         font-medium hover:from-blue-700 hover:to-blue-800 transition-all duration-300 
-                         shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+                className="w-full py-3 bg-[#40B5E5] text-white rounded-lg font-medium text-sm
+                         hover:bg-[#7DD3F7] transition-all duration-300 shadow-md 
+                         hover:shadow-lg transform hover:-translate-y-0.5"
               >
                 Schedule Your Expert Consultation
               </button>
@@ -310,8 +357,8 @@ export default function ServicesPage(): ReactElement {
         </div>
       </div>
 
-      {/* Add spacing after consultation card */}
-      <div className="h-32 bg-gradient-to-b from-neutral-50 to-white"></div>
+      {/* Spacing after consultation card */}
+      <div className="h-32"></div>
 
       {/* Services Introduction */}
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 mb-24">
@@ -373,7 +420,77 @@ export default function ServicesPage(): ReactElement {
       <section className="py-12 sm:py-24 bg-gradient-to-b from-white via-neutral-50/20 to-neutral-100">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
-            {services.map((service, index) => (
+            {/* First Three Cards */}
+            {services.slice(0, 3).map((service, index) => (
+              <ScrollAnimation 
+                key={service.id}
+                type="fade-up"
+                className="scroll-mt-24"
+                id={service.id}
+              >
+                <div className="bg-white rounded-2xl sm:rounded-3xl shadow-sm hover:shadow-lg transition-all duration-300 
+                              overflow-hidden border border-neutral-100 h-full flex flex-col 
+                              transform hover:-translate-y-1">
+                  {/* Service Image */}
+                  <div className="relative h-40 sm:h-48">
+                    <Image
+                      src={service.image}
+                      alt={service.title}
+                      fill
+                      className="object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
+                    <div className="absolute bottom-3 left-3 right-3">
+                      <div className="flex items-center space-x-2">
+                        <div className="p-1.5 sm:p-2 bg-white/10 backdrop-blur-sm rounded-lg">
+                          <service.icon className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
+                        </div>
+                        <span className="text-white/90 text-xs sm:text-sm font-medium">{service.subtitle}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Service Content */}
+                  <div className="p-4 sm:p-6 lg:p-8 flex-grow flex flex-col">
+                    <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2 sm:mb-3">{service.title}</h3>
+                    <p className="text-gray-600 text-sm mb-6 sm:mb-8">{service.description}</p>
+
+                    {/* Features */}
+                    <div className="space-y-6 sm:space-y-8">
+                      <div>
+                        <h4 className="text-xs sm:text-sm font-semibold text-gray-900 mb-3 sm:mb-4">Features & Capabilities</h4>
+                        <ul className="space-y-2">
+                          {service.features.map((feature, idx) => (
+                            <li key={idx} className="flex items-start text-xs sm:text-sm text-gray-600">
+                              <div className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-neutral-900 mt-1.5 mr-2"></div>
+                              <span>{feature}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      {/* Benefits */}
+                      <div>
+                        <h4 className="text-xs sm:text-sm font-semibold text-gray-900 mb-3 sm:mb-4">Key Benefits</h4>
+                        <ul className="space-y-2">
+                          {service.benefits.map((benefit, idx) => (
+                            <li key={idx} className="flex items-start text-xs sm:text-sm text-gray-600">
+                              <div className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-emerald-600 mt-1.5 mr-2"></div>
+                              <span>{benefit}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </ScrollAnimation>
+            ))}
+          </div>
+
+          {/* Last Two Cards - Centered */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 max-w-4xl mx-auto mt-8">
+            {services.slice(3).map((service, index) => (
               <ScrollAnimation 
                 key={service.id}
                 type="fade-up"
@@ -444,7 +561,7 @@ export default function ServicesPage(): ReactElement {
 
       {/* Quote Section */}
       <div id="quote-section">
-        <QuoteSection />
+      <QuoteSection />
       </div>
 
       <Footer />
