@@ -31,7 +31,7 @@ export default async function RootLayout({
     <html lang="en" className="light scroll-smooth">
       <head>
         <meta charSet="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#1E3A8A" />
         <link rel="icon" href="/favicon.ico" />
         
@@ -46,7 +46,7 @@ export default async function RootLayout({
           crossOrigin="anonymous" 
         />
       </head>
-      <body className={`${inter.className} antialiased overflow-x-hidden w-full`} suppressHydrationWarning>
+      <body className={`${inter.className} antialiased w-full`} suppressHydrationWarning>
         <SidebarProvider>
           <div className="flex flex-col min-h-screen w-full relative">
             {children}
