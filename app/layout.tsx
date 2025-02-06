@@ -27,6 +27,7 @@ export const metadata: Metadata = {
         sizes: '16x16'
       }
     ],
+    shortcut: '/favicon.png',
     apple: {
       url: '/favicon.png',
       type: 'image/png',
@@ -49,7 +50,9 @@ export default async function RootLayout({
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#1E3A8A" />
+        <link rel="shortcut icon" type="image/png" href="/favicon.png" />
         <link rel="icon" type="image/png" href="/favicon.png" />
+        <link rel="apple-touch-icon" type="image/png" href="/favicon.png" />
         
         {/* Preload critical assets */}
         <link 
