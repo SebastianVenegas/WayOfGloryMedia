@@ -87,7 +87,7 @@ export default function HeroSection() {
 
             {/* Heading with Enhanced Animation */}
             <div className="space-y-4">
-              <h1 className="font-plus-jakarta text-[3.5rem] md:text-[5.5rem] font-bold text-white leading-[1.1] tracking-tight">
+              <h1 className="text-[3.5rem] md:text-[5.5rem] font-bold text-white leading-[1.1] tracking-tight">
                 Transform Your
                 <br />
                 Worship Experience
@@ -104,7 +104,7 @@ export default function HeroSection() {
                         y: { type: "spring", stiffness: 300, damping: 30 },
                         opacity: { duration: 0.2 }
                       }}
-                      className="absolute whitespace-nowrap font-plus-jakarta"
+                      className="absolute whitespace-nowrap bg-gradient-to-r from-blue-400 via-blue-500 to-blue-600 text-transparent bg-clip-text"
                     >
                       {titles[currentTitleIndex]}
                     </motion.span>
@@ -114,7 +114,7 @@ export default function HeroSection() {
             </div>
 
             {/* Enhanced Subheading */}
-            <p className="font-plus-jakarta text-xl md:text-2xl text-white/90 max-w-2xl leading-relaxed">
+            <p className="text-xl md:text-2xl text-white/90 max-w-2xl leading-relaxed">
               Empowering Southern California churches with professional websites, apps, sound, and streaming solutions. 
               From modern digital platforms to immersive audio experiences, we help you connect with your congregation both online and in person.
             </p>
