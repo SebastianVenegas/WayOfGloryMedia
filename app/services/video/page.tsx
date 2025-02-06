@@ -122,10 +122,10 @@ export default function VideoServicesPage(): ReactElement {
             src="https://images.unsplash.com/photo-1637250096679-c10f2751def8?q=80&w=3540&auto=format&fit=crop"
             alt="Professional video production camera setup"
             fill
-            className="object-cover brightness-[0.3] scale-x-[-1]"
+            className="object-cover brightness-[0.6] scale-x-[-1]"
             priority
           />
-          <div className="absolute inset-0 bg-gradient-to-br from-[#0F172A]/80 via-[#0F172A]/60 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-l from-[#0F172A]/90 via-[#0F172A]/50 to-transparent" />
         </div>
 
         <div className="container relative mx-auto px-4 sm:px-6 lg:px-8">
