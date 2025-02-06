@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Facebook, Youtube, Instagram, Globe } from 'lucide-react'
+import { Facebook, Youtube, Instagram } from 'lucide-react'
 import Image from 'next/image'
 
 const quickLinks = [
@@ -20,34 +20,31 @@ const services = [
 
 export default function Footer() {
   return (
-    <footer className="bg-[#0F172A] text-white">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-8">
-        {/* Top Section */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
-          {/* Brand Section */}
+    <footer className="bg-[#0F172A] text-gray-400">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
+          {/* Logo and Social Links */}
           <div>
-            <Link href="/" className="block">
-              <div className="relative w-56 h-16">
-                <Image
-                  src="/images/logo/logo.png"
-                  alt="WayofGlory Logo"
-                  fill
-                  className="object-contain brightness-0 invert"
-                  priority
-                />
-              </div>
+            <Link href="/">
+              <Image
+                src="/images/logo/logo.png"
+                alt="Way of Glory Media, Inc."
+                width={200}
+                height={50}
+                className="brightness-0 invert"
+              />
             </Link>
-            <div className="mt-6 flex space-x-4">
-              <a href="https://facebook.com" target="_blank" rel="noopener noreferrer"
-                 className="text-gray-400 hover:text-white transition-colors">
+            <div className="flex gap-4 mt-6">
+              <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" 
+                 className="hover:text-white transition-colors">
                 <Facebook className="w-5 h-5" />
               </a>
               <a href="https://youtube.com" target="_blank" rel="noopener noreferrer"
-                 className="text-gray-400 hover:text-white transition-colors">
+                 className="hover:text-white transition-colors">
                 <Youtube className="w-5 h-5" />
               </a>
-              <a href="https://instagram.com/wayofglorymedia" target="_blank" rel="noopener noreferrer"
-                 className="text-gray-400 hover:text-white transition-colors">
+              <a href="https://instagram.com" target="_blank" rel="noopener noreferrer"
+                 className="hover:text-white transition-colors">
                 <Instagram className="w-5 h-5" />
               </a>
             </div>
@@ -55,12 +52,12 @@ export default function Footer() {
 
           {/* Quick Links */}
           <div>
-            <h3 className="text-blue-400 font-semibold mb-4">QUICK LINKS</h3>
-            <ul className="space-y-3">
+            <h3 className="text-[#40B5E5] font-semibold mb-6">QUICK LINKS</h3>
+            <ul className="space-y-4">
               {quickLinks.map((link) => (
                 <li key={link.name}>
                   <Link href={link.href} 
-                        className="text-gray-400 hover:text-white transition-colors">
+                        className="hover:text-white transition-colors">
                     {link.name}
                   </Link>
                 </li>
@@ -70,12 +67,12 @@ export default function Footer() {
 
           {/* Services */}
           <div>
-            <h3 className="text-blue-400 font-semibold mb-4">OUR SERVICES</h3>
-            <ul className="space-y-3">
+            <h3 className="text-[#40B5E5] font-semibold mb-6">OUR SERVICES</h3>
+            <ul className="space-y-4">
               {services.map((service) => (
                 <li key={service.name}>
                   <Link href={service.href}
-                        className="text-gray-400 hover:text-white transition-colors">
+                        className="hover:text-white transition-colors">
                     {service.name}
                   </Link>
                 </li>
@@ -85,8 +82,8 @@ export default function Footer() {
 
           {/* Contact Info */}
           <div>
-            <h3 className="text-blue-400 font-semibold mb-4">CONTACT US</h3>
-            <ul className="space-y-3 text-gray-400">
+            <h3 className="text-[#40B5E5] font-semibold mb-6">CONTACT US</h3>
+            <ul className="space-y-4">
               <li>
                 <a href="tel:+19514486409" className="hover:text-white transition-colors">
                   (951) 448-6409
@@ -102,9 +99,9 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* Bottom Section */}
-        <div className="mt-12 pt-8 border-t border-gray-800">
-          <p className="text-center text-gray-500">
+        {/* Copyright */}
+        <div className="mt-16 pt-8 border-t border-gray-800">
+          <p className="text-center text-sm">
             © {new Date().getFullYear()} WayofGlory. All rights reserved.
           </p>
         </div>
