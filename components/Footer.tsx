@@ -5,6 +5,7 @@ import Image from 'next/image'
 const quickLinks = [
   { name: 'Services', href: '/services' },
   { name: 'Digital', href: '/services/digital' },
+  { name: 'Video', href: '/services/video' },
   { name: 'Products', href: '/products' },
 ]
 
