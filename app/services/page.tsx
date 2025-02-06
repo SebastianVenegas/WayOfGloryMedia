@@ -292,58 +292,58 @@ export default function ServicesPage(): ReactElement {
       </section>
 
       {/* Consultation Card */}
-      <div className="relative z-10">
+      <div className="relative z-10 -mt-16">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <ScrollAnimation
             type="fade-up"
             className="scroll-mt-24"
             delay={0.2}
           >
-            <div className="max-w-2xl mx-auto bg-white rounded-[24px] shadow-xl p-10
-                          hover:shadow-2xl transition-all duration-300">
+            <div className="max-w-md mx-auto bg-white rounded-xl shadow-xl p-8 border border-[#40B5E5]/10
+                          hover:shadow-2xl hover:border-[#40B5E5]/20 transition-all duration-300">
               {/* Header */}
-              <div className="flex items-start gap-6 mb-10">
-                <div className="p-4 bg-[#40B5E5]/10 rounded-2xl">
-                  <MessageCircle className="w-8 h-8 text-[#40B5E5]" />
+              <div className="flex items-center gap-4 mb-8">
+                <div className="p-3 bg-[#40B5E5]/10 rounded-xl">
+                  <MessageCircle className="w-6 h-6 text-[#40B5E5]" />
                 </div>
                 <div>
-                  <h3 className="text-[32px] font-bold text-gray-900 mb-1">Expert Consultation</h3>
-                  <p className="text-xl text-gray-500">Custom Audio & Streaming Solutions</p>
+                  <h3 className="text-2xl font-bold text-gray-900">Expert Consultation</h3>
+                  <p className="text-gray-600">Custom Audio & Streaming Solutions</p>
                 </div>
               </div>
 
               {/* Description */}
-              <p className="text-xl text-gray-600 mb-12 leading-relaxed">
+              <p className="text-gray-600 mb-8">
                 Get a personalized streaming and audio solution designed by our experts
                 to perfectly match your church's needs and budget.
               </p>
 
               {/* Features List */}
-              <ul className="space-y-6 mb-12">
-                <li className="flex items-center gap-4">
-                  <div className="p-3 bg-[#40B5E5]/5 rounded-xl">
-                    <Users className="w-6 h-6 text-[#40B5E5]" />
+              <ul className="space-y-4 mb-8">
+                <li className="flex items-center gap-3">
+                  <div className="p-2 bg-[#40B5E5]/10 rounded-lg">
+                    <Users className="w-4 h-4 text-[#40B5E5]" />
                   </div>
-                  <span className="text-lg text-gray-700">Expert evaluation of your needs</span>
+                  <span className="text-gray-700">Expert evaluation of your needs</span>
                 </li>
-                <li className="flex items-center gap-4">
-                  <div className="p-3 bg-[#40B5E5]/5 rounded-xl">
-                    <Settings className="w-6 h-6 text-[#40B5E5]" />
+                <li className="flex items-center gap-3">
+                  <div className="p-2 bg-[#40B5E5]/10 rounded-lg">
+                    <Settings className="w-4 h-4 text-[#40B5E5]" />
                   </div>
-                  <span className="text-lg text-gray-700">Custom solution design</span>
+                  <span className="text-gray-700">Custom solution design</span>
                 </li>
-                <li className="flex items-center gap-4">
-                  <div className="p-3 bg-[#40B5E5]/5 rounded-xl">
-                    <Star className="w-6 h-6 text-[#40B5E5]" />
+                <li className="flex items-center gap-3">
+                  <div className="p-2 bg-[#40B5E5]/10 rounded-lg">
+                    <Star className="w-4 h-4 text-[#40B5E5]" />
                   </div>
-                  <span className="text-lg text-gray-700">Professional recommendations</span>
+                  <span className="text-gray-700">Professional recommendations</span>
                 </li>
               </ul>
 
               {/* CTA Button */}
               <button 
                 onClick={scrollToQuote}
-                className="w-full py-6 bg-[#0F172A] text-white text-xl rounded-2xl font-medium
+                className="w-full py-4 bg-[#0F172A] text-white rounded-xl font-medium text-lg
                          hover:bg-[#1E293B] transition-all duration-300 shadow-md 
                          hover:shadow-lg transform hover:-translate-y-0.5"
               >
@@ -355,7 +355,7 @@ export default function ServicesPage(): ReactElement {
       </div>
 
       {/* Spacing after consultation card */}
-      <div className="h-24"></div>
+      <div className="h-32"></div>
 
       {/* Services Introduction */}
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 mb-24">
