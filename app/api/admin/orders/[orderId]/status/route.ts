@@ -1,18 +1,25 @@
-import { NextRequest, NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
+import { NextResponse } from 'next/server'
 import { sql } from '@vercel/postgres'
 
 // Define valid status types
 type OrderStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'delayed'
 
+export interface RouteHandlerContext {
+  params: {
+    orderId: string
+  }
+}
+
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { orderId: string } }
-): Promise<NextResponse> {
+  context: RouteHandlerContext
+) {
   try {
     // Parse request body
     const body = await request.json()
     const { status } = body as { status: OrderStatus }
-    const orderId = parseInt(params.orderId)
+    const orderId = parseInt(context.params.orderId)
 
     // Validate orderId
     if (isNaN(orderId)) {
