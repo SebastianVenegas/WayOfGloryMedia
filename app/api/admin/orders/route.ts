@@ -16,9 +16,16 @@ export async function GET() {
                 'price_at_time', oi.price_at_time,
                 'cost_at_time', oi.cost_at_time,
                 'product', json_build_object(
+                  'id', p.id,
                   'title', p.title,
+                  'description', p.description,
                   'category', p.category,
-                  'is_service', p.is_service
+                  'is_service', p.is_service,
+                  'features', p.features,
+                  'technical_details', p.technical_details,
+                  'included_items', p.included_items,
+                  'warranty_info', p.warranty_info,
+                  'installation_available', p.installation_available
                 )
               )
             ELSE NULL END

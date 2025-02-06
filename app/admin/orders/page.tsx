@@ -32,6 +32,9 @@ import {
   Settings,
   Code,
   Sparkles,
+  ChevronRight,
+  Shield,
+  Calendar,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -56,6 +59,8 @@ import { toast } from 'sonner'
 import dynamic from 'next/dynamic'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import EmailComposer from '@/components/admin/EmailComposer'
+import { type DialogProps } from "@radix-ui/react-dialog"
+import { FC } from "react"
 
 const Editor = dynamic(() => import('@/components/ui/editor'), { ssr: false })
 
@@ -70,6 +75,12 @@ interface OrderItem {
     category?: string
     is_service?: boolean
     id?: number
+    description?: string
+    features?: string[]
+    technical_details?: Record<string, string>
+    included_items?: string[]
+    warranty_info?: string
+    installation_available?: boolean
   }
 }
 
@@ -100,7 +111,7 @@ interface Order {
   total_profit: number | string
   installation_price: number | string
   signature_url: string
-  status: 'pending' | 'confirmed' | 'completed' | 'cancelled'
+  status: 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'delayed'
   created_at: string
   order_items: OrderItem[]
 }
@@ -268,14 +279,16 @@ const getStatusVariant = (status: string) => {
       return 'default'
     case 'cancelled':
       return 'destructive'
+    case 'delayed':
+      return 'secondary'
     default:
       return 'default'
   }
 }
 
 // Update type definitions
-type OrderStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'all';
-type OrderStatusUpdate = 'pending' | 'confirmed' | 'completed' | 'cancelled';
+type OrderStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'delayed' | 'all';
+type OrderStatusUpdate = 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'delayed';
 type SortOrder = 'newest' | 'oldest' | 'highest' | 'lowest';
 
 // Add this before the component
@@ -506,6 +519,8 @@ export default function OrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [isStatusOpen, setIsStatusOpen] = useState(false)
   const [isEmailTemplatesOpen, setIsEmailTemplatesOpen] = useState(false)
+  const [selectedProduct, setSelectedProduct] = useState<OrderItem | null>(null)
+  const [isProductDetailsOpen, setIsProductDetailsOpen] = useState(false)
   const [sendingTemplateId, setSendingTemplateId] = useState<string | null>(null)
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null)
   const [previewHtml, setPreviewHtml] = useState('')
@@ -518,6 +533,7 @@ export default function OrdersPage() {
   const [isAiPromptOpen, setIsAiPromptOpen] = useState(false)
   const [shippingStatus, setShippingStatus] = useState('')
   const [isShippingPromptOpen, setIsShippingPromptOpen] = useState(false)
+  const [isFullScreen, setIsFullScreen] = useState(false)
 
   // Calculate revenue and profit totals
   const revenue = calculateTotalRevenue(orders);
@@ -642,7 +658,7 @@ export default function OrdersPage() {
     }
   }
 
-  const getStatusColor = (status: Order['status']) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending':
         return 'bg-yellow-100 text-yellow-800 border-yellow-200'
@@ -652,6 +668,8 @@ export default function OrdersPage() {
         return 'bg-green-100 text-green-800 border-green-200'
       case 'cancelled':
         return 'bg-red-100 text-red-800 border-red-200'
+      case 'delayed':
+        return 'bg-orange-100 text-orange-800 border-orange-200'
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200'
     }
@@ -704,25 +722,43 @@ export default function OrdersPage() {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
         },
         body: JSON.stringify({ status: newStatus }),
       });
 
-      if (response.ok) {
-        // Update the orders list
-        setOrders(orders.map(order => 
-          order.id === orderId 
-            ? { ...order, status: newStatus }
-            : order
-        ));
-
-        toast.success(`Order #${orderId} status has been updated to ${newStatus}`);
-      } else {
-        throw new Error('Failed to update order status');
+      let data;
+      const contentType = response.headers.get('content-type');
+      
+      try {
+        // Only try to parse as JSON if the content type is application/json
+        if (contentType?.includes('application/json')) {
+          data = await response.json();
+        } else {
+          const text = await response.text();
+          throw new Error(`Unexpected response format: ${text}`);
+        }
+      } catch (parseError) {
+        console.error('Error parsing response:', parseError);
+        throw new Error('Failed to parse server response');
       }
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update order status');
+      }
+
+      // Update the orders list
+      setOrders(orders.map(order => 
+        order.id === orderId 
+          ? { ...order, status: newStatus }
+          : order
+      ));
+
+      toast.success(data.message || `Order #${orderId} status has been updated to ${newStatus}`);
+      setIsStatusOpen(false);
     } catch (error) {
       console.error('Error updating order status:', error);
-      toast.error("Failed to update order status. Please try again.");
+      toast.error(error instanceof Error ? error.message : "Failed to update order status");
     }
   };
 
@@ -1109,6 +1145,12 @@ export default function OrdersPage() {
     return order.order_items.every(item => isServiceItem(item));
   };
 
+  // Add this before the return statement
+  const handleProductClick = (item: OrderItem) => {
+    setSelectedProduct(item);
+    setIsProductDetailsOpen(true);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -1118,6 +1160,189 @@ export default function OrdersPage() {
   }
 
   const stats = getOrderStatistics()
+
+  // Fix the selectedProduct type safety issues
+  const ProductDetails: FC<{ product: OrderItem | null, isFullScreen?: boolean }> = ({ product, isFullScreen }) => {
+    if (!product?.product) return null;
+    
+    return (
+      <div className={`divide-y ${isFullScreen ? 'h-full' : ''}`}>
+        {/* Product Header Section */}
+        <div className={`p-6 bg-gradient-to-br from-blue-50 via-white to-purple-50 ${
+          isFullScreen ? 'sticky top-0 z-10 border-b' : ''
+        }`}>
+          <div className="flex items-start justify-between gap-8">
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-3">
+                <h2 className="text-2xl font-semibold text-gray-900">{product.product.title}</h2>
+                {product.product.is_service ? (
+                  <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200">Service</Badge>
+                ) : (
+                  <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-200">{product.product.category}</Badge>
+                )}
+              </div>
+              <p className="text-gray-600 text-base leading-relaxed">{product.product.description}</p>
+            </div>
+            <div className="text-right">
+              <div className="text-3xl font-bold text-gray-900">
+                ${Number(product.price_at_time).toFixed(2)}
+              </div>
+              <div className="flex items-center justify-end gap-2 mt-2">
+                <Badge variant="outline" className="text-base bg-white">
+                  Quantity: {product.quantity}
+                </Badge>
+                <Badge variant="outline" className="text-base bg-white">
+                  Total: ${(Number(product.price_at_time) * product.quantity).toFixed(2)}
+                </Badge>
+              </div>
+              {!product.product.is_service && (
+                <div className="text-sm text-gray-500 mt-2">
+                  + ${(Number(product.price_at_time) * product.quantity * 0.0775).toFixed(2)} tax
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Info Section */}
+        <div className="p-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 shadow-sm">
+              <div className="flex items-center gap-2 mb-2">
+                <Package className="h-5 w-5 text-blue-600" />
+                <div className="text-blue-700 font-medium">Type</div>
+              </div>
+              <div className="text-gray-900 font-medium">{product.product.is_service ? 'Service' : 'Product'}</div>
+            </div>
+            <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 shadow-sm">
+              <div className="flex items-center gap-2 mb-2">
+                <DollarSign className="h-5 w-5 text-green-600" />
+                <div className="text-green-700 font-medium">Unit Price</div>
+              </div>
+              <div className="text-gray-900 font-medium">${Number(product.price_at_time).toFixed(2)}</div>
+            </div>
+            <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 shadow-sm">
+              <div className="flex items-center gap-2 mb-2">
+                <Package className="h-5 w-5 text-purple-600" />
+                <div className="text-purple-700 font-medium">Quantity</div>
+              </div>
+              <div className="text-gray-900 font-medium">{product.quantity} units</div>
+            </div>
+            <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-4 shadow-sm">
+              <div className="flex items-center gap-2 mb-2">
+                <DollarSign className="h-5 w-5 text-orange-600" />
+                <div className="text-orange-700 font-medium">Total</div>
+              </div>
+              <div className="text-gray-900 font-medium">${(Number(product.price_at_time) * product.quantity).toFixed(2)}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Features Section */}
+        {product.product.features && product.product.features.length > 0 && (
+          <div className="p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-blue-500" />
+              Key Features
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {product.product.features.map((feature, i) => (
+                <div key={i} className="flex items-start gap-3 bg-gradient-to-br from-gray-50 to-gray-100 p-4 rounded-xl shadow-sm">
+                  <div className="w-2 h-2 rounded-full bg-blue-500 mt-2 flex-shrink-0" />
+                  <span className="text-gray-700">{feature}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Technical Details Section */}
+        {product.product.technical_details && Object.keys(product.product.technical_details).length > 0 && (
+          <div className="p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <Settings className="h-5 w-5 text-purple-500" />
+              Technical Specifications
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {Object.entries(product.product.technical_details).map(([key, value]) => (
+                <div key={key} className="bg-gradient-to-br from-gray-50 to-gray-100 p-4 rounded-xl shadow-sm">
+                  <dt className="text-sm font-medium text-gray-500 mb-1">{key}</dt>
+                  <dd className="text-gray-900 font-medium">{value as string}</dd>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Included Items Section */}
+        {product.product.included_items && product.product.included_items.length > 0 && (
+          <div className="p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <Package className="h-5 w-5 text-green-500" />
+              What's Included
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {product.product.included_items.map((item, i) => (
+                <div key={i} className="flex items-center gap-3 bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-xl shadow-sm">
+                  <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0" />
+                  <span className="text-gray-700">{item}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Warranty Section */}
+        {product.product.warranty_info && (
+          <div className="p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <Shield className="h-5 w-5 text-blue-500" />
+              Warranty Information
+            </h3>
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 shadow-sm">
+              <div className="flex gap-3">
+                <Info className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                <p className="text-gray-700 leading-relaxed">{product.product.warranty_info}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Installation Section */}
+        {product.product.installation_available && (
+          <div className="p-6">
+            <div className="bg-gradient-to-br from-blue-50 via-blue-100 to-blue-50 rounded-xl p-6 shadow-sm">
+              <div className="flex items-start gap-4">
+                <div className="bg-white p-3 rounded-full shadow-sm">
+                  <Wrench className="h-6 w-6 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Professional Installation Available</h3>
+                  <p className="text-gray-600 mt-2 leading-relaxed">
+                    Our expert team can handle the complete installation of this product. Installation service includes:
+                  </p>
+                  <ul className="mt-4 space-y-2">
+                    <li className="flex items-center gap-2 text-gray-700">
+                      <CheckCircle2 className="h-4 w-4 text-green-500" />
+                      Professional setup and configuration
+                    </li>
+                    <li className="flex items-center gap-2 text-gray-700">
+                      <CheckCircle2 className="h-4 w-4 text-green-500" />
+                      Testing and quality assurance
+                    </li>
+                    <li className="flex items-center gap-2 text-gray-700">
+                      <CheckCircle2 className="h-4 w-4 text-green-500" />
+                      Post-installation support
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="max-w-[1600px] mx-auto p-8 space-y-8">
@@ -1346,14 +1571,41 @@ export default function OrdersPage() {
               value={statusFilter} 
               onValueChange={(value: OrderStatus) => setStatusFilter(value)}
             >
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-[180px] bg-white border-gray-200 shadow-sm">
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-                <SelectItem value="cancelled">Cancelled</SelectItem>
+              <SelectContent className="bg-white">
+                <SelectItem value="all" className="text-gray-700">All Statuses</SelectItem>
+                <SelectItem value="pending" className="text-yellow-600">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    Pending
+                  </div>
+                </SelectItem>
+                <SelectItem value="confirmed" className="text-blue-600">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4" />
+                    Confirmed
+                  </div>
+                </SelectItem>
+                <SelectItem value="completed" className="text-green-600">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4" />
+                    Completed
+                  </div>
+                </SelectItem>
+                <SelectItem value="cancelled" className="text-red-600">
+                  <div className="flex items-center gap-2">
+                    <XCircle className="h-4 w-4" />
+                    Cancelled
+                  </div>
+                </SelectItem>
+                <SelectItem value="delayed" className="text-orange-600">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    Delayed
+                  </div>
+                </SelectItem>
               </SelectContent>
             </Select>
 
@@ -1362,15 +1614,40 @@ export default function OrdersPage() {
               value={dateFilter} 
               onValueChange={setDateFilter}
             >
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-[180px] bg-white border-gray-200 shadow-sm">
                 <SelectValue placeholder="Filter by date" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Time</SelectItem>
-                <SelectItem value="today">Today</SelectItem>
-                <SelectItem value="week">This Week</SelectItem>
-                <SelectItem value="month">This Month</SelectItem>
-                <SelectItem value="year">This Year</SelectItem>
+              <SelectContent className="bg-white">
+                <SelectItem value="all" className="text-gray-700">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    All Time
+                  </div>
+                </SelectItem>
+                <SelectItem value="today" className="text-gray-700">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    Today
+                  </div>
+                </SelectItem>
+                <SelectItem value="week" className="text-gray-700">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    This Week
+                  </div>
+                </SelectItem>
+                <SelectItem value="month" className="text-gray-700">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    This Month
+                  </div>
+                </SelectItem>
+                <SelectItem value="year" className="text-gray-700">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    This Year
+                  </div>
+                </SelectItem>
               </SelectContent>
             </Select>
 
@@ -1379,14 +1656,34 @@ export default function OrdersPage() {
               value={sortOrder} 
               onValueChange={(value: SortOrder) => setSortOrder(value)}
             >
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-[180px] bg-white border-gray-200 shadow-sm">
                 <SelectValue placeholder="Sort orders" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="newest">Newest First</SelectItem>
-                <SelectItem value="oldest">Oldest First</SelectItem>
-                <SelectItem value="highest">Highest Amount</SelectItem>
-                <SelectItem value="lowest">Lowest Amount</SelectItem>
+              <SelectContent className="bg-white">
+                <SelectItem value="newest" className="text-gray-700">
+                  <div className="flex items-center gap-2">
+                    <ArrowUpDown className="h-4 w-4" />
+                    Newest First
+                  </div>
+                </SelectItem>
+                <SelectItem value="oldest" className="text-gray-700">
+                  <div className="flex items-center gap-2">
+                    <ArrowUpDown className="h-4 w-4" />
+                    Oldest First
+                  </div>
+                </SelectItem>
+                <SelectItem value="highest" className="text-gray-700">
+                  <div className="flex items-center gap-2">
+                    <ArrowUpDown className="h-4 w-4" />
+                    Highest Amount
+                  </div>
+                </SelectItem>
+                <SelectItem value="lowest" className="text-gray-700">
+                  <div className="flex items-center gap-2">
+                    <ArrowUpDown className="h-4 w-4" />
+                    Lowest Amount
+                  </div>
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -1455,69 +1752,86 @@ export default function OrdersPage() {
             <tbody className="divide-y divide-gray-200">
               {filteredOrders.map((order) => (
                 <tr key={order.id} className="group hover:bg-blue-50/5 transition-all duration-200">
-                  <td className="p-4">
+                  <td className="p-6">
                     <div className="flex flex-col">
-                      <span className="text-sm font-semibold text-gray-900">
+                      <span className="text-sm font-bold text-blue-600">
                         #{order.id}
                       </span>
-                      <span className="text-sm text-gray-600">
-                        {new Date(order.created_at).toLocaleDateString()}
+                      <span className="text-sm text-gray-600 mt-1">
+                        {new Date(order.created_at).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        })}
                       </span>
                       <span className="text-xs text-gray-500">
-                        {new Date(order.created_at).toLocaleTimeString()}
+                        {new Date(order.created_at).toLocaleTimeString('en-US', {
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
                       </span>
                     </div>
                   </td>
-                  <td className="p-4">
+                  <td className="p-6">
                     <div className="flex flex-col">
-                      <span className="text-sm font-semibold text-gray-900">
+                      <span className="text-lg font-semibold text-gray-900 mb-2 hover:text-blue-600 transition-colors">
                         {order.first_name} {order.last_name}
                       </span>
-                      <span className="text-sm text-gray-600">
-                        {order.email}
-                      </span>
-                      {order.phone && (
-                        <span className="text-sm text-gray-500">
-                          {order.phone}
-                        </span>
-                      )}
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex items-center gap-2 text-sm text-gray-500">
+                          <Mail className="h-4 w-4 text-gray-400" />
+                          <span className="hover:text-gray-900 transition-colors">{order.email}</span>
+                        </div>
+                        {order.phone && (
+                          <div className="flex items-center gap-2 text-sm text-gray-500">
+                            <Phone className="h-4 w-4 text-gray-400" />
+                            <span className="hover:text-gray-900 transition-colors">{order.phone}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </td>
-                  <td className="p-4">
+                  <td className="p-6">
                     <div className="flex flex-col">
-                      <span className="text-sm font-semibold text-gray-900">
+                      <span className="text-lg font-bold text-gray-900">
                         ${Number(order.total_amount).toFixed(2)}
                       </span>
                       {isServiceOnlyOrder(order) ? (
-                        <span className="text-xs text-blue-600">
+                        <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full inline-block w-fit mt-1">
                           No Tax (Service)
                         </span>
                       ) : (
-                        <span className="text-xs text-gray-600">
+                        <span className="text-xs text-gray-600 mt-1">
                           Includes ${calculateOrderTax(order).toFixed(2)} tax
                         </span>
                       )}
                       {Number(order.installation_price) > 0 && (
-                        <span className="text-xs text-gray-600">
-                          Includes ${Number(order.installation_price).toFixed(2)} installation
+                        <span className="text-xs text-gray-600 mt-1 flex items-center gap-1">
+                          <Wrench className="h-3 w-3" />
+                          Installation: ${Number(order.installation_price).toFixed(2)}
                         </span>
                       )}
                     </div>
                   </td>
-                  <td className="p-4">
+                  <td className="p-6">
                     <Badge
                       variant={getStatusVariant(order.status)}
-                      className="capitalize font-medium px-3 py-1 rounded-full shadow-sm"
+                      className={`capitalize font-medium px-3 py-1.5 text-sm rounded-full shadow-sm ${getStatusColor(order.status)} flex items-center gap-1 w-fit`}
                     >
+                      {order.status === 'pending' && <Clock className="h-3 w-3" />}
+                      {order.status === 'confirmed' && <CheckCircle2 className="h-3 w-3" />}
+                      {order.status === 'completed' && <CheckCircle2 className="h-3 w-3" />}
+                      {order.status === 'cancelled' && <XCircle className="h-3 w-3" />}
+                      {order.status === 'delayed' && <Clock className="h-3 w-3" />}
                       {order.status}
                     </Badge>
                   </td>
-                  <td className="p-4">
-                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <td className="p-6">
+                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all duration-200">
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="gap-1 hover:bg-gray-100"
+                        className="gap-1.5 hover:bg-blue-50 hover:text-blue-600 transition-colors"
                         onClick={() => {
                           setSelectedOrder(order);
                           setIsDetailsOpen(true);
@@ -1530,7 +1844,7 @@ export default function OrdersPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="gap-1 hover:bg-gray-100"
+                          className="gap-1.5 hover:bg-purple-50 hover:text-purple-600 transition-colors"
                           onClick={() => {
                             setSelectedSignature(order.signature_url);
                           }}
@@ -1542,7 +1856,7 @@ export default function OrdersPage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="gap-1 hover:bg-gray-100"
+                        className="gap-1.5 hover:bg-green-50 hover:text-green-600 transition-colors"
                         onClick={() => {
                           setSelectedOrder(order);
                           setIsStatusOpen(true);
@@ -1574,107 +1888,179 @@ export default function OrdersPage() {
       </div>
 
       {/* Order Details Dialog */}
-      <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+      <Dialog 
+        open={isDetailsOpen} 
+        onOpenChange={(open: boolean) => setIsDetailsOpen(open)}
+      >
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-white p-0 rounded-2xl shadow-xl border-0">
-          <button
-            onClick={() => setIsDetailsOpen(false)}
-            className="absolute right-4 top-4 rounded-full bg-white border border-gray-200 shadow-sm p-2 hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-          >
-            <X className="h-4 w-4 text-gray-500" />
-            <span className="sr-only">Close</span>
-          </button>
-          <DialogHeader className="p-6 pb-4 border-b sticky top-0 bg-white z-10 shadow-sm">
-            <DialogTitle className="flex items-center gap-3 text-xl">
-              <div className="flex items-center gap-2">
-                <span className="text-gray-400">#</span>
-                <span className="font-bold">{selectedOrder?.id}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-gray-400">•</span>
-                <span>{selectedOrder?.first_name} {selectedOrder?.last_name}</span>
-              </div>
-              {selectedOrder && (
-                <Badge
-                  variant={getStatusVariant(selectedOrder.status)}
-                  className="capitalize ml-auto"
+          <DialogHeader>
+            <div className="sticky top-0 z-50 bg-white border-b">
+              <div className="flex items-center justify-between p-6">
+                <div className="flex items-center gap-4">
+                  <DialogTitle className="flex items-center gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-400">#</span>
+                      <span className="text-xl font-bold">{selectedOrder?.id}</span>
+                    </div>
+                    <Separator orientation="vertical" className="h-6" />
+                    <div className="flex items-center gap-2">
+                      <User className="h-4 w-4 text-gray-400" />
+                      <span className="text-gray-600">{selectedOrder?.first_name} {selectedOrder?.last_name}</span>
+                    </div>
+                    {selectedOrder && (
+                      <Badge
+                        variant={getStatusVariant(selectedOrder.status)}
+                        className="capitalize ml-2"
+                      >
+                        {selectedOrder.status}
+                      </Badge>
+                    )}
+                  </DialogTitle>
+                </div>
+                <button
+                  onClick={() => setIsDetailsOpen(false)}
+                  className="rounded-full bg-white border border-gray-200 shadow-sm p-2 hover:bg-gray-50 transition-colors"
                 >
-                  {selectedOrder.status}
-                </Badge>
-              )}
-            </DialogTitle>
-          </DialogHeader>
+                  <X className="h-4 w-4 text-gray-500" />
+                  <span className="sr-only">Close</span>
+                </button>
+              </div>
 
+              {/* Quick Actions Bar */}
+              <div className="px-6 pb-4 flex items-center gap-3">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="gap-2 hover:bg-gray-50"
+                  onClick={() => handleResendEmail(selectedOrder?.id || 0)}
+                >
+                  <Mail className="h-4 w-4" />
+                  Resend Order Email
+                </Button>
+                <Button 
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 hover:bg-gray-50"
+                  onClick={() => {
+                    setIsDetailsOpen(false);
+                    setIsStatusOpen(true);
+                  }}
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Update Status
+                </Button>
+                <Button 
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 hover:bg-gray-50"
+                  onClick={() => handleEmailTemplatesOpenChange(true)}
+                >
+                  <FileText className="h-4 w-4" />
+                  Send Email Template
+                </Button>
+                <Button 
+                  variant="destructive"
+                  size="sm"
+                  className="gap-2 ml-auto"
+                  onClick={() => handleDelete(selectedOrder?.id || 0)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete Order
+                </Button>
+              </div>
+            </div>
+          </DialogHeader>
           {selectedOrder && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-6 bg-white relative">
-              {/* Customer Information */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-6 bg-gray-50/50">
+              {/* Left Column - Customer & Shipping */}
               <div className="space-y-6">
-                <div className="bg-gray-50 rounded-lg p-4 space-y-3 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-                  <h4 className="text-sm font-medium text-gray-900 flex items-center gap-2 pb-2 border-b border-gray-200">
-                    <User className="h-4 w-4" />
+                {/* Customer Information */}
+                <div className="bg-white rounded-xl p-5 border border-gray-200/50 shadow-sm hover:shadow-md transition-shadow">
+                  <h4 className="text-sm font-medium text-gray-900 flex items-center gap-2 pb-4 mb-4 border-b border-gray-100">
+                    <User className="h-4 w-4 text-blue-500" />
                     Customer Information
                   </h4>
-                  <div className="space-y-3">
-                    <p className="text-sm flex items-center gap-2">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3">
                       <Mail className="h-4 w-4 text-gray-400 shrink-0" />
-                      <span className="text-gray-600 break-all">{selectedOrder.email}</span>
-                    </p>
-                    <p className="text-sm flex items-center gap-2">
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium text-gray-900">Email</p>
+                        <p className="text-sm text-gray-600 break-all">{selectedOrder.email}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
                       <Phone className="h-4 w-4 text-gray-400 shrink-0" />
-                      <span className="text-gray-600">{selectedOrder.phone}</span>
-                    </p>
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium text-gray-900">Phone</p>
+                        <p className="text-sm text-gray-600">{selectedOrder.phone}</p>
+                      </div>
+                    </div>
                     {selectedOrder.organization && (
-                      <p className="text-sm flex items-center gap-2">
+                      <div className="flex items-center gap-3">
                         <Building2 className="h-4 w-4 text-gray-400 shrink-0" />
-                        <span className="text-gray-600">{selectedOrder.organization}</span>
-                      </p>
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium text-gray-900">Organization</p>
+                          <p className="text-sm text-gray-600">{selectedOrder.organization}</p>
+                        </div>
+                      </div>
                     )}
                   </div>
                 </div>
 
                 {/* Shipping Information */}
-                <div className="bg-gray-50 rounded-lg p-4 space-y-3 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-                  <h4 className="text-sm font-medium text-gray-900 flex items-center gap-2 pb-2 border-b border-gray-200">
-                    <Truck className="h-4 w-4" />
+                <div className="bg-white rounded-xl p-5 border border-gray-200/50 shadow-sm hover:shadow-md transition-shadow">
+                  <h4 className="text-sm font-medium text-gray-900 flex items-center gap-2 pb-4 mb-4 border-b border-gray-100">
+                    <Truck className="h-4 w-4 text-green-500" />
                     Shipping Information
                   </h4>
-                  <div className="space-y-3">
-                    <p className="text-sm flex items-start gap-2">
-                      <MapPin className="h-4 w-4 text-gray-400 shrink-0 mt-0.5" />
-                      <span className="text-gray-600">
-                        {selectedOrder.shipping_address}<br />
-                        {selectedOrder.shipping_city}, {selectedOrder.shipping_state} {selectedOrder.shipping_zip}
-                      </span>
-                    </p>
+                  <div className="space-y-4">
+                    <div className="flex items-start gap-3">
+                      <MapPin className="h-4 w-4 text-gray-400 shrink-0 mt-1" />
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium text-gray-900">Shipping Address</p>
+                        <p className="text-sm text-gray-600">
+                          {selectedOrder.shipping_address}<br />
+                          {selectedOrder.shipping_city}, {selectedOrder.shipping_state} {selectedOrder.shipping_zip}
+                        </p>
+                      </div>
+                    </div>
                     {selectedOrder.shipping_instructions && (
-                      <div className="border-t border-gray-200 pt-2">
-                        <p className="text-sm text-gray-900 font-medium mb-1">Instructions:</p>
-                        <p className="text-sm text-gray-600">{selectedOrder.shipping_instructions}</p>
+                      <div className="flex items-start gap-3">
+                        <Info className="h-4 w-4 text-gray-400 shrink-0 mt-1" />
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium text-gray-900">Special Instructions</p>
+                          <p className="text-sm text-gray-600">{selectedOrder.shipping_instructions}</p>
+                        </div>
                       </div>
                     )}
                   </div>
                 </div>
               </div>
 
-              {/* Installation & Payment */}
+              {/* Middle Column - Installation & Payment */}
               <div className="space-y-6">
                 {/* Installation Details */}
-                <div className="bg-gray-50 rounded-lg p-4 space-y-3 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-                  <h4 className="text-sm font-medium text-gray-900 flex items-center gap-2 pb-2 border-b border-gray-200">
-                    <Wrench className="h-4 w-4" />
+                <div className="bg-white rounded-xl p-5 border border-gray-200/50 shadow-sm hover:shadow-md transition-shadow">
+                  <h4 className="text-sm font-medium text-gray-900 flex items-center gap-2 pb-4 mb-4 border-b border-gray-100">
+                    <Wrench className="h-4 w-4 text-orange-500" />
                     Installation Details
                   </h4>
-                  <div className="space-y-3">
-                    <p className="text-sm flex items-start gap-2">
-                      <MapPin className="h-4 w-4 text-gray-400 shrink-0 mt-0.5" />
-                      <span className="text-gray-600">
-                        {selectedOrder.installation_address}<br />
-                        {selectedOrder.installation_city}, {selectedOrder.installation_state} {selectedOrder.installation_zip}
-                      </span>
-                    </p>
-                    <div className="border-t border-gray-200 pt-2 space-y-3">
-                      <p className="text-sm flex items-center gap-2">
-                        <Clock className="h-4 w-4 text-gray-400" />
-                        <span className="text-gray-600">
+                  <div className="space-y-4">
+                    <div className="flex items-start gap-3">
+                      <MapPin className="h-4 w-4 text-gray-400 shrink-0 mt-1" />
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium text-gray-900">Installation Address</p>
+                        <p className="text-sm text-gray-600">
+                          {selectedOrder.installation_address}<br />
+                          {selectedOrder.installation_city}, {selectedOrder.installation_state} {selectedOrder.installation_zip}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Clock className="h-4 w-4 text-gray-400 shrink-0" />
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium text-gray-900">Installation Time</p>
+                        <p className="text-sm text-gray-600">
                           {new Date(selectedOrder.installation_date).toLocaleDateString('en-US', {
                             weekday: 'long',
                             year: 'numeric',
@@ -1682,44 +2068,51 @@ export default function OrdersPage() {
                             day: 'numeric'
                           })}
                           {selectedOrder.installation_time && ` at ${selectedOrder.installation_time}`}
-                        </span>
-                      </p>
-                      {selectedOrder.contact_onsite && (
-                        <p className="text-sm flex items-center gap-2">
-                          <Phone className="h-4 w-4 text-gray-400" />
-                          <span className="text-gray-600">
-                            Contact: {selectedOrder.contact_onsite} ({selectedOrder.contact_onsite_phone})
-                          </span>
                         </p>
-                      )}
-                      {selectedOrder.access_instructions && (
-                        <div className="pt-2 border-t border-gray-200">
-                          <p className="text-sm text-gray-900 font-medium mb-1">Access Instructions:</p>
+                      </div>
+                    </div>
+                    {selectedOrder.contact_onsite && (
+                      <div className="flex items-center gap-3">
+                        <User className="h-4 w-4 text-gray-400 shrink-0" />
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium text-gray-900">On-site Contact</p>
+                          <p className="text-sm text-gray-600">
+                            {selectedOrder.contact_onsite} ({selectedOrder.contact_onsite_phone})
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    {selectedOrder.access_instructions && (
+                      <div className="flex items-start gap-3">
+                        <Info className="h-4 w-4 text-gray-400 shrink-0 mt-1" />
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium text-gray-900">Access Instructions</p>
                           <p className="text-sm text-gray-600">{selectedOrder.access_instructions}</p>
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 {/* Payment Information */}
-                <div className="bg-gray-50 rounded-lg p-4 space-y-3 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-                  <h4 className="text-sm font-medium text-gray-900 flex items-center gap-2 pb-2 border-b border-gray-200">
-                    <CreditCard className="h-4 w-4" />
+                <div className="bg-white rounded-xl p-5 border border-gray-200/50 shadow-sm hover:shadow-md transition-shadow">
+                  <h4 className="text-sm font-medium text-gray-900 flex items-center gap-2 pb-4 mb-4 border-b border-gray-100">
+                    <CreditCard className="h-4 w-4 text-purple-500" />
                     Payment Information
                   </h4>
-                  <div className="space-y-3">
-                    <p className="text-sm flex items-center gap-2">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3">
                       <DollarSign className="h-4 w-4 text-gray-400 shrink-0" />
-                      <span className="text-gray-600">
-                        Method: <span className="capitalize">{selectedOrder.payment_method}</span>
-                      </span>
-                    </p>
-                    <div className="border-t border-gray-200 pt-3">
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium text-gray-900">Payment Method</p>
+                        <p className="text-sm text-gray-600 capitalize">{selectedOrder.payment_method}</p>
+                      </div>
+                    </div>
+                    <div className="pt-3 border-t border-gray-100">
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm">
                           <span className="text-gray-500">Products Subtotal</span>
-                          <span className="font-medium">
+                          <span className="font-medium text-gray-900">
                             ${(selectedOrder.order_items.reduce((sum, item) => 
                               sum + (Number(item.price_at_time) * item.quantity), 0)).toFixed(2)}
                           </span>
@@ -1727,51 +2120,22 @@ export default function OrdersPage() {
                         {Number(selectedOrder.installation_price || 0) > 0 && (
                           <div className="flex justify-between text-sm">
                             <span className="text-gray-500">Installation</span>
-                            <span className="font-medium">
+                            <span className="font-medium text-gray-900">
                               ${Number(selectedOrder.installation_price || 0).toFixed(2)}
                             </span>
                           </div>
                         )}
                         <div className="flex justify-between text-sm">
-                          <span className="text-gray-500">Sales Tax</span>
+                          <span className="text-gray-500">Sales Tax (7.75%)</span>
                           <span className="font-medium text-purple-600">
                             ${calculateOrderTax(selectedOrder).toFixed(2)}
                           </span>
                         </div>
-                        <div className="flex justify-between font-medium pt-2 border-t border-gray-200">
-                          <span className="text-gray-900">Total</span>
+                        <div className="flex justify-between font-medium pt-2 mt-2 border-t border-gray-100">
+                          <span className="text-gray-900">Total Amount</span>
                           <span className="text-lg text-gray-900">
                             ${Number(selectedOrder.total_amount).toFixed(2)}
                           </span>
-                        </div>
-                        <div className="pt-4 border-t border-gray-200">
-                          <div className="space-y-2">
-                            <div className="flex justify-between text-sm">
-                              <span className="text-gray-500">Product Profit (20%)</span>
-                              <span className="font-medium text-green-600">
-                                ${((selectedOrder.order_items.reduce((sum, item) => 
-                                  sum + (Number(item.price_at_time) * item.quantity), 0)) * 0.20).toFixed(2)}
-                              </span>
-                            </div>
-                            {Number(selectedOrder.installation_price || 0) > 0 && (
-                              <div className="flex justify-between text-sm">
-                                <span className="text-gray-500">Installation Profit (100%)</span>
-                                <span className="font-medium text-green-600">
-                                  ${Number(selectedOrder.installation_price || 0).toFixed(2)}
-                                </span>
-                              </div>
-                            )}
-                            <div className="flex justify-between font-medium pt-2 border-t border-gray-200">
-                              <span className="text-gray-900">Total Profit</span>
-                              <span className="text-lg text-green-600">
-                                ${(
-                                  ((selectedOrder.order_items.reduce((sum, item) => 
-                                    sum + (Number(item.price_at_time) * item.quantity), 0)) * 0.20) +
-                                  Number(selectedOrder.installation_price || 0)
-                                ).toFixed(2)}
-                              </span>
-                            </div>
-                          </div>
                         </div>
                       </div>
                     </div>
@@ -1779,26 +2143,54 @@ export default function OrdersPage() {
                 </div>
               </div>
 
-              {/* Order Items */}
+              {/* Right Column - Order Items & Signature */}
               <div className="space-y-6">
-                <div className="bg-gray-50 rounded-lg p-4 space-y-3 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-                  <h4 className="text-sm font-medium text-gray-900 flex items-center gap-2 pb-2 border-b border-gray-200">
-                    <Package className="h-4 w-4" />
+                {/* Order Items */}
+                <div className="bg-white rounded-xl p-5 border border-gray-200/50 shadow-sm hover:shadow-md transition-shadow">
+                  <h4 className="text-sm font-medium text-gray-900 flex items-center gap-2 pb-4 mb-4 border-b border-gray-100">
+                    <Package className="h-4 w-4 text-blue-500" />
                     Order Items
                   </h4>
-                  <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2">
+                  <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
                     {selectedOrder.order_items.map((item, index) => (
                       <div
                         key={index}
-                        className="flex items-center justify-between text-sm py-2 border-b border-gray-200 last:border-0"
+                        onClick={() => handleProductClick(item)}
+                        className="group flex items-start p-4 bg-gray-50 rounded-lg border border-gray-100 hover:border-blue-100 hover:bg-blue-50/5 transition-all cursor-pointer relative"
                       >
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-gray-900">{item.product?.title}</span>
-                          <Badge variant="secondary" className="bg-gray-100">
-                            x{item.quantity}
-                          </Badge>
+                        <div className="flex-1 min-w-0 pr-4">
+                          <div className="flex flex-col gap-2 mb-2">
+                            <span className="text-base font-medium text-gray-900">
+                              {item.product?.title}
+                            </span>
+                            <div className="flex items-center gap-2">
+                              {item.product?.is_service ? (
+                                <Badge variant="secondary" className="bg-blue-50 text-blue-700 text-xs">
+                                  Service
+                                </Badge>
+                              ) : (
+                                <Badge variant="secondary" className="bg-purple-50 text-purple-700 text-xs">
+                                  {item.product?.category || 'Product'}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3 text-xs text-gray-500">
+                            <span className="flex items-center gap-1">
+                              <Package className="h-3 w-3" />
+                              x{item.quantity}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <DollarSign className="h-3 w-3" />
+                              ${Number(item.price_at_time).toFixed(2)}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <CreditCard className="h-3 w-3" />
+                              Total: ${(Number(item.price_at_time) * item.quantity).toFixed(2)}
+                            </span>
+                          </div>
                         </div>
-                        <span className="text-gray-600">${Number(item.price_at_time).toFixed(2)}</span>
+                        <ChevronRight className="h-4 w-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                       </div>
                     ))}
                   </div>
@@ -1806,102 +2198,26 @@ export default function OrdersPage() {
 
                 {/* Signature Section */}
                 {selectedOrder.signature_url && (
-                  <div className="bg-gray-50 rounded-lg p-4 space-y-3 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-                    <h4 className="text-sm font-medium text-gray-900 flex items-center gap-2 pb-2 border-b border-gray-200">
-                      <PenTool className="h-4 w-4" />
+                  <div className="bg-white rounded-xl p-5 border border-gray-200/50 shadow-sm hover:shadow-md transition-shadow">
+                    <h4 className="text-sm font-medium text-gray-900 flex items-center gap-2 pb-4 mb-4 border-b border-gray-100">
+                      <PenTool className="h-4 w-4 text-gray-500" />
                       Customer Signature
                     </h4>
-                    <div className="flex justify-center bg-white p-4 rounded-lg border border-gray-100">
-                      <img 
-                        src={selectedOrder.signature_url} 
-                        alt="Customer Signature" 
-                        className="max-h-32 object-contain"
-                      />
+                    <div className="flex flex-col items-center">
+                      <div className="bg-gray-50 p-4 rounded-lg border border-gray-100 w-full">
+                        <img 
+                          src={selectedOrder.signature_url} 
+                          alt="Customer Signature" 
+                          className="max-h-32 object-contain mx-auto cursor-pointer hover:opacity-80 transition-opacity"
+                          onClick={() => setSelectedSignature(selectedOrder.signature_url)}
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500 mt-3">
+                        Signed electronically on {new Date(selectedOrder.created_at).toLocaleDateString()}
+                      </p>
                     </div>
-                    <p className="text-xs text-gray-500 text-center">
-                      Signed electronically on {new Date(selectedOrder.created_at).toLocaleDateString()}
-                    </p>
                   </div>
                 )}
-
-                {/* Actions */}
-                <div className="bg-gray-50 rounded-lg p-4 space-y-3 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-                  <h4 className="text-sm font-medium text-gray-900 flex items-center gap-2 pb-2 border-b border-gray-200">
-                    <Settings className="h-4 w-4" />
-                    Actions
-                  </h4>
-                  <div className="flex flex-col gap-2">
-                    <Button 
-                      variant="outline" 
-                      className="w-full justify-start gap-2 bg-white hover:bg-gray-100"
-                      onClick={() => handleResendEmail(selectedOrder.id)}
-                    >
-                      <Mail className="h-4 w-4" />
-                      Resend Order Email
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      className="w-full justify-start gap-2 bg-white hover:bg-gray-100"
-                      onClick={() => {
-                        setIsDetailsOpen(false);
-                        setIsStatusOpen(true);
-                      }}
-                    >
-                      <RefreshCw className="h-4 w-4" />
-                      Update Status
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      className="w-full justify-start gap-2 bg-white hover:bg-gray-100"
-                      onClick={() => handleEmailTemplatesOpenChange(true)}
-                    >
-                      <FileText className="h-4 w-4" />
-                      Send Email Template
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Status Update Dialog */}
-      <Dialog open={isStatusOpen} onOpenChange={setIsStatusOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Update Order Status</DialogTitle>
-          </DialogHeader>
-          {selectedOrder && (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Current Status</Label>
-                <Badge
-                  variant={getStatusVariant(selectedOrder.status)}
-                  className="capitalize"
-                >
-                  {selectedOrder.status}
-                </Badge>
-              </div>
-              <div className="space-y-2">
-                <Label>New Status</Label>
-                <Select
-                  value={selectedOrder.status}
-                  onValueChange={(value: OrderStatusUpdate) => {
-                    updateOrderStatus(selectedOrder.id, value);
-                    setIsStatusOpen(false);
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="confirmed">Confirmed</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
             </div>
           )}
@@ -1909,9 +2225,12 @@ export default function OrdersPage() {
       </Dialog>
 
       {/* Email Templates Dialog */}
-      <Dialog open={isEmailTemplatesOpen} onOpenChange={handleEmailTemplatesOpenChange}>
+      <Dialog 
+        open={isEmailTemplatesOpen} 
+        onOpenChange={(open: boolean) => handleEmailTemplatesOpenChange(open)}
+      >
         <DialogContent className="max-w-7xl h-[90vh] bg-white p-0 gap-0">
-          <div className="border-b px-6 py-4">
+          <DialogHeader className="border-b px-6 py-4">
             <DialogTitle className="text-xl font-semibold flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Mail className="h-5 w-5 text-gray-500" />
@@ -1940,8 +2259,7 @@ export default function OrdersPage() {
                 </div>
               )}
             </DialogTitle>
-          </div>
-          
+          </DialogHeader>
           <div className="flex h-[calc(90vh-80px)]">
             <div className="w-80 border-r overflow-y-auto p-4 bg-gray-50">
               <div className="mb-4">
@@ -2193,7 +2511,10 @@ export default function OrdersPage() {
       </Dialog>
 
       {/* AI Prompt Dialog */}
-      <Dialog open={isAiPromptOpen} onOpenChange={setIsAiPromptOpen}>
+      <Dialog 
+        open={isAiPromptOpen} 
+        onOpenChange={(open: boolean) => setIsAiPromptOpen(open)}
+      >
         <DialogContent className="sm:max-w-[800px] bg-white">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-xl">
@@ -2296,7 +2617,10 @@ export default function OrdersPage() {
       </Dialog>
 
       {/* Shipping Status Dialog */}
-      <Dialog open={isShippingPromptOpen} onOpenChange={setIsShippingPromptOpen}>
+      <Dialog 
+        open={isShippingPromptOpen} 
+        onOpenChange={(open: boolean) => setIsShippingPromptOpen(open)}
+      >
         <DialogContent className="sm:max-w-[500px] bg-white">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-xl">
@@ -2337,6 +2661,194 @@ export default function OrdersPage() {
                 </Button>
               ))}
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Product Details Dialog */}
+      <Dialog 
+        open={isProductDetailsOpen} 
+        onOpenChange={(open: boolean) => {
+          if (!open) {
+            setIsProductDetailsOpen(false)
+            setIsFullScreen(false)
+          }
+        }}
+      >
+        <DialogContent className={`bg-white p-0 rounded-2xl shadow-xl transition-all duration-200 overflow-hidden ${
+          isFullScreen ? 'max-w-[95vw] h-[95vh]' : 'max-w-3xl max-h-[85vh]'
+        }`}>
+          <DialogHeader>
+            <div className="sticky top-0 bg-white z-10 border-b">
+              <div className="flex items-center justify-between p-6">
+                <DialogTitle className="text-xl font-semibold">Product Details</DialogTitle>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setIsFullScreen(!isFullScreen)}
+                    className="rounded-full bg-white border border-gray-200 shadow-sm p-2 hover:bg-gray-50 transition-colors"
+                  >
+                    {isFullScreen ? (
+                      <ChevronDown className="h-4 w-4 text-gray-500" />
+                    ) : (
+                      <ChevronUp className="h-4 w-4 text-gray-500" />
+                    )}
+                    <span className="sr-only">
+                      {isFullScreen ? 'Exit Full Screen' : 'Full Screen'}
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsProductDetailsOpen(false)
+                      setIsFullScreen(false)
+                    }}
+                    className="rounded-full bg-white border border-gray-200 shadow-sm p-2 hover:bg-gray-50 transition-colors"
+                  >
+                    <X className="h-4 w-4 text-gray-500" />
+                    <span className="sr-only">Close</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </DialogHeader>
+          <div className={`overflow-y-auto ${isFullScreen ? 'h-[calc(95vh-88px)]' : 'h-[calc(85vh-88px)]'}`}>
+            <ProductDetails product={selectedProduct} isFullScreen={isFullScreen} />
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Signature Dialog */}
+      <Dialog 
+        open={!!selectedSignature} 
+        onOpenChange={(open: boolean) => {
+          if (!open) {
+            setSelectedSignature(null)
+            setIsFullScreen(false)
+          }
+        }}
+      >
+        <DialogContent className={`bg-white p-0 rounded-2xl shadow-xl transition-all duration-200 ${
+          isFullScreen ? 'max-w-[95vw] h-[95vh]' : 'max-w-2xl'
+        }`}>
+          <DialogHeader>
+            <div className="sticky top-0 bg-white z-10 border-b">
+              <div className="flex items-center justify-between p-6">
+                <DialogTitle className="text-xl font-semibold flex items-center gap-2">
+                  <PenTool className="h-5 w-5 text-gray-500" />
+                  Customer Signature
+                </DialogTitle>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setIsFullScreen(!isFullScreen)}
+                    className="rounded-full bg-white border border-gray-200 shadow-sm p-2 hover:bg-gray-50 transition-colors"
+                  >
+                    {isFullScreen ? (
+                      <ChevronDown className="h-4 w-4 text-gray-500" />
+                    ) : (
+                      <ChevronUp className="h-4 w-4 text-gray-500" />
+                    )}
+                    <span className="sr-only">
+                      {isFullScreen ? 'Exit Full Screen' : 'Full Screen'}
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSelectedSignature(null)
+                      setIsFullScreen(false)
+                    }}
+                    className="rounded-full bg-white border border-gray-200 shadow-sm p-2 hover:bg-gray-50 transition-colors"
+                  >
+                    <X className="h-4 w-4 text-gray-500" />
+                    <span className="sr-only">Close</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </DialogHeader>
+          <div className={`p-6 ${isFullScreen ? 'h-[calc(95vh-88px)]' : ''}`}>
+            <div className={`bg-gray-50 p-8 rounded-xl border border-gray-200 ${
+              isFullScreen ? 'h-full flex items-center justify-center' : ''
+            }`}>
+              {selectedSignature && (
+                <img 
+                  src={selectedSignature} 
+                  alt="Customer Signature" 
+                  className={`object-contain mx-auto cursor-pointer ${
+                    isFullScreen ? 'max-h-[calc(95vh-200px)]' : 'max-h-[400px]'
+                  }`}
+                  onClick={() => setIsFullScreen(!isFullScreen)}
+                />
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Status Update Dialog */}
+      <Dialog 
+        open={isStatusOpen} 
+        onOpenChange={(open: boolean) => setIsStatusOpen(open)}
+      >
+        <DialogContent className="sm:max-w-[500px] bg-white">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <RefreshCw className="h-5 w-5 text-blue-500" />
+              Update Order Status
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-1 gap-3">
+              {(['pending', 'confirmed', 'completed', 'cancelled', 'delayed'] as const).map((status) => (
+                <Button
+                  key={status}
+                  variant="outline"
+                  className={`w-full justify-start gap-3 py-6 text-left group hover:border-blue-200 hover:bg-blue-50/50 ${
+                    selectedOrder?.status === status ? 'border-blue-500 bg-blue-50' : ''
+                  }`}
+                  onClick={() => {
+                    if (selectedOrder) {
+                      updateOrderStatus(selectedOrder.id, status);
+                      setIsStatusOpen(false);
+                    }
+                  }}
+                >
+                  <div className="flex items-center gap-3">
+                    {status === 'pending' && (
+                      <Clock className={`h-5 w-5 ${selectedOrder?.status === status ? 'text-blue-500' : 'text-yellow-500 group-hover:text-blue-500'}`} />
+                    )}
+                    {status === 'confirmed' && (
+                      <CheckCircle2 className={`h-5 w-5 ${selectedOrder?.status === status ? 'text-blue-500' : 'text-green-500 group-hover:text-blue-500'}`} />
+                    )}
+                    {status === 'completed' && (
+                      <CheckCircle2 className={`h-5 w-5 ${selectedOrder?.status === status ? 'text-blue-500' : 'text-green-500 group-hover:text-blue-500'}`} />
+                    )}
+                    {status === 'cancelled' && (
+                      <XCircle className={`h-5 w-5 ${selectedOrder?.status === status ? 'text-blue-500' : 'text-red-500 group-hover:text-blue-500'}`} />
+                    )}
+                    {status === 'delayed' && (
+                      <Clock className={`h-5 w-5 ${selectedOrder?.status === status ? 'text-orange-500' : 'text-gray-500 group-hover:text-orange-500'}`} />
+                    )}
+                    <div>
+                      <div className="font-medium capitalize">{status}</div>
+                      <div className="text-sm text-gray-500">
+                        {status === 'pending' && 'Order is awaiting confirmation'}
+                        {status === 'confirmed' && 'Order has been confirmed and is being processed'}
+                        {status === 'completed' && 'Order has been completed and delivered'}
+                        {status === 'cancelled' && 'Order has been cancelled'}
+                        {status === 'delayed' && 'Order is delayed'}
+                      </div>
+                    </div>
+                  </div>
+                </Button>
+              ))}
+            </div>
+          </div>
+          <div className="flex justify-end gap-3 border-t pt-4">
+            <Button
+              variant="outline"
+              onClick={() => setIsStatusOpen(false)}
+            >
+              Cancel
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

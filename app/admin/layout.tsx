@@ -1,25 +1,8 @@
 import { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'WoG Media Admin',
-  description: 'Way of Glory Media Admin Dashboard',
-  manifest: '/admin-manifest.json',
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
-    viewportFit: 'cover',
-  },
-  themeColor: '#000000',
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: 'default',
-    title: 'WoG Media Admin',
-  },
-  formatDetection: {
-    telephone: false,
-  },
+  title: 'Way of Glory Media',
+  description: 'Professional Audio and Video and Software needs for Churches',
   icons: [
     {
       rel: 'icon',
