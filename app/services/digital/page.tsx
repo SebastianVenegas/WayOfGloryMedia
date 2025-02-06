@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Header from '../../../components/Header'
 import Footer from '@/components/Footer'
-import { Globe, Smartphone, Code, Gauge, Layout, Users, Server, Shield, ChevronRight, Star, ArrowRight } from 'lucide-react'
+import { Globe, Smartphone, Code, Gauge, Layout, Users, Server, Shield, ChevronRight, Star, ArrowRight, MessageCircle } from 'lucide-react'
 import Image from 'next/image'
 import ScrollAnimation from '../../../components/ui/scroll-animation'
 import QuoteSection from '../../../components/QuoteSection'
@@ -13,46 +13,46 @@ import { useInView } from 'react-intersection-observer'
 
 const features = [
   {
-    title: "Custom Website Development",
-    description: "Beautiful, responsive websites tailored to your church's unique needs",
+    title: "Custom Church Website Development",
+    description: "Stunning, responsive designs that reflect your church's unique mission and values.",
     icon: Globe,
     details: [
       "Modern, mobile-first design",
-      "Custom content management system",
-      "Event management integration",
-      "Online giving platform",
-      "Sermon archives",
-      "Prayer request system"
+      "Interactive events calendar with online registrations",
+      "Prayer request submission system",
+      "Online giving and donation platform",
+      "Sermon archives and streaming",
+      "Community engagement tools"
     ],
     image: "https://images.unsplash.com/photo-1581291518633-83b4ebd1d83e?q=80&w=3270&auto=format&fit=crop"
   },
   {
-    title: "Mobile App Development",
-    description: "Native iOS and Android apps that keep your congregation connected",
-    icon: Smartphone,
+    title: "Custom Software Solutions",
+    description: "Tailored software to streamline your church's operations and enhance congregation engagement.",
+    icon: Code,
     details: [
-      "Cross-platform compatibility",
-      "Push notifications",
-      "Live streaming integration",
-      "Community features",
-      "Event calendar",
-      "Digital bible study tools"
-    ],
-    image: "https://images.unsplash.com/photo-1555774698-0b77e0d5fac6?q=80&w=3270&auto=format&fit=crop"
-  },
-  {
-    title: "Performance Optimization",
-    description: "Lightning-fast loading speeds and smooth user experience",
-    icon: Gauge,
-    details: [
-      "Speed optimization",
-      "SEO best practices",
-      "Analytics integration",
-      "Performance monitoring",
-      "Caching solutions",
-      "CDN implementation"
+      "Tailored member management systems",
+      "Bespoke event & service planning tools",
+      "Custom analytics & reporting dashboards",
+      "Integrated communication platforms",
+      "Customized financial management",
+      "Personalized ministry tools"
     ],
     image: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=2426&auto=format&fit=crop"
+  },
+  {
+    title: "Custom Mobile Applications",
+    description: "Develop a unique mobile experience that connects your congregation on-the-go, tailored to your church's needs.",
+    icon: Smartphone,
+    details: [
+      "Native iOS and Android development",
+      "Push notifications for events",
+      "Mobile prayer requests",
+      "Digital bible study tools",
+      "Mobile giving integration",
+      "Community features"
+    ],
+    image: "https://images.unsplash.com/photo-1555774698-0b77e0d5fac6?q=80&w=3270&auto=format&fit=crop"
   }
 ]
 
@@ -156,6 +156,39 @@ const stats = [
   { label: 'Success Rate', value: '99', suffix: '%' },
 ]
 
+const solutions = [
+  {
+    title: "Tailored Member Management Systems",
+    description: "Custom-built solutions to efficiently manage your congregation's unique needs and preferences.",
+    icon: Users
+  },
+  {
+    title: "Bespoke Event & Service Planning Tools",
+    description: "Personalized planning systems designed around your church's specific events and services.",
+    icon: Layout
+  },
+  {
+    title: "Custom Analytics & Reporting Dashboards",
+    description: "Tailor-made dashboards providing insights that matter most to your ministry's growth and impact.",
+    icon: Gauge
+  },
+  {
+    title: "Integrated Communication Platforms",
+    description: "Custom-developed systems to foster community engagement aligned with your church's communication style.",
+    icon: MessageCircle
+  },
+  {
+    title: "Customized Financial Management Solutions",
+    description: "Bespoke financial tools designed to handle your church's specific tithing and donation processes.",
+    icon: Server
+  },
+  {
+    title: "Custom Mobile Applications",
+    description: "Develop a unique mobile experience that connects your congregation on-the-go, tailored to your church's needs.",
+    icon: Smartphone
+  }
+]
+
 export default function DigitalServicesPage() {
   const [selectedFeature, setSelectedFeature] = useState(0)
 
@@ -209,45 +242,45 @@ export default function DigitalServicesPage() {
                 </div>
 
                 {/* Main Heading */}
-                <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 tracking-tight leading-[1.1] mb-6">
-                  Transform Your Church's
-                  <span className="relative block mt-2">
+                <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-gray-900 mb-6 tracking-tight leading-tight">
+                  Elevate Your Church's
+                  <span className="relative ml-3">
                     Digital Presence
-                    <svg aria-hidden="true" viewBox="0 0 418 42" className="absolute left-0 top-2/3 h-[0.58em] w-full fill-[#40B5E5]/20" preserveAspectRatio="none">
-                      <path d="M203.371.916c-26.013-2.078-76.686 1.963-124.73 9.946L67.3 12.749C35.421 18.062 18.2 21.766 6.004 25.934 1.244 27.561.828 27.778.874 28.61c.07 1.214.828 1.121 9.595-1.176 9.072-2.377 17.15-3.92 39.246-7.496C123.565 7.986 157.869 4.492 195.942 5.046c7.461.108 19.25 1.696 19.17 2.582-.107 1.183-7.874 4.31-25.75 10.366-21.992 7.45-35.43 12.534-36.701 13.884-2.173 2.308-.202 4.407 4.442 4.734 2.654.187 3.263.157 15.593-.78 35.401-2.686 57.944-3.488 88.365-3.143 46.327.526 75.721 2.23 130.788 7.584 19.787 1.924 20.814 1.98 24.557 1.332l.066-.011c1.201-.203 1.53-1.825.399-2.335-2.911-1.31-4.893-1.604-22.048-3.261-57.509-5.556-87.871-7.36-132.059-7.842-23.239-.254-33.617-.116-50.627.674-11.629.54-42.371 2.494-46.696 2.967-2.359.259 8.133-3.625 26.504-9.81 23.239-7.825 27.934-10.149 28.304-14.005.417-4.348-3.529-6-16.878-7.066Z"></path>
-                    </svg>
                   </span>
                 </h1>
 
                 <p className="text-xl text-gray-600 mb-8 max-w-2xl">
-                  Create meaningful connections with your congregation through beautiful websites
-                  and engaging mobile apps. We build digital solutions that bring your community together.
+                  Empower your ministry with cutting-edge web solutions tailored for the modern church.
+                  We create digital experiences that connect and engage your congregation.
                 </p>
 
                 {/* Trust Indicators */}
-                <div className="grid grid-cols-3 gap-4 mb-8">
-                  <div className="flex items-center gap-3 bg-white/50 backdrop-blur-sm p-3 rounded-xl border border-gray-100">
-                    <div className="w-10 h-10 bg-[#40B5E5]/10 rounded-lg flex items-center justify-center">
-                      <Users className="w-5 h-5 text-[#40B5E5]" />
+                <div className="flex items-center gap-6 mb-8">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-[#40B5E5]/10 rounded-lg flex items-center justify-center">
+                      <Users className="w-6 h-6 text-[#40B5E5]" />
                     </div>
                     <div>
-                      <div className="text-sm font-medium text-gray-900">50+ Churches</div>
+                      <div className="text-2xl font-bold text-gray-900">50+</div>
+                      <div className="text-sm text-gray-600">Churches Served</div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 bg-white/50 backdrop-blur-sm p-3 rounded-xl border border-gray-100">
-                    <div className="w-10 h-10 bg-[#40B5E5]/10 rounded-lg flex items-center justify-center">
-                      <Shield className="w-5 h-5 text-[#40B5E5]" />
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-[#40B5E5]/10 rounded-lg flex items-center justify-center">
+                      <Star className="w-6 h-6 text-[#40B5E5]" />
                     </div>
                     <div>
-                      <div className="text-sm font-medium text-gray-900">Enterprise Grade</div>
+                      <div className="text-2xl font-bold text-gray-900">99%</div>
+                      <div className="text-sm text-gray-600">Success Rate</div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 bg-white/50 backdrop-blur-sm p-3 rounded-xl border border-gray-100">
-                    <div className="w-10 h-10 bg-[#40B5E5]/10 rounded-lg flex items-center justify-center">
-                      <Code className="w-5 h-5 text-[#40B5E5]" />
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-[#40B5E5]/10 rounded-lg flex items-center justify-center">
+                      <Code className="w-6 h-6 text-[#40B5E5]" />
                     </div>
                     <div>
-                      <div className="text-sm font-medium text-gray-900">Modern Tech</div>
+                      <div className="text-2xl font-bold text-gray-900">10+</div>
+                      <div className="text-sm text-gray-600">Years Experience</div>
                     </div>
                   </div>
                 </div>
@@ -423,7 +456,7 @@ export default function DigitalServicesPage() {
           </div>
         </section>
 
-        {/* Technologies Section */}
+        {/* Solutions Section - Replacing Technologies Section */}
         <section className="py-24 bg-gray-50 relative overflow-hidden">
           <div className="absolute inset-0">
             <div className="absolute inset-0 bg-[linear-gradient(to_right,#00000005_1px,transparent_1px),linear-gradient(to_bottom,#00000005_1px,transparent_1px)] bg-[size:4rem_4rem]" />
@@ -432,53 +465,87 @@ export default function DigitalServicesPage() {
           </div>
 
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative">
-            <ScrollAnimation type="fade-up">
+            <div className="max-w-5xl mx-auto">
+              {/* Section Header */}
               <div className="text-center mb-16">
                 <div className="inline-flex items-center justify-center space-x-2 mb-4">
                   <div className="p-2 bg-[#40B5E5]/10 rounded-lg">
-                    <Code className="w-4 h-4 text-[#40B5E5]" />
+                    <Code className="w-5 h-5 text-[#40B5E5]" />
                   </div>
-                  <span className="text-[#40B5E5] font-medium">Technologies</span>
+                  <span className="text-[#40B5E5] font-medium">Our Solutions</span>
                 </div>
-                <h2 className="text-4xl font-bold text-gray-900 mb-6">
-                  Built with Modern
+                <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
+                  Custom Software Solutions for Your
                   <span className="relative mx-3">
-                    Technology
+                    Ministry
                     <svg aria-hidden="true" viewBox="0 0 418 42" className="absolute left-0 top-2/3 h-[0.58em] w-full fill-[#40B5E5]/20" preserveAspectRatio="none">
                       <path d="M203.371.916c-26.013-2.078-76.686 1.963-124.73 9.946L67.3 12.749C35.421 18.062 18.2 21.766 6.004 25.934 1.244 27.561.828 27.778.874 28.61c.07 1.214.828 1.121 9.595-1.176 9.072-2.377 17.15-3.92 39.246-7.496C123.565 7.986 157.869 4.492 195.942 5.046c7.461.108 19.25 1.696 19.17 2.582-.107 1.183-7.874 4.31-25.75 10.366-21.992 7.45-35.43 12.534-36.701 13.884-2.173 2.308-.202 4.407 4.442 4.734 2.654.187 3.263.157 15.593-.78 35.401-2.686 57.944-3.488 88.365-3.143 46.327.526 75.721 2.23 130.788 7.584 19.787 1.924 20.814 1.98 24.557 1.332l.066-.011c1.201-.203 1.53-1.825.399-2.335-2.911-1.31-4.893-1.604-22.048-3.261-57.509-5.556-87.871-7.36-132.059-7.842-23.239-.254-33.617-.116-50.627.674-11.629.54-42.371 2.494-46.696 2.967-2.359.259 8.133-3.625 26.504-9.81 23.239-7.825 27.934-10.149 28.304-14.005.417-4.348-3.529-6-16.878-7.066Z"></path>
                     </svg>
                   </span>
                 </h2>
+                <p className="text-lg text-gray-600 max-w-3xl mx-auto mb-16">
+                  We develop tailored software solutions to streamline your church's operations 
+                  and enhance congregation engagement with modern, intuitive tools.
+                </p>
               </div>
-            </ScrollAnimation>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {technologies.map((tech, index) => (
-                <ScrollAnimation
-                  key={tech.name}
-                  type="fade-up"
-                  delay={0.1 * index}
-                >
-                  <motion.div
-                    whileHover={{ scale: 1.02 }}
-                    className="relative group bg-white rounded-2xl p-6 border border-gray-100 hover:border-blue-200 transition-all duration-300"
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {solutions.map((solution, index) => (
+                  <ScrollAnimation
+                    key={solution.title}
+                    type="fade-up"
+                    delay={0.1 * index}
                   >
-                    {/* Background Gradient */}
-                    <div className={`absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-gradient-to-br ${tech.color} rounded-full blur-2xl opacity-50 group-hover:opacity-70 transition-opacity duration-300`} />
+                    <motion.div
+                      whileHover={{ y: -4 }}
+                      className="group relative bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl 
+                                border border-gray-100 hover:border-[#40B5E5]/50 transition-all duration-300"
+                    >
+                      {/* Background Gradient */}
+                      <div className="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-gradient-to-br 
+                                    from-[#40B5E5]/20 to-[#7DD3F7]/20 rounded-full blur-2xl opacity-50 
+                                    group-hover:opacity-70 transition-opacity duration-300" />
 
-                    <div className="relative">
-                      {/* Icon */}
-                      <div className="w-12 h-12 bg-gradient-to-br from-[#40B5E5]/10 to-[#7DD3F7]/10 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
-                        <tech.icon className="w-6 h-6 text-[#40B5E5]" />
+                      <div className="relative">
+                        {/* Icon Container */}
+                        <div className="w-14 h-14 bg-gradient-to-br from-[#40B5E5]/10 to-[#7DD3F7]/10 
+                                      rounded-xl flex items-center justify-center mb-6 
+                                      group-hover:scale-110 transition-transform duration-300">
+                          <solution.icon className="w-7 h-7 text-[#40B5E5]" />
+                        </div>
+
+                        {/* Content */}
+                        <h3 className="text-xl font-bold text-gray-900 mb-3 group-hover:text-[#40B5E5] transition-colors">
+                          {solution.title}
+                        </h3>
+                        <p className="text-gray-600">
+                          {solution.description}
+                        </p>
+
+                        {/* Hover Indicator */}
+                        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-0 h-1 bg-[#40B5E5] 
+                                      group-hover:w-full transition-all duration-300 opacity-0 
+                                      group-hover:opacity-100" />
                       </div>
+                    </motion.div>
+                  </ScrollAnimation>
+                ))}
+              </div>
 
-                      {/* Content */}
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">{tech.name}</h3>
-                      <p className="text-gray-600">{tech.description}</p>
-                    </div>
-                  </motion.div>
-                </ScrollAnimation>
-              ))}
+              {/* CTA Section */}
+              <div className="mt-16 text-center">
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => document.getElementById('quote')?.scrollIntoView({ behavior: 'smooth' })}
+                  className="inline-flex items-center px-8 py-4 bg-[#0F172A] text-white rounded-xl 
+                           font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 
+                           transition-all duration-300"
+                >
+                  Schedule Your Expert Consultation
+                  <ArrowRight className="ml-2 w-5 h-5 transition-transform group-hover:translate-x-1" />
+                </motion.button>
+              </div>
             </div>
           </div>
         </section>

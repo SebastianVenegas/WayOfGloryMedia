@@ -152,8 +152,8 @@ export default function VideoServicesPage(): ReactElement {
               transition={{ delay: 0.4 }}
             >
               <h1 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight">
-                We Cover All Your
-                <span className="text-[#40B5E5]"> Events</span>
+                Transform Your Church's
+                <span className="text-[#40B5E5]"> Digital Presence</span>
               </h1>
               <p className="text-lg sm:text-xl text-white/90 max-w-2xl mx-auto mb-12">
                 From sermon recordings to promotional content, our team creates high-quality video productions 
@@ -212,6 +212,65 @@ export default function VideoServicesPage(): ReactElement {
       {/* Services Section */}
       <section className="py-24 bg-white">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Event Types */}
+          <div className="mb-16">
+            <ScrollAnimation type="fade-up">
+              <h2 className="text-3xl md:text-4xl font-bold text-center text-gray-900 mb-8">
+                We Cover All Your Events
+              </h2>
+              <div className="flex flex-wrap justify-center gap-4">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                  className="px-6 py-3 bg-[#40B5E5]/10 text-[#40B5E5] rounded-full font-medium hover:bg-[#40B5E5]/20 transition-colors"
+                >
+                  Church Services
+                </motion.div>
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                  className="px-6 py-3 bg-[#40B5E5]/10 text-[#40B5E5] rounded-full font-medium hover:bg-[#40B5E5]/20 transition-colors"
+                >
+                  Weddings
+                </motion.div>
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  className="px-6 py-3 bg-[#40B5E5]/10 text-[#40B5E5] rounded-full font-medium hover:bg-[#40B5E5]/20 transition-colors"
+                >
+                  Conferences
+                </motion.div>
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4 }}
+                  className="px-6 py-3 bg-[#40B5E5]/10 text-[#40B5E5] rounded-full font-medium hover:bg-[#40B5E5]/20 transition-colors"
+                >
+                  Concerts
+                </motion.div>
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5 }}
+                  className="px-6 py-3 bg-[#40B5E5]/10 text-[#40B5E5] rounded-full font-medium hover:bg-[#40B5E5]/20 transition-colors"
+                >
+                  Seminars
+                </motion.div>
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.6 }}
+                  className="px-6 py-3 bg-[#40B5E5]/10 text-[#40B5E5] rounded-full font-medium hover:bg-[#40B5E5]/20 transition-colors"
+                >
+                  Special Announcements
+                </motion.div>
+              </div>
+            </ScrollAnimation>
+          </div>
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {services.map((service, index) => (
               <ScrollAnimation
