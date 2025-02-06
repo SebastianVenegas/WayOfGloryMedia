@@ -2,7 +2,7 @@
 
 import { type ReactElement } from 'react'
 import Header from '../../../components/Header'
-import Footer from '@/components/Footer'
+import Footer from '../../../components/Footer'
 import { Video, Camera, Users, Clapperboard, Settings, MessageCircle, Star, ArrowRight, MonitorPlay, Film, Play, ChevronRight } from 'lucide-react'
 import Image from 'next/image'
 import ScrollAnimation from '../../../components/ui/scroll-animation'
