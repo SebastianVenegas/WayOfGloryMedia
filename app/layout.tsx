@@ -15,20 +15,7 @@ export const metadata: Metadata = {
   title: 'Way of Glory Media',
   description: 'Professional Audio and Video Services for Churches',
   icons: {
-    icon: [
-      {
-        url: '/favicon-light.png',
-        sizes: '192x192',
-        type: 'image/png',
-        media: '(prefers-color-scheme: light)'
-      },
-      {
-        url: '/favicon-dark.png',
-        sizes: '192x192',
-        type: 'image/png',
-        media: '(prefers-color-scheme: dark)'
-      }
-    ]
+    icon: '/favicon.ico'
   }
 }
 
@@ -49,17 +36,13 @@ export default async function RootLayout({
         <meta name="theme-color" content="#1E3A8A" />
         <link 
           rel="icon" 
-          type="image/png" 
-          sizes="192x192" 
-          href={`/favicon-light.png?v=${version}`}
-          media="(prefers-color-scheme: light)"
+          type="image/x-icon" 
+          href="/favicon.ico"
         />
         <link 
-          rel="icon" 
-          type="image/png" 
-          sizes="192x192" 
-          href={`/favicon-dark.png?v=${version}`}
-          media="(prefers-color-scheme: dark)"
+          rel="shortcut icon" 
+          type="image/x-icon" 
+          href="/favicon.ico"
         />
         
         {/* Preload critical assets */}
