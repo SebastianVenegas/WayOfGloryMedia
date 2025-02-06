@@ -55,7 +55,7 @@ export default function Header() {
                 src="/images/logo/logo.png"
                 alt="WayofGlory Logo"
                 fill
-                className="object-contain brightness-0 invert"
+                className="object-contain"
                 priority
               />
             </Link>
@@ -81,7 +81,7 @@ export default function Header() {
                 src="/images/logo/logo.png"
                 alt="WayofGlory Logo"
                 fill
-                className="object-contain brightness-0 invert"
+                className="object-contain"
                 priority
               />
             </Link>
