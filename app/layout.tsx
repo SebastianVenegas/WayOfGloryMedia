@@ -13,21 +13,7 @@ const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'Way of Glory Media',
-  description: 'Professional Audio and Video Services for Churches',
-  icons: {
-    icon: [
-      {
-        url: '/favicon-dark.png',
-        sizes: '192x192',
-        media: '(prefers-color-scheme: light)'
-      },
-      {
-        url: '/favicon-light.png',
-        sizes: '192x192',
-        media: '(prefers-color-scheme: dark)'
-      }
-    ]
-  }
+  description: 'Professional Audio and Video Services for Churches'
 }
 
 export default async function RootLayout({
@@ -37,28 +23,19 @@ export default async function RootLayout({
 }) {
   const headersList = await headers()
   const isAdmin = headersList.has('x-is-admin') && headersList.get('x-is-admin') === '1'
-  const version = Date.now() // Add a version to force cache busting
 
   return (
     <html lang="en" className="light scroll-smooth">
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="theme-color" content="#1E3A8A" />
-        <link 
-          rel="icon" 
-          type="image/png" 
-          sizes="192x192" 
-          href={`/favicon-dark.png?v=${version}`}
-          media="(prefers-color-scheme: light)"
-        />
-        <link 
-          rel="icon" 
-          type="image/png" 
-          sizes="192x192" 
-          href={`/favicon-light.png?v=${version}`}
-          media="(prefers-color-scheme: dark)"
-        />
+        <meta name="theme-color" content="#1E3A8A" media="(prefers-color-scheme: light)" />
+        <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+        
+        {/* Favicon */}
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" type="image/png" href="/icon.png" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         
         {/* Preload critical assets */}
         <link 
