@@ -15,7 +15,10 @@ export const metadata: Metadata = {
   title: 'Way of Glory Media',
   description: 'Professional Audio and Video Services for Churches',
   icons: {
-    icon: '/favicon.ico'
+    icon: [
+      { rel: 'icon', url: '/favicon.ico' },
+      { rel: 'shortcut icon', url: '/favicon.ico' }
+    ]
   }
 }
 
@@ -33,7 +36,10 @@ export default async function RootLayout({
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#1E3A8A" />
-        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" href="/favicon.ico" />
+        <link rel="shortcut icon" href="/favicon.ico" />
+        <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
         
         {/* Preload critical assets */}
         <link 
