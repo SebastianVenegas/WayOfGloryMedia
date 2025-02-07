@@ -4,7 +4,7 @@ import { sql } from '@vercel/postgres'
 export async function POST(req: Request) {
   try {
     const body = await req.json()
-    const { title, description, price, features, category } = body
+    const { title, description, price, features, category, metadata } = body
 
     if (!title || !description || !price) {
       return NextResponse.json(
@@ -27,6 +27,7 @@ export async function POST(req: Request) {
         is_custom,
         is_service,
         status,
+        metadata,
         created_at,
         updated_at
       ) VALUES (
@@ -38,6 +39,7 @@ export async function POST(req: Request) {
         true,
         true,
         'active',
+        ${metadata ? JSON.stringify(metadata) : null}::jsonb,
         NOW(),
         NOW()
       ) RETURNING *
@@ -49,7 +51,8 @@ export async function POST(req: Request) {
       success: true, 
       product: {
         ...product,
-        id: product.id.toString()
+        id: product.id.toString(),
+        metadata: metadata || null
       }
     })
   } catch (error: any) {

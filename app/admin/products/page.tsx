@@ -23,7 +23,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { useSidebar } from '@/contexts/SidebarContext'
 import ProductsHeader from '@/components/admin/ProductsHeader'
 import { SelectCustomServiceModal } from "../../components/ui/select-custom-service-modal"
-import type { CustomService } from "../../components/ui/custom-service-modal"
+import type { CustomService } from "../../components/ui/select-custom-service-modal"
 
 // Category type definitions
 type MainCategory = 'all' | 'Audio Gear' | 'Streaming Gear' | 'Services';

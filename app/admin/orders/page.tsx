@@ -927,8 +927,8 @@ export default function OrdersPage() {
         return
       }
       
-      // Only proceed with AI generation if we have a template
-      if (templateId) {
+      // Only proceed with AI generation if we have a template and selected order
+      if (templateId && selectedOrder?.id) {
         setIsGeneratingAI(true)
         const templatePrompt = getTemplatePrompt(templateId)
         if (!templatePrompt) return
@@ -939,15 +939,15 @@ export default function OrdersPage() {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
+            orderId: selectedOrder.id,
             prompt: templatePrompt,
             templateType: templateId,
-            order: selectedOrder,
             viewMode,
             variables: {
-              customerName: `${selectedOrder?.first_name} ${selectedOrder?.last_name}`,
-              orderNumber: selectedOrder?.id,
-              amount: selectedOrder?.total_amount,
-              installationDate: selectedOrder?.installation_date,
+              customerName: `${selectedOrder.first_name} ${selectedOrder.last_name}`,
+              orderNumber: selectedOrder.id,
+              amount: selectedOrder.total_amount,
+              installationDate: selectedOrder.installation_date,
             }
           }),
         })
@@ -963,6 +963,8 @@ export default function OrdersPage() {
         setEditedSubject(data.subject || '')
         setIsAiPromptOpen(false)
         toast.success('Email content generated successfully')
+      } else {
+        toast.error('Please select an order first')
       }
     } catch (error) {
       console.error('Error generating content:', error)

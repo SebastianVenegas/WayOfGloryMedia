@@ -8,15 +8,16 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
   try {
     const url = new URL(request.url);
-    const serviceId = Number(url.pathname.split('/').slice(-2, -1)[0]); // Extract ID from URL
+    const serviceId = Number(url.pathname.split('/').slice(-2, -1)[0]);
 
     if (isNaN(serviceId) || serviceId <= 0) {
       return NextResponse.json({ error: "Invalid service ID" }, { status: 400 });
     }
 
     const result = await sql`
-      SELECT * FROM custom_services 
+      SELECT * FROM products 
       WHERE id = ${serviceId}
+      AND is_custom = true
     `;
     
     if (result.rows.length === 0) {
@@ -30,7 +31,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("Error fetching custom service:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "Failed to fetch custom service" },
       { status: 500 }
     );
   }
@@ -39,7 +40,7 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const url = new URL(request.url);
-    const serviceId = Number(url.pathname.split('/').slice(-2, -1)[0]); // Extract ID from URL
+    const serviceId = Number(url.pathname.split('/').slice(-2, -1)[0]);
 
     if (isNaN(serviceId) || serviceId <= 0) {
       return NextResponse.json({ error: "Invalid service ID" }, { status: 400 });
@@ -50,24 +51,32 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { title, description, price, features } = await request.json();
+    const body = await request.json();
+    const { title, description, price, features } = body;
+    const userEmail = request.headers.get('user-email');
 
-    if (!title || !price) {
-      return NextResponse.json(
-        { error: "Title and price are required" },
-        { status: 400 }
-      );
+    // Validation
+    if (!title?.trim()) {
+      return NextResponse.json({ error: "Title is required" }, { status: 400 });
     }
 
+    if (!price || price <= 0) {
+      return NextResponse.json({ error: "Valid price is required" }, { status: 400 });
+    }
+
+    const featuresJson = features ? JSON.stringify(features) : '[]';
+
     const result = await sql`
-      UPDATE custom_services 
+      UPDATE products 
       SET 
         title = ${title},
-        description = ${description || null},
+        description = ${description || ''},
         price = ${price},
-        features = ${features ? JSON.stringify(features) : null},
-        updated_at = CURRENT_TIMESTAMP
+        features = ${featuresJson}::jsonb,
+        updated_at = NOW(),
+        updated_by = ${userEmail || 'unknown'}
       WHERE id = ${serviceId}
+      AND is_custom = true
       RETURNING *
     `;
 
@@ -82,7 +91,7 @@ export async function PUT(request: NextRequest) {
   } catch (error) {
     console.error("Error updating custom service:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "Failed to update custom service" },
       { status: 500 }
     );
   }
@@ -91,7 +100,7 @@ export async function PUT(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const url = new URL(request.url);
-    const serviceId = Number(url.pathname.split('/').slice(-2, -1)[0]); // Extract ID from URL
+    const serviceId = Number(url.pathname.split('/').slice(-2, -1)[0]);
 
     if (isNaN(serviceId) || serviceId <= 0) {
       return NextResponse.json({ error: "Invalid service ID" }, { status: 400 });
@@ -103,9 +112,13 @@ export async function DELETE(request: NextRequest) {
     }
 
     const result = await sql`
-      UPDATE custom_services 
-      SET is_active = false 
+      UPDATE products 
+      SET 
+        status = 'inactive',
+        updated_at = NOW(),
+        updated_by = ${request.headers.get('user-email') || 'unknown'}
       WHERE id = ${serviceId}
+      AND is_custom = true
       RETURNING *
     `;
 
@@ -116,11 +129,14 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    return NextResponse.json(result.rows[0]);
+    return NextResponse.json({ 
+      success: true,
+      message: "Custom service deleted successfully" 
+    });
   } catch (error) {
     console.error("Error deleting custom service:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "Failed to delete custom service" },
       { status: 500 }
     );
   }

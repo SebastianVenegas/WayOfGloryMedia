@@ -3,17 +3,32 @@ interface Order {
   first_name: string;
   last_name: string;
   email: string;
+  phone: string;
+  organization: string;
+  shipping_address: string;
+  shipping_city: string;
+  shipping_state: string;
+  shipping_zip: string;
+  shipping_instructions: string;
+  installation_address: string;
+  installation_city: string;
+  installation_state: string;
+  installation_zip: string;
+  installation_date: string;
+  installation_time: string;
+  access_instructions: string;
+  contact_onsite: string;
+  contact_onsite_phone: string;
+  payment_method: string;
   total_amount: number | string;
-  installation_date?: string;
-  installation_time?: string;
-  installation_address?: string;
-  installation_city?: string;
-  installation_state?: string;
-  installation_zip?: string;
-  shipping_address?: string;
-  shipping_city?: string;
-  shipping_state?: string;
-  shipping_zip?: string;
+  total_cost: number | string;
+  total_profit: number | string;
+  installation_price: number | string;
+  signature_url: string;
+  status: 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'delayed';
+  created_at: string;
+  order_items?: any[];
+  notes?: string;
 }
 
 const baseStyle = `
@@ -252,10 +267,71 @@ const emailPrompts = {
     - Summarizes their order details
     - Provides next steps or what to expect
     - Includes contact information
-    - Maintains a warm and professional tone`
+    - Maintains a warm and professional tone`,
+
+  default_template: `Dear {customerName},
+
+Thank you for your recent order with Way of Glory Media. We're writing to confirm the details of your order #{orderId}.
+
+Key Information:
+• Order Number: #{orderId}
+• Order Date: {orderDate}
+• Total Amount: {orderTotal}
+
+Ordered Items:
+{orderItems}
+
+Order Status:
+{orderStatus}
+
+Installation Information:
+{installationInfo}
+
+Next Steps:
+{actionItems}
+
+{additionalNotes}
+
+If you have any questions or need assistance, please don't hesitate to contact us:
+
+Phone: (310) 872-9781
+Email: help@wayofglory.com
+
+Best regards,
+Way of Glory Media Team`
 };
 
 export const getEmailPrompt = (templateId: string, order: Order): string => {
+  // If templateId is 'default', return the default template with variables
+  if (templateId === 'default') {
+    return emailPrompts.default_template
+      .replace('{customerName}', `${order.first_name} ${order.last_name}`)
+      .replace('{orderId}', `${order.id}`)
+      .replace('{orderDate}', new Date(order.created_at).toLocaleDateString())
+      .replace('{orderTotal}', `$${Number(order.total_amount || 0).toFixed(2)}`)
+      .replace('{orderItems}', order.order_items?.map((item: any) => 
+        `• ${item.product.title} (Quantity: ${item.quantity})`
+      ).join('\n') || 'No items')
+      .replace('{orderStatus}', `Your order is currently ${order.status}. ${
+        order.status === 'pending' ? 'We will process it shortly.' :
+        order.status === 'confirmed' ? 'We are preparing your order.' :
+        order.status === 'completed' ? 'Thank you for your business.' :
+        order.status === 'cancelled' ? 'Please contact us if you have any questions.' :
+        'Please contact us if you need any updates.'
+      }`)
+      .replace('{installationInfo}', order.installation_date ? 
+        `Installation is scheduled for ${order.installation_date}${order.installation_time ? ` at ${order.installation_time}` : ''}.` :
+        'We will contact you to schedule any necessary installation or setup.')
+      .replace('{actionItems}', order.status === 'pending' ? 
+        'Please review the order details and let us know if any adjustments are needed.' :
+        order.status === 'confirmed' ? 
+        'No action is required from you at this time.' :
+        order.status === 'completed' ? 
+        'Please let us know if you need any assistance with your products or services.' :
+        'Please contact us if you have any questions or concerns.')
+      .replace('{additionalNotes}', order.notes ? `Additional Notes: ${order.notes}` : '')
+  }
+
   const prompt = emailPrompts[templateId as keyof typeof emailPrompts];
   if (!prompt) {
     throw new Error('Invalid template ID');
@@ -292,6 +368,59 @@ export const getEmailTemplate = (
         ${baseStyle}
         ${createEmailWrapper(cleanHtml)}
       `.trim()
+    };
+  }
+
+  // Handle default template
+  if (templateId === 'default') {
+    const orderItems = order.order_items?.map((item: any) => 
+      `• ${item.product.title} (Quantity: ${item.quantity})`
+    ).join('\n') || 'No items';
+
+    const orderStatus = `Your order is currently ${order.status}. ${
+      order.status === 'pending' ? 'We will process it shortly.' :
+      order.status === 'confirmed' ? 'We are preparing your order.' :
+      order.status === 'completed' ? 'Thank you for your business.' :
+      order.status === 'cancelled' ? 'Please contact us if you have any questions.' :
+      'Please contact us if you need any updates.'
+    }`;
+
+    const installationInfo = order.installation_date ? 
+      `Installation is scheduled for ${order.installation_date}${order.installation_time ? ` at ${order.installation_time}` : ''}.` :
+      'We will contact you to schedule any necessary installation or setup.';
+
+    const actionItems = order.status === 'pending' ? 
+      'Please review the order details and let us know if any adjustments are needed.' :
+      order.status === 'confirmed' ? 
+      'No action is required from you at this time.' :
+      order.status === 'completed' ? 
+      'Please let us know if you need any assistance with your products or services.' :
+      'Please contact us if you have any questions or concerns.';
+
+    const additionalNotes = order.notes ? 
+      `Additional Notes:\n${order.notes}` : 
+      '';
+
+    const processedContent = emailPrompts.default_template
+      .replace(/\{customerName\}/g, `${order.first_name} ${order.last_name}`)
+      .replace(/#{orderId}/g, `${order.id}`)
+      .replace(/\{orderDate\}/g, new Date(order.created_at).toLocaleDateString())
+      .replace(/\{orderTotal\}/g, `$${Number(order.total_amount || 0).toFixed(2)}`)
+      .replace(/\{orderItems\}/g, orderItems)
+      .replace(/\{orderStatus\}/g, orderStatus)
+      .replace(/\{installationInfo\}/g, installationInfo)
+      .replace(/\{actionItems\}/g, actionItems)
+      .replace(/\{additionalNotes\}/g, additionalNotes)
+      .replace(/\n\s*\n\s*\n/g, '\n\n') // Remove extra blank lines
+      .replace(/^\s+|\s+$/gm, '') // Trim whitespace from each line
+      .trim();
+
+    return {
+      subject: `Order Confirmation - Way of Glory Media #${order.id}`,
+      html: sanitizeHtml(`
+        ${baseStyle}
+        ${createEmailWrapper(wrapContent(processedContent))}
+      `)
     };
   }
 
@@ -382,9 +511,8 @@ export const getEmailTemplate = (
   return template;
 };
 
-export const formatEmailPreview = async (content: string, order: Order): Promise<string> => {
-  const wrappedContent = wrapContent(content);
-  const cleanContent = sanitizeHtml(wrappedContent);
+export const formatEmailPreview = async (content: string): Promise<string> => {
+  const cleanContent = sanitizeHtml(wrapContent(content));
   return sanitizeHtml(`
     ${baseStyle}
     ${createEmailWrapper(cleanContent)}
