@@ -1,15 +1,15 @@
-import { NextResponse } from 'next/server'
-import nodemailer from 'nodemailer'
-import { sql } from '@vercel/postgres'
+import { NextResponse } from 'next/server';
+import nodemailer from 'nodemailer';
+import { sql } from '@vercel/postgres';
 
 // Create reusable transporter object using SMTP transport
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
     user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_APP_PASSWORD
-  }
-})
+    pass: process.env.GMAIL_APP_PASSWORD,
+  },
+});
 
 // Updated base style to match the clean design
 const baseStyle = `
@@ -18,7 +18,8 @@ const baseStyle = `
       margin: 0;
       padding: 0;
       background-color: #ffffff;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial,
+        sans-serif;
       line-height: 1.6;
       color: #374151;
     }
@@ -99,7 +100,7 @@ const baseStyle = `
       color: #2563eb;
     }
   </style>
-`
+`;
 
 // Add TypeScript interfaces
 interface OrderItem {
@@ -138,28 +139,49 @@ interface Order {
   order_items?: OrderItem[];
 }
 
-function formatEmailContent(content: string, order: Order, customerName: string) {
-  // Replace common placeholders with actual values
-  let formattedContent = content
-    // Customer Information
+// Helper function to format a number as currency
+const formatCurrency = (amount: number): string => {
+  return `$${Number(amount).toFixed(2)}`;
+};
+
+// Helper function to format a date
+const formatDate = (dateString: string): string => {
+  return new Date(dateString).toLocaleDateString();
+};
+
+// Function to generate HTML for order items
+const generateOrderItemsHTML = (orderItems: OrderItem[]): string => {
+  return orderItems
+    .map(
+      (item) => `
+        <tr>
+          <td style="padding: 16px 0; border-bottom: 1px solid #e5e7eb;">
+            <div style="font-size: 16px; font-weight: 500; color: #111827;">
+              ${item.product?.title || 'Product'}
+            </div>
+            <div style="font-size: 14px; color: #6b7280; margin-top: 4px;">
+              Quantity: ${item.quantity}
+            </div>
+          </td>
+        </tr>
+      `
+    )
+    .join('');
+};
+
+function formatEmailContent(content: string, order: any, customerName: string) {
+  // Replace variables in content
+  let processedContent = content
     .replace(/\{customerName\}/g, customerName)
-    .replace(/\[Customer's Name\]/g, customerName)
-    .replace(/\[Customer Name\]/g, customerName)
+    .replace(/\{orderId\}/g, String(order.id))
+    .replace(/\{orderDate\}/g, formatDate(order.created_at))
+    .replace(/\{totalAmount\}/g, formatCurrency(order.total_amount))
     .replace(/\{firstName\}/g, order.first_name)
     .replace(/\{lastName\}/g, order.last_name)
     .replace(/\{email\}/g, order.email)
     .replace(/\{phone\}/g, order.phone || 'Not provided')
     .replace(/\{organization\}/g, order.organization || 'Not provided')
-
-    // Order Information
-    .replace(/\{orderId\}/g, order.id.toString())
-    .replace(/\[12345ABC\]/g, `#${order.id}`)
-    .replace(/\{orderDate\}/g, new Date(order.created_at).toLocaleDateString())
-    .replace(/\{orderTime\}/g, new Date(order.created_at).toLocaleTimeString())
-    .replace(/\{totalAmount\}/g, `$${Number(order.total_amount).toFixed(2)}`)
     .replace(/\{status\}/g, order.status)
-
-    // Installation Information
     .replace(/\{installationDate\}/g, order.installation_date || 'To be scheduled')
     .replace(/\{installationTime\}/g, order.installation_time || 'To be scheduled')
     .replace(/\{installationAddress\}/g, order.installation_address || 'Not provided')
@@ -167,47 +189,30 @@ function formatEmailContent(content: string, order: Order, customerName: string)
     .replace(/\{installationState\}/g, order.installation_state || '')
     .replace(/\{installationZip\}/g, order.installation_zip || '')
     .replace(/\{installationInstructions\}/g, order.installation_instructions || 'No special instructions provided')
-
-    // Contact Information
     .replace(/\{contactOnsite\}/g, order.contact_onsite || 'Not provided')
     .replace(/\{contactOnsitePhone\}/g, order.contact_onsite_phone || 'Not provided')
-
-    // Shipping Information
     .replace(/\{shippingAddress\}/g, order.shipping_address || 'Same as installation address')
     .replace(/\{shippingCity\}/g, order.shipping_city || '')
     .replace(/\{shippingState\}/g, order.shipping_state || '')
     .replace(/\{shippingZip\}/g, order.shipping_zip || '')
     .replace(/\{shippingInstructions\}/g, order.shipping_instructions || 'No special instructions provided')
-
-    // Payment Information
     .replace(/\{paymentMethod\}/g, order.payment_method || 'Not specified')
-
-    // Company Information
     .replace(/\{companyPhone\}/g, '(310) 872-9781')
     .replace(/\{companyEmail\}/g, 'help@wayofglory.com')
     .replace(/\{companyWebsite\}/g, 'www.wayofglory.com')
-
-    // Handle signature placeholders
     .replace(/\[Your Name\]/g, 'Customer Care Team')
-    .replace(/\[Name\]/g, 'Customer Care Team')
+    .replace(/\[Name\]/g, 'Customer Care Team');
 
   // Format order items if they exist
   if (order.order_items && order.order_items.length > 0) {
-    const itemsList = order.order_items.map((item: OrderItem) => 
-      `${item.product?.title || 'Product'} (Qty: ${item.quantity}) - $${Number(item.price_at_time).toFixed(2)}`
-    ).join('<br>')
-    formattedContent = formattedContent.replace(/\{orderItems\}/g, itemsList)
+    const itemsList = generateOrderItemsHTML(order.order_items);
+    processedContent = processedContent.replace(/\{orderItems\}/g, itemsList);
   }
 
-  // Add line breaks for better formatting
-  formattedContent = formattedContent
-    .split('\n')
-    .map(line => line.trim()) // Trim whitespace
-    .filter(line => line) // Remove empty lines
-    .map(line => `<p>${line}</p>`)
-    .join('')
+  // Ensure proper line breaks
+  processedContent = processedContent.replace(/\n/g, '<br>').replace(/\r/g, '').trim();
 
-  return formattedContent
+  return processedContent;
 }
 
 // Add a helper function to show available variables
@@ -258,99 +263,229 @@ Company Information:
 {companyPhone} - Company phone number
 {companyEmail} - Company email
 {companyWebsite} - Company website
-`
+`;
 }
+
+// Function to generate the email HTML
+const generateEmailHTML = (order: Order, formattedContent: string): string => {
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Installation Confirmation for Order #${order.id}</title>
+    </head>
+    <body style="margin: 0; padding: 0; background-color: #f5f5f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;">
+      <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5;">
+        <tr>
+          <td align="center" style="padding: 20px;">
+            <table width="600" cellpadding="0" cellspacing="0" style="background-color: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+              <!-- Header -->
+              <tr>
+                <td style="background: linear-gradient(to right, #000000, #111827); padding: 32px 24px; text-align: center;">
+                  <img src="https://wayofglorymedia.com/images/logo/LogoLight.png" alt="Way of Glory Media" style="width: 200px; height: auto; margin-bottom: 16px;" />
+                  <h1 style="color: white; margin: 0; font-size: 24px; font-weight: 600;">Installation Confirmation for Order #${order.id}</h1>
+                </td>
+              </tr>
+
+              <!-- Main Content -->
+              <tr>
+                <td style="padding: 32px 24px;">
+                  <table width="100%" cellpadding="0" cellspacing="0">
+                    <!-- Greeting -->
+                    <tr>
+                      <td style="padding-bottom: 24px;">
+                        <table width="100%" cellpadding="0" cellspacing="0">
+                          <tr>
+                            <td style="font-size: 16px; line-height: 1.5; color: #111827;">
+                              Dear ${order.first_name} ${order.last_name},
+                            </td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+
+                    <!-- Main Message -->
+                    <tr>
+                      <td style="padding-bottom: 24px;">
+                        <table width="100%" cellpadding="0" cellspacing="0">
+                          <tr>
+                            <td style="font-size: 16px; line-height: 1.5; color: #111827;">
+                              We are excited to inform you that your order #${order.id} is scheduled for installation${order.installation_date ? ` on ${order.installation_date}` : ''}. 
+                              We are eager to provide you with the best audio and visual solutions to enhance your experience.
+                            </td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+
+                    <!-- Order Details -->
+                    <tr>
+                      <td style="padding-bottom: 32px;">
+                        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px;">
+                          <tr>
+                            <td style="padding: 24px;">
+                              <table width="100%" cellpadding="0" cellspacing="0">
+                                <tr>
+                                  <td style="padding-bottom: 20px;">
+                                    <h2 style="font-size: 20px; color: #111827; margin: 0; font-weight: 600;">Order Details</h2>
+                                  </td>
+                                </tr>
+                                <tr>
+                                  <td>
+                                    <table width="100%" cellpadding="0" cellspacing="0" style="border-spacing: 0 12px;">
+                                      <tr>
+                                        <td width="50%" style="color: #6b7280; font-size: 16px;">Order Number:</td>
+                                        <td width="50%" style="color: #111827; font-size: 16px; font-weight: 500; text-align: right;">#${order.id}</td>
+                                      </tr>
+                                      <tr>
+                                        <td width="50%" style="color: #6b7280; font-size: 16px;">Order Date:</td>
+                                        <td width="50%" style="color: #111827; font-size: 16px; font-weight: 500; text-align: right;">${formatDate(order.created_at)}</td>
+                                      </tr>
+                                      <tr>
+                                        <td width="50%" style="color: #6b7280; font-size: 16px;">Total Amount:</td>
+                                        <td width="50%" style="color: #111827; font-size: 16px; font-weight: 500; text-align: right;">${formatCurrency(order.total_amount)}</td>
+                                      </tr>
+                                      ${order.installation_date ? `
+                                      <tr>
+                                        <td width="50%" style="color: #6b7280; font-size: 16px;">Installation Date:</td>
+                                        <td width="50%" style="color: #111827; font-size: 16px; font-weight: 500; text-align: right;">${order.installation_date}</td>
+                                      </tr>
+                                      ` : ''}
+                                      ${order.installation_time ? `
+                                      <tr>
+                                        <td width="50%" style="color: #6b7280; font-size: 16px;">Installation Time:</td>
+                                        <td width="50%" style="color: #111827; font-size: 16px; font-weight: 500; text-align: right;">${order.installation_time}</td>
+                                      </tr>
+                                      ` : ''}
+                                    </table>
+                                  </td>
+                                </tr>
+                              </table>
+                            </td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+
+                    <!-- Ordered Items -->
+                    ${order.order_items && order.order_items.length > 0 ? `
+                    <tr>
+                      <td style="padding-bottom: 32px;">
+                        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px;">
+                          <tr>
+                            <td style="padding: 24px;">
+                              <table width="100%" cellpadding="0" cellspacing="0">
+                                <tr>
+                                  <td style="padding-bottom: 16px;">
+                                    <h2 style="font-size: 18px; color: #111827; margin: 0;">Ordered Items</h2>
+                                  </td>
+                                </tr>
+                                ${generateOrderItemsHTML(order.order_items)}
+                              </table>
+                            </td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+                    ` : ''}
+
+                    <!-- Contact Information -->
+                    <tr>
+                      <td>
+                        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px;">
+                          <tr>
+                            <td style="padding: 24px;">
+                              <table width="100%" cellpadding="0" cellspacing="0">
+                                <tr>
+                                  <td style="padding-bottom: 16px;">
+                                    <h2 style="font-size: 18px; color: #111827; margin: 0;">Contact Information</h2>
+                                  </td>
+                                </tr>
+                                <tr>
+                                  <td style="padding-bottom: 16px; color: #111827;">
+                                    If you have any questions before your installation, please contact us:
+                                  </td>
+                                </tr>
+                                <tr>
+                                  <td>
+                                    <table width="100%" cellpadding="0" cellspacing="0">
+                                      <tr>
+                                        <td style="padding-bottom: 8px;">
+                                          Phone: <a href="tel:+13108729781" style="color: #2563eb; text-decoration: none;">(310) 872-9781</a>
+                                        </td>
+                                      </tr>
+                                      <tr>
+                                        <td>
+                                          Email: <a href="mailto:support@wayofglorymedia.com" style="color: #2563eb; text-decoration: none;">support@wayofglorymedia.com</a>
+                                        </td>
+                                      </tr>
+                                    </table>
+                                  </td>
+                                </tr>
+                              </table>
+                            </td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+
+              <!-- Footer -->
+              <tr>
+                <td style="border-top: 1px solid #e5e7eb; padding: 24px; text-align: center;">
+                  <p style="margin: 0; color: #6b7280; font-size: 14px;">
+                    Way of Glory Media
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+};
 
 export async function POST(request: Request) {
   try {
-    const { 
-      orderId, 
-      email, 
-      subject, 
-      content, 
-      customerName,
-      order 
-    } = await request.json()
+    const { orderId, email, subject, content, customerName, order } =
+      await request.json();
 
     if (!email || !subject || !content) {
       return NextResponse.json(
         { error: 'Missing required fields' },
-        { status: 400 }
-      )
+        { status: 400 },
+      );
     }
 
-    // Ensure we have a valid customer name
-    const validCustomerName = customerName || `${order.first_name} ${order.last_name}`.trim()
+    const validCustomerName =
+      customerName || `${order.first_name} ${order.last_name}`.trim();
+    const formattedContent = formatEmailContent(content, order, validCustomerName);
+    const html = generateEmailHTML(order, formattedContent);
 
-    const formattedContent = formatEmailContent(content, order, validCustomerName)
-
-    // Format the email content with improved HTML structure
-    const htmlContent = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          ${baseStyle}
-        </head>
-        <body>
-          <div class="email-container">
-            <div class="content">
-              ${formattedContent}
-              
-              <div class="order-details">
-                <h3>Order Details</h3>
-                <div class="order-detail-row">
-                  <span class="order-detail-label">Order Number</span>
-                  <span class="order-detail-value">#${order.id}</span>
-                </div>
-                <div class="order-detail-row">
-                  <span class="order-detail-label">Order Date</span>
-                  <span class="order-detail-value">${new Date(order.created_at).toLocaleDateString()}</span>
-                </div>
-                <div class="order-detail-row">
-                  <span class="order-detail-label">Total Amount</span>
-                  <span class="order-detail-value">$${Number(order.total_amount).toFixed(2)}</span>
-                </div>
-                ${order.installation_date ? `
-                <div class="order-detail-row">
-                  <span class="order-detail-label">Installation Date</span>
-                  <span class="order-detail-value">${order.installation_date} ${order.installation_time || ''}</span>
-                </div>
-                ` : ''}
-              </div>
-            </div>
-            
-            <div class="footer">
-              <p class="company-name">Way of Glory</p>
-              <p class="contact-info">
-                123 ABC Street, City, State, ZIP<br>
-                Phone: <a href="tel:+13108729781">(310) 872-9781</a><br>
-                Email: <a href="mailto:help@wayofglory.com">help@wayofglory.com</a><br>
-                Website: <a href="https://www.wayofglory.com">www.wayofglory.com</a>
-              </p>
-            </div>
-          </div>
-        </body>
-      </html>
-    `
-
-    // Send the email with proper formatting
-    await transporter.sendMail({
-      from: {
-        name: 'Way of Glory',
-        address: process.env.GMAIL_USER || 'help@wayofglory.com'
-      },
-      to: {
-        name: validCustomerName,
-        address: email
-      },
+    const mailOptions = {
+      from: '"Way of Glory" <help@wayofglory.com>',
+      to: email,
       subject: subject,
-      html: htmlContent,
-      text: content // Fallback plain text version
-    })
+      html: html,
+    };
 
-    // Log the email in the database
+    try {
+      await transporter.sendMail(mailOptions);
+    } catch (emailError) {
+      console.error('Error sending email:', emailError);
+      return NextResponse.json(
+        { error: 'Failed to send email via SMTP' },
+        { status: 500 }
+      );
+    }
+
+    try {
     await sql`
       INSERT INTO email_logs (
         order_id,
@@ -363,21 +498,24 @@ export async function POST(request: Request) {
         ${content},
         NOW()
       )
-    `
+      `;
+    } catch (dbError) {
+      console.error('Error logging email:', dbError);
+      // Don't return error here since email was sent successfully
+    }
 
     return NextResponse.json({ 
       success: true,
-      message: 'Email sent successfully'
-    })
-
+      message: 'Email sent successfully',
+    });
   } catch (error) {
-    console.error('Error sending email:', error)
+    console.error('Error in email handler:', error);
     return NextResponse.json(
       { 
-        error: 'Failed to send email',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Failed to process email request',
+        details: error instanceof Error ? error.stack : undefined
       },
-      { status: 500 }
-    )
+      { status: 500 },
+    );
   }
 } 

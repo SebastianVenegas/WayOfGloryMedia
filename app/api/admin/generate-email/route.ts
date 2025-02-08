@@ -52,7 +52,7 @@ function processVariables(content: string, order: any) {
 
 export async function POST(req: Request) {
   try {
-    const { orderId, content, customPrompt, isPWA } = await req.json()
+    const { orderId, templateType, content, customPrompt, isPWA } = await req.json()
 
     // Fetch order details
     const result = await sql`
@@ -87,42 +87,58 @@ export async function POST(req: Request) {
     let processedContent = content
     if (content) {
       // Replace all template variables
-      processedContent = content
-        .replace('[Customer Name]', `${order.first_name} ${order.last_name}`)
-        .replace('[Start with a warm greeting and clear purpose for the email]', 
-          `Thank you for your recent order with Way of Glory Media. We're writing to confirm the details of your order #${order.id}.`)
-        .replace('[Key Information:]', 
-          `We're pleased to confirm your order details below:
+      processedContent = `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; line-height: 1.6;">
+          <h1 style="font-size: 24px; color: #111827; margin-bottom: 24px;">Installation Confirmation for Order #${order.id}</h1>
+          
+          <p style="margin-bottom: 16px;">Dear ${order.first_name} ${order.last_name},</p>
+          
+          <p style="margin-bottom: 24px;">We are excited to inform you that your order #${order.id} is scheduled for installation on ${order.installation_date}. We are eager to provide you with the best audio and visual solutions to enhance your experience.</p>
+          
+          <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 24px; margin-bottom: 24px;">
+            <h2 style="font-size: 18px; color: #111827; margin-bottom: 16px;">Order Details</h2>
+            <p style="margin-bottom: 8px;"><strong>Order Number:</strong> #${order.id}</p>
+            <p style="margin-bottom: 8px;"><strong>Order Date:</strong> ${new Date(order.created_at).toLocaleDateString()}</p>
+            <p style="margin-bottom: 8px;"><strong>Total Amount:</strong> $${Number(order.total_amount || 0).toFixed(2)}</p>
+            <p style="margin-bottom: 8px;"><strong>Installation Date:</strong> ${order.installation_date}</p>
+            ${order.installation_time ? `<p style="margin-bottom: 8px;"><strong>Installation Time:</strong> ${order.installation_time}</p>` : ''}
+          </div>
 
-• Order Number: #${order.id}
-• Order Date: ${new Date(order.created_at).toLocaleDateString()}
-• Total Amount: $${Number(order.total_amount || 0).toFixed(2)}
+          <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 24px; margin-bottom: 24px;">
+            <h2 style="font-size: 18px; color: #111827; margin-bottom: 16px;">Ordered Items</h2>
+            ${order.order_items.map((item: any) => `
+              <div style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
+                <p style="margin: 0;"><strong>${item.product.title}</strong></p>
+                <p style="margin: 4px 0 0 0; color: #6b7280;">Quantity: ${item.quantity}</p>
+              </div>
+            `).join('')}
+          </div>
 
-Ordered Items:
-${order.order_items.map((item: any) => 
-  `• ${item.product.title} (Quantity: ${item.quantity})`
-).join('\n')}`)
-        .replace('[Order details or important points]', 
-          `Your order is currently ${order.status}. ${
-            order.status === 'pending' ? 'We will process it shortly.' :
-            order.status === 'confirmed' ? 'We are preparing your order.' :
-            order.status === 'completed' ? 'Thank you for your business.' :
-            order.status === 'cancelled' ? 'Please contact us if you have any questions.' :
-            'Please contact us if you need any updates.'
-          }`)
-        .replace('[Relevant dates or deadlines]', 
-          order.installation_date ? 
-          `Installation is scheduled for ${order.installation_date}${order.installation_time ? ` at ${order.installation_time}` : ''}.` :
-          'We will contact you to schedule any necessary installation or setup.')
-        .replace('[Any action items required]',
-          order.status === 'pending' ? 'Please review the order details and let us know if any adjustments are needed.' :
-          order.status === 'confirmed' ? 'No action is required from you at this time.' :
-          order.status === 'completed' ? 'Please let us know if you need any assistance with your products or services.' :
-          'Please contact us if you have any questions or concerns.')
-        .replace('[Additional context or instructions if needed]',
-          order.notes ? `Additional Notes: ${order.notes}` : '')
-        .replace(/\n\s*\n\s*\n/g, '\n\n') // Remove extra blank lines
-        .trim()
+          <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 24px; margin-bottom: 24px;">
+            <h2 style="font-size: 18px; color: #111827; margin-bottom: 16px;">Preparation Instructions</h2>
+            <ul style="margin: 0; padding-left: 24px;">
+              <li style="margin-bottom: 8px;">Please ensure the installation area is clear and free from obstructions.</li>
+              <li style="margin-bottom: 8px;">Ensure that all necessary power outlets are functioning and easily accessible.</li>
+              <li style="margin-bottom: 8px;">If any furniture needs to be moved, please do so prior to our arrival.</li>
+            </ul>
+          </div>
+
+          <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 24px; margin-bottom: 24px;">
+            <h2 style="font-size: 18px; color: #111827; margin-bottom: 16px;">What to Expect During Installation</h2>
+            <p style="margin-bottom: 16px;">Our professional installation team will arrive promptly at the scheduled time. They will set up your new system, ensuring all aspects are working optimally and to your satisfaction. Expect the installation process to last between 2 to 4 hours, depending on the complexity of your system.</p>
+          </div>
+
+          <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 24px; margin-bottom: 24px;">
+            <h2 style="font-size: 18px; color: #111827; margin-bottom: 16px;">Contact Information</h2>
+            <p style="margin-bottom: 8px;">If you have any questions or concerns leading up to your installation date, please don't hesitate to reach out to us:</p>
+            <p style="margin-bottom: 4px;">• Phone: (310) 872-9781</p>
+            <p style="margin-bottom: 4px;">• Email: support@wayofglorymedia.com</p>
+          </div>
+
+          <p style="margin-top: 32px;">Best Regards,</p>
+          <p style="margin-bottom: 32px;">Way of Glory Media Installation Team</p>
+        </div>
+      `
     } else {
       // Generate email content using AI
       const completion = await openai.chat.completions.create({
@@ -157,7 +173,16 @@ ${order.order_items.map((item: any) =>
     // Format the email with proper styling
     const formattedEmail = await formatEmailPreview(processedContent, order)
 
-    return NextResponse.json({ html: formattedEmail })
+    let subject = '';
+    if (templateType === 'payment_reminder') {
+      subject = `Payment Reminder for Order #${order.id}`;
+    } else if (templateType === 'installation_confirmation') {
+      subject = `Installation Confirmation for Order #${order.id}`;
+    } else {
+      subject = `Order #${order.id} Email`;
+    }
+
+    return NextResponse.json({ subject, content: formattedEmail, html: formattedEmail })
   } catch (error) {
     console.error('Error generating email:', error)
     return NextResponse.json(
@@ -168,142 +193,81 @@ ${order.order_items.map((item: any) =>
 }
 
 async function formatEmailPreview(content: string, order: any): Promise<string> {
-  // Format order items if they exist
-  const orderItemsList = order.order_items?.length > 0 
-    ? `
-      <div class="order-items">
-        <h4 style="margin: 16px 0 8px 0;">Order Items:</h4>
-        ${order.order_items.map((item: any) => `
-          <div class="order-item">
-            <span>${item.product.title}</span>
-            <span>Quantity: ${item.quantity}</span>
-          </div>
-        `).join('')}
-      </div>
-    `
-    : '';
-
   return `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <title>Order Email</title>
-        <style>
-          * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-          }
-          body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-            line-height: 1.6;
-            color: #374151;
-            background-color: #f9fafb;
-          }
-          .email-container {
-            max-width: 600px;
-            margin: 40px auto;
-            padding: 32px;
-            background-color: #ffffff;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-          }
-          .content {
-            margin-bottom: 32px;
-            white-space: pre-line;
-          }
-          .order-details {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 24px;
-            margin: 24px 0;
-          }
-          .order-detail {
-            display: flex;
-            justify-content: space-between;
-            padding: 12px 0;
-            border-bottom: 1px solid #e2e8f0;
-          }
-          .order-items {
-            margin-top: 16px;
-            padding-top: 16px;
-            border-top: 1px solid #e2e8f0;
-          }
-          .order-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 0;
-            color: #4b5563;
-            font-size: 14px;
-          }
-          .contact-info {
-            margin-top: 32px;
-            padding: 24px;
-            background: #f8fafc;
-            border-radius: 8px;
-            border: 1px solid #e2e8f0;
-          }
-          .signature {
-            margin-top: 32px;
-            padding-top: 24px;
-            border-top: 1px solid #e2e8f0;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="email-container">
-          <div class="content">
-            ${content}
-          </div>
-
-          <div class="order-details">
-            <h3>Order Details</h3>
-            <div class="order-detail">
-              <span class="order-label">Order ID</span>
-              <span class="order-value">#${order?.id || 'N/A'}</span>
-            </div>
-            <div class="order-detail">
-              <span class="order-label">Order Date</span>
-              <span class="order-value">${new Date(order?.created_at).toLocaleDateString()}</span>
-            </div>
-            <div class="order-detail">
-              <span class="order-label">Customer</span>
-              <span class="order-value">${order?.first_name || ''} ${order?.last_name || ''}</span>
-            </div>
-            <div class="order-detail">
-              <span class="order-label">Total</span>
-              <span class="order-value">$${Number(order?.total_amount || 0).toFixed(2)}</span>
-            </div>
-            <div class="order-detail">
-              <span class="order-label">Status</span>
-              <span class="order-value">${order?.status || 'N/A'}</span>
-            </div>
-            ${order?.notes ? `
-            <div class="order-detail">
-              <span class="order-label">Notes</span>
-              <span class="order-value">${order.notes}</span>
-            </div>
-            ` : ''}
-            ${orderItemsList}
-          </div>
-
-          <div class="contact-info">
-            <h3>Need Assistance?</h3>
-            <p>Our team is here to help! Contact us:</p>
-            <p>
-              Phone: (310) 872-9781<br>
-              Email: help@wayofglory.com
-            </p>
-          </div>
-
-          <div class="signature">
-            <p style="font-weight: 600; color: #111827;">Best regards,</p>
-            <p style="color: #111827;">Way of Glory Media Team</p>
-            <p style="color: #6b7280; font-size: 14px;">Customer Success</p>
-          </div>
-        </div>
-      </body>
-    </html>
-  `
+  <!DOCTYPE html>
+  <html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Email</title>
+    <style type="text/css">
+      @media (prefers-color-scheme: dark) {
+        .logo-img {
+          content: url('/images/logo/logo.png') !important;
+        }
+      }
+    </style>
+  </head>
+  <body style="margin:0; padding:0; background-color:#f9fafb;">
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+      <tr>
+        <td align="center" style="padding:20px;">
+          <table role="presentation" cellpadding="0" cellspacing="0" width="600" style="border-collapse: collapse; background-color: #ffffff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden;">
+            <!-- Header with Logo -->
+            <tr>
+              <td style="background: linear-gradient(90deg, #2563eb, #3b82f6); padding: 20px; text-align: center; color: #ffffff; font-family: Arial, sans-serif;">
+                <img class="logo-img" src="/images/logo/logoLight.png" alt="Way of Glory Logo" style="max-width: 100px; display: block; margin: 0 auto 10px auto;" />
+                <h1 style="margin:0; font-size:24px;">Order Confirmation</h1>
+              </td>
+            </tr>
+            <!-- Main Content -->
+            <tr>
+              <td style="padding:20px; font-family: Arial, sans-serif; color: #374151; font-size: 16px; line-height: 1.6;">
+                ${content}
+              </td>
+            </tr>
+            <!-- Order Details -->
+            <tr>
+              <td style="padding:20px; font-family: Arial, sans-serif; color: #374151; font-size: 14px;">
+                <table role="presentation" cellpadding="10" cellspacing="0" width="100%" style="border: 1px solid #e2e8f0; border-collapse: collapse;">
+                  <tr>
+                    <td style="border: 1px solid #e2e8f0; font-weight: bold; background-color: #f1f5f9;">Order ID</td>
+                    <td style="border: 1px solid #e2e8f0;">#${order?.id || 'N/A'}</td>
+                  </tr>
+                  <tr>
+                    <td style="border: 1px solid #e2e8f0; font-weight: bold; background-color: #f1f5f9;">Order Date</td>
+                    <td style="border: 1px solid #e2e8f0;">${new Date(order?.created_at).toLocaleDateString()}</td>
+                  </tr>
+                  <tr>
+                    <td style="border: 1px solid #e2e8f0; font-weight: bold; background-color: #f1f5f9;">Customer</td>
+                    <td style="border: 1px solid #e2e8f0;">${order?.first_name || ''} ${order?.last_name || ''}</td>
+                  </tr>
+                  <tr>
+                    <td style="border: 1px solid #e2e8f0; font-weight: bold; background-color: #f1f5f9;">Total Amount</td>
+                    <td style="border: 1px solid #e2e8f0;">$${Number(order?.total_amount || 0).toFixed(2)}</td>
+                  </tr>
+                  ${order?.installation_date ? `<tr>
+                    <td style="border: 1px solid #e2e8f0; font-weight: bold; background-color: #f1f5f9;">Installation Date</td>
+                    <td style="border: 1px solid #e2e8f0;">${order.installation_date}</td>
+                  </tr>` : ''}
+                  ${order?.installation_time ? `<tr>
+                    <td style="border: 1px solid #e2e8f0; font-weight: bold; background-color: #f1f5f9;">Installation Time</td>
+                    <td style="border: 1px solid #e2e8f0;">${order.installation_time}</td>
+                  </tr>` : ''}
+                </table>
+              </td>
+            </tr>
+            <!-- Footer -->
+            <tr>
+              <td style="background-color:#f8fafc; padding:20px; text-align:center; font-family: Arial, sans-serif; font-size:12px; color:#6b7280;">
+                &copy; ${new Date().getFullYear()} Way of Glory Media. All rights reserved.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+  </html>
+  `;
 } 

@@ -10,14 +10,15 @@ export const dynamic = 'force-dynamic'
 export async function PATCH(request: NextRequest) {
   try {
     const url = new URL(request.url)
-    const orderId = Number(url.pathname.split('/').slice(-3, -2)[0]) // Extract orderId from URL
+    const pathParts = url.pathname.split('/')
+    const orderId = Number(pathParts[pathParts.length - 2]) // Get the second to last part of the path
 
     // Parse request body
     const body = await request.json()
     const { status } = body as { status: OrderStatus }
 
     // Validate orderId
-    if (isNaN(orderId)) {
+    if (isNaN(orderId) || orderId <= 0) {
       return NextResponse.json(
         { error: 'Invalid order ID' },
         { status: 400 }

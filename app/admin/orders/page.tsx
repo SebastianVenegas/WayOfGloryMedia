@@ -61,6 +61,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import EmailComposer from '@/components/admin/EmailComposer'
 import { type DialogProps } from "@radix-ui/react-dialog"
 import { FC } from "react"
+import EmailPreview from '../../../components/email-preview'
 
 const Editor = dynamic(() => import('@/components/ui/editor'), { ssr: false })
 
@@ -718,6 +719,11 @@ export default function OrdersPage() {
 
   const updateOrderStatus = async (orderId: number, newStatus: OrderStatusUpdate) => {
     try {
+      // Validate orderId
+      if (!orderId || isNaN(orderId) || orderId <= 0) {
+        throw new Error('Invalid order ID');
+      }
+
       const response = await fetch(`/api/admin/orders/${orderId}/status`, {
         method: 'PATCH',
         headers: {
@@ -930,9 +936,7 @@ export default function OrdersPage() {
       // Only proceed with AI generation if we have a template and selected order
       if (templateId && selectedOrder?.id) {
         setIsGeneratingAI(true)
-        const templatePrompt = getTemplatePrompt(templateId)
-        if (!templatePrompt) return
-
+        
         const response = await fetch('/api/admin/generate-email', {
           method: 'POST',
           headers: {
@@ -940,15 +944,10 @@ export default function OrdersPage() {
           },
           body: JSON.stringify({
             orderId: selectedOrder.id,
-            prompt: templatePrompt,
-            templateType: templateId,
-            viewMode,
-            variables: {
-              customerName: `${selectedOrder.first_name} ${selectedOrder.last_name}`,
-              orderNumber: selectedOrder.id,
-              amount: selectedOrder.total_amount,
-              installationDate: selectedOrder.installation_date,
-            }
+            content: '',
+            customPrompt: getTemplatePrompt(templateId),
+            templateId: templateId,
+            isPWA: false
           }),
         })
 
@@ -958,8 +957,8 @@ export default function OrdersPage() {
           throw new Error(data.error || 'Failed to generate content')
         }
 
-        setPreviewHtml(viewMode === 'preview' ? data.html : data.content)
-        setEditedContent(data.content)
+        setPreviewHtml(data.html || '')
+        setEditedContent(data.content || '')
         setEditedSubject(data.subject || '')
         setIsAiPromptOpen(false)
         toast.success('Email content generated successfully')
@@ -1040,17 +1039,23 @@ export default function OrdersPage() {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            prompt: getTemplatePrompt(selectedTemplate),
-            order: selectedOrder,
-            templateType: selectedTemplate
+            orderId: selectedOrder.id,
+            templateType: selectedTemplate,
+            content: getTemplatePrompt(selectedTemplate),
+            customPrompt: null,
+            isPWA: false
           }),
         })
 
         if (!generateResponse.ok) {
-          throw new Error('Failed to generate email content')
+          const errorData = await generateResponse.json().catch(() => ({ error: 'Failed to generate email content' }));
+          throw new Error(errorData.error || 'Failed to generate email content');
         }
 
-        const generatedEmail = await generateResponse.json()
+        const generatedEmail = await generateResponse.json().catch(() => null)
+        if (!generatedEmail) {
+          throw new Error('Failed to parse generated email response')
+        }
         emailSubject = generatedEmail.subject
         emailContent = generatedEmail.content
       }
@@ -1072,9 +1077,19 @@ export default function OrdersPage() {
         }),
       })
 
+      let errorData;
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to send email')
+        try {
+          errorData = await response.json();
+        } catch (e) {
+          throw new Error('Failed to send email: Network error');
+        }
+        throw new Error(errorData.error || 'Failed to send email');
+      }
+
+      const result = await response.json().catch(() => null);
+      if (!result?.success) {
+        throw new Error('Failed to send email: Invalid response');
       }
 
       toast.success('Email sent successfully')
@@ -2369,39 +2384,7 @@ export default function OrdersPage() {
                           }}
                         />
                       ) : (
-                        <div className="border rounded-lg bg-gray-50 p-8">
-                          <div className="max-w-[700px] mx-auto bg-white rounded-lg shadow-sm overflow-hidden">
-                            {/* Email Header */}
-                            <div className="border-b bg-white px-8 py-4">
-                              <div className="text-sm text-gray-500 mb-1">Subject</div>
-                              <div className="text-lg font-medium text-gray-900">{editedSubject}</div>
-                            </div>
-                            
-                            {/* Email Body */}
-                            <div className="px-8 py-6 bg-white">
-                              <div 
-                                className="prose max-w-none text-gray-800"
-                                style={{
-                                  fontSize: '15px',
-                                  lineHeight: '1.6',
-                                  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
-                                }}
-                                dangerouslySetInnerHTML={{ 
-                                  __html: previewHtml.replace(/\n/g, '<br/>') 
-                                }} 
-                              />
-                            </div>
-
-                            {/* Email Footer */}
-                            <div className="bg-gray-50 px-8 py-4 text-sm text-gray-500 border-t">
-                              <div>Way of Glory</div>
-                              <div>123 ABC Street, City, State, ZIP</div>
-                              <div>Phone: (123) 456-7890</div>
-                              <div>Email: info@wayofglory.com</div>
-                              <div>Website: www.wayofglory.com</div>
-                            </div>
-                          </div>
-                        </div>
+                        <EmailPreview html={previewHtml} height="600px" width="100%" />
                       )}
                     </TabsContent>
 

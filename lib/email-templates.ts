@@ -33,140 +33,65 @@ interface Order {
 
 const baseStyle = `
   <style>
-    /* Reset styles for email clients */
-    body, p, div, h1, h2, h3, h4, h5, h6 {
+    body {
       margin: 0;
       padding: 0;
-    }
-    
-    /* Base container */
-    .email-container {
+      background-color: #ffffff;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+      line-height: 1.4;
+      color: #333;
+      font-size: 13px;
+    }
+    .email-container {
       max-width: 600px;
       margin: 0 auto;
-      padding: 32px;
-      background-color: #ffffff;
-      line-height: 1.6;
+      padding: 15px;
     }
-
-    /* Header styles */
     .header {
-      text-align: center;
-      margin-bottom: 32px;
-      padding-bottom: 32px;
-      border-bottom: 1px solid #e5e7eb;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #eee;
     }
-
-    .logo {
-      width: 150px;
-      height: auto;
-      margin-bottom: 16px;
+    .order-info {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+      margin-bottom: 15px;
     }
-
-    .company-name {
-      font-size: 24px;
-      font-weight: 600;
-      color: #111827;
-      margin-bottom: 8px;
+    .info-box {
+      background: #f8f9fa;
+      padding: 8px 12px;
+      border-radius: 4px;
     }
-
-    .company-tagline {
-      color: #6b7280;
-      font-size: 16px;
+    .info-box-label {
+      color: #666;
+      font-size: 12px;
+      margin-bottom: 2px;
     }
-
-    /* Content area */
-    .content {
-      background-color: #ffffff;
-      border-radius: 12px;
-      padding: 32px;
-      margin-bottom: 32px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    }
-
-    /* Typography */
-    p {
-      color: #4b5563;
-      font-size: 16px;
-      line-height: 1.6;
-      margin: 16px 0;
-    }
-
-    h1, h2, h3 {
-      color: #111827;
-      margin-bottom: 16px;
-    }
-
-    /* Details box */
-    .details {
-      background-color: #f9fafb;
-      border: 1px solid #e5e7eb;
-      border-radius: 8px;
-      padding: 20px;
-      margin: 20px 0;
-    }
-
-    .details p {
-      margin: 8px 0;
-    }
-
-    /* Call to action button */
-    .cta-button {
-      display: inline-block;
-      background-color: #2563eb;
-      color: #ffffff !important;
-      text-decoration: none;
-      padding: 12px 24px;
-      border-radius: 6px;
+    .info-box-value {
+      color: #333;
       font-weight: 500;
-      margin: 16px 0;
-      text-align: center;
     }
-
-    /* Footer */
+    .content {
+      color: #333;
+      margin-bottom: 15px;
+    }
     .footer {
-      text-align: center;
-      color: #6b7280;
-      font-size: 14px;
-      margin-top: 32px;
-      padding-top: 32px;
-      border-top: 1px solid #e5e7eb;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 10px;
+      border-top: 1px solid #eee;
+      font-size: 12px;
+      color: #666;
     }
-
-    .footer p {
-      margin: 4px 0;
-      color: #6b7280;
-      font-size: 14px;
-    }
-
-    .contact-info {
-      margin: 16px 0;
-    }
-
-    .contact-info a {
-      color: #2563eb;
+    .contact-links a {
+      color: #0066cc;
       text-decoration: none;
-    }
-
-    .social-links {
-      margin-top: 16px;
-    }
-
-    .social-links a {
-      color: #2563eb;
-      text-decoration: none;
-      margin: 0 8px;
-    }
-
-    /* Responsive design */
-    @media screen and (max-width: 600px) {
-      .email-container {
-        padding: 16px;
-      }
-      
-      .content {
-        padding: 24px;
-      }
+      margin: 0 5px;
     }
   </style>
 `;
@@ -174,32 +99,50 @@ const baseStyle = `
 const createEmailWrapper = (content: string) => `
   <div class="email-container">
     <div class="header">
-      <div class="company-name">Way of Glory Media</div>
-      <div class="company-tagline">Professional Audio & Visual Solutions</div>
+      <div>
+        <div style="color: #666; font-size: 12px;">ORDER CONFIRMATION</div>
+        <div style="color: #333; font-weight: 600; font-size: 15px;">#{orderId}</div>
+      </div>
+      <div style="text-align: right;">
+        <div style="color: #666; font-size: 12px;">{orderDate}</div>
+        <div style="color: #333; font-weight: 600; font-size: 15px;">{totalAmount}</div>
+      </div>
     </div>
+
     <div class="content">
+      <div style="margin-bottom: 10px;">
+        <span style="color: #666;">Dear</span> {firstName} {lastName},
+      </div>
       ${content}
     </div>
-    <div class="footer">
-      <p>© ${new Date().getFullYear()} Way of Glory Media</p>
-      <div class="contact-info">
-        <p>
-          <strong>Contact Us:</strong><br>
-          <a href="tel:+13108729781">(310) 872-9781</a> |
-          <a href="mailto:help@wayofglory.com">help@wayofglory.com</a>
-        </p>
-        <p>Los Angeles, California</p>
+
+    <div class="order-info">
+      <div class="info-box">
+        <div class="info-box-label">Order Status</div>
+        <div class="info-box-value">{status}</div>
       </div>
-      <div class="social-links">
-        <a href="https://www.instagram.com/wayofglorymedia">Instagram</a> |
-        <a href="https://www.facebook.com/wayofglorymedia">Facebook</a> |
-        <a href="https://www.linkedin.com/company/wayofglorymedia">LinkedIn</a>
+      <div class="info-box">
+        <div class="info-box-label">Payment Method</div>
+        <div class="info-box-value">{paymentMethod}</div>
       </div>
-      <p style="margin-top: 16px; font-size: 12px;">
-        This email was sent to you as a customer of Way of Glory Media.
-        Please do not reply to this email as it is automatically generated.
-      </p>
+      {installationDate}
     </div>
+
+    <div class="footer">
+      <span>Way of Glory</span>
+      <div class="contact-links">
+        <a href="tel:+13108729781">(310) 872-9781</a>
+        <a href="mailto:help@wayofglory.com">help@wayofglory.com</a>
+        <a href="https://www.wayofglory.com">wayofglory.com</a>
+      </div>
+    </div>
+  </div>
+`;
+
+const getInstallationTemplate = (date: string, time: string) => `
+  <div class="info-box">
+    <div class="info-box-label">Installation</div>
+    <div class="info-box-value">${date} ${time}</div>
   </div>
 `;
 
@@ -271,34 +214,27 @@ const emailPrompts = {
 
   default_template: `Dear {customerName},
 
-Thank you for your recent order with Way of Glory Media. We're writing to confirm the details of your order #{orderId}.
+Thank you for your order #{orderId}. Please review the details below:
 
-Key Information:
+Order Information:
 • Order Number: #{orderId}
 • Order Date: {orderDate}
 • Total Amount: {orderTotal}
+• Status: {orderStatus}
 
 Ordered Items:
 {orderItems}
-
-Order Status:
-{orderStatus}
-
-Installation Information:
 {installationInfo}
 
-Next Steps:
-{actionItems}
-
-{additionalNotes}
-
-If you have any questions or need assistance, please don't hesitate to contact us:
-
-Phone: (310) 872-9781
-Email: help@wayofglory.com
+Need Assistance:
+If you have any questions, please contact us at:
+• Phone: (310) 872-9781
+• Email: help@wayofglory.com
+• Hours: Monday - Friday, 9:00 AM - 6:00 PM PST
 
 Best regards,
-Way of Glory Media Team`
+Way of Glory Media Team
+Professional Audio & Visual Solutions`
 };
 
 export const getEmailPrompt = (templateId: string, order: Order): string => {
@@ -362,159 +298,62 @@ export const getEmailTemplate = (
   if (templateId === 'custom' && customEmail) {
     const wrappedHtml = wrapContent(customEmail.html, isPWA);
     const cleanHtml = sanitizeHtml(wrappedHtml, isPWA);
+    const processedHtml = processEmailTemplate(createEmailWrapper(cleanHtml), order);
     return {
       subject: customEmail.subject,
-      html: `
-        ${baseStyle}
-        ${createEmailWrapper(cleanHtml)}
-      `.trim()
+      html: `${baseStyle}${processedHtml}`
     };
   }
 
   // Handle default template
-  if (templateId === 'default') {
-    const orderItems = order.order_items?.map((item: any) => 
-      `• ${item.product.title} (Quantity: ${item.quantity})`
-    ).join('\n') || 'No items';
+  const content = getEmailPrompt(templateId, order);
+  const wrappedContent = wrapContent(content, isPWA);
+  const processedHtml = processEmailTemplate(createEmailWrapper(wrappedContent), order);
 
-    const orderStatus = `Your order is currently ${order.status}. ${
-      order.status === 'pending' ? 'We will process it shortly.' :
-      order.status === 'confirmed' ? 'We are preparing your order.' :
-      order.status === 'completed' ? 'Thank you for your business.' :
-      order.status === 'cancelled' ? 'Please contact us if you have any questions.' :
-      'Please contact us if you need any updates.'
-    }`;
-
-    const installationInfo = order.installation_date ? 
-      `Installation is scheduled for ${order.installation_date}${order.installation_time ? ` at ${order.installation_time}` : ''}.` :
-      'We will contact you to schedule any necessary installation or setup.';
-
-    const actionItems = order.status === 'pending' ? 
-      'Please review the order details and let us know if any adjustments are needed.' :
-      order.status === 'confirmed' ? 
-      'No action is required from you at this time.' :
-      order.status === 'completed' ? 
-      'Please let us know if you need any assistance with your products or services.' :
-      'Please contact us if you have any questions or concerns.';
-
-    const additionalNotes = order.notes ? 
-      `Additional Notes:\n${order.notes}` : 
-      '';
-
-    const processedContent = emailPrompts.default_template
-      .replace(/\{customerName\}/g, `${order.first_name} ${order.last_name}`)
-      .replace(/#{orderId}/g, `${order.id}`)
-      .replace(/\{orderDate\}/g, new Date(order.created_at).toLocaleDateString())
-      .replace(/\{orderTotal\}/g, `$${Number(order.total_amount || 0).toFixed(2)}`)
-      .replace(/\{orderItems\}/g, orderItems)
-      .replace(/\{orderStatus\}/g, orderStatus)
-      .replace(/\{installationInfo\}/g, installationInfo)
-      .replace(/\{actionItems\}/g, actionItems)
-      .replace(/\{additionalNotes\}/g, additionalNotes)
-      .replace(/\n\s*\n\s*\n/g, '\n\n') // Remove extra blank lines
-      .replace(/^\s+|\s+$/gm, '') // Trim whitespace from each line
-      .trim();
-
-    return {
-      subject: `Order Confirmation - Way of Glory Media #${order.id}`,
-      html: sanitizeHtml(`
-        ${baseStyle}
-        ${createEmailWrapper(wrapContent(processedContent))}
-      `)
-    };
-  }
-
-  const templates: { [key: string]: { subject: string; html: string } } = {
-    payment_reminder: {
-      subject: 'Payment Reminder for Your Way of Glory Order',
-      html: sanitizeHtml(`
-        ${baseStyle}
-        ${createEmailWrapper(`
-          <h2>Payment Reminder</h2>
-          <p>Dear ${order.first_name} ${order.last_name},</p>
-          <p>This is a friendly reminder about your pending payment for order #${order.id}.</p>
-          <div class="details">
-            <p><strong>Total Amount Due:</strong> $${order.total_amount}</p>
-            <p><strong>Payment Methods:</strong></p>
-            <p>We offer several convenient payment options. Please contact our team to arrange your preferred payment method:</p>
-            <p>
-              <strong>Contact Us:</strong><br>
-              Phone: (310) 872-9781<br>
-              Email: help@wayofglory.com
-            </p>
-          </div>
-          <p>Please reach out to complete your payment and proceed with your order. If you've already made the payment, please disregard this reminder.</p>
-          <a href="#" class="cta-button">Contact Us to Complete Payment</a>
-        `)}
-      `)
-    },
-    installation_confirmation: {
-      subject: 'Installation Details for Your Way of Glory Order',
-      html: sanitizeHtml(`
-        ${baseStyle}
-        ${createEmailWrapper(`
-          <h2>Installation Details</h2>
-          <p>Dear ${order.first_name} ${order.last_name},</p>
-          <p>Your installation for order #${order.id} has been scheduled. Here are the details:</p>
-          <div class="details">
-            <p><strong>Installation Address:</strong><br>
-              ${order.installation_address}, ${order.installation_city}, ${order.installation_state} ${order.installation_zip}
-            </p>
-            <p><strong>Date & Time:</strong><br>
-              ${order.installation_date} at ${order.installation_time}
-            </p>
-          </div>
-          <p>Our installation team will arrive within the scheduled time window. Please ensure someone is available to provide access to the installation area.</p>
-        `)}
-      `)
-    },
-    shipping_update: {
-      subject: 'Shipping Update for Your Way of Glory Order',
-      html: sanitizeHtml(`
-        ${baseStyle}
-        ${createEmailWrapper(`
-          <h2>Shipping Update</h2>
-          <p>Dear ${order.first_name} ${order.last_name},</p>
-          <p>Great news! Your order #${order.id} has been shipped and is on its way to you.</p>
-          <div class="details">
-            <p><strong>Delivery Address:</strong><br>
-              ${order.shipping_address}, ${order.shipping_city}, ${order.shipping_state} ${order.shipping_zip}
-            </p>
-          </div>
-          <p>We'll notify you once your order has been delivered. If you have any special delivery instructions, please contact us.</p>
-        `)}
-      `)
-    },
-    thank_you: {
-      subject: 'Thank You for Your Way of Glory Order',
-      html: sanitizeHtml(`
-        ${baseStyle}
-        ${createEmailWrapper(`
-          <h2>Thank You!</h2>
-          <p>Dear ${order.first_name} ${order.last_name},</p>
-          <p>Thank you for choosing Way of Glory. We truly appreciate your business and trust in our services.</p>
-          <div class="details">
-            <p><strong>Order Number:</strong> #${order.id}</p>
-            <p><strong>Total Amount:</strong> $${order.total_amount}</p>
-          </div>
-          <p>We hope you're completely satisfied with your purchase. If you have any questions or need assistance, please don't hesitate to reach out.</p>
-        `)}
-      `)
-    }
+  return {
+    subject: `Order #${order.id} - Way of Glory Media`,
+    html: `${baseStyle}${processedHtml}`
   };
-
-  const template = templates[templateId];
-  if (!template) {
-    throw new Error(`Invalid template ID: ${templateId}`);
-  }
-
-  return template;
 };
 
 export const formatEmailPreview = async (content: string): Promise<string> => {
+  // Wrap and sanitize the content
   const cleanContent = sanitizeHtml(wrapContent(content));
-  return sanitizeHtml(`
+  
+  // Return a full HTML document for the preview
+  return `<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     ${baseStyle}
+  </head>
+  <body>
     ${createEmailWrapper(cleanContent)}
-  `);
+  </body>
+</html>`;
+};
+
+export const processEmailTemplate = (template: string, order: Order) => {
+  let processed = template
+    .replace(/{firstName}/g, order.first_name)
+    .replace(/{lastName}/g, order.last_name)
+    .replace(/#{orderId}/g, `#${order.id}`)
+    .replace(/{orderDate}/g, new Date(order.created_at).toLocaleDateString())
+    .replace(/{totalAmount}/g, `$${Number(order.total_amount).toFixed(2)}`)
+    .replace(/{status}/g, order.status)
+    .replace(/{paymentMethod}/g, order.payment_method || 'Not specified');
+
+  // Handle installation date separately
+  if (order.installation_date) {
+    const installTemplate = getInstallationTemplate(
+      order.installation_date,
+      order.installation_time || ''
+    );
+    processed = processed.replace(/{installationDate}/g, installTemplate);
+  } else {
+    processed = processed.replace(/{installationDate}/g, '');
+  }
+
+  return processed;
 }; 
