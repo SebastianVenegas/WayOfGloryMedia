@@ -147,8 +147,8 @@ const getInstallationTemplate = (date: string, time: string) => `
 `;
 
 const sanitizeHtml = (html: string, isPWA = false) => {
+  if (typeof html !== 'string') return '';
   if (!html) return '';
-  
   let sanitized = html
     .replace(/\n\s*/g, ' ')  // Replace newlines and following spaces with a single space
     .replace(/>\s+</g, '><')  // Remove spaces between tags
@@ -162,14 +162,14 @@ const sanitizeHtml = (html: string, isPWA = false) => {
       .replace(/<p><br><\/p>/g, '<p></p>')
       .replace(/<p><\/p>/g, '<br>')
       .replace(/\r?\n|\r/g, '')
-      .replace(/(<br\s*\/?>){3,}/gi, '<br><br>'); // Limit consecutive line breaks
+      .replace(/(<br\s*\/?>(\s*)?){3,}/gi, '<br><br>'); // Limit consecutive line breaks
   }
 
   return sanitized;
 };
 
 const wrapContent = (content: string, isPWA = false) => {
-  if (!content) return '';
+  if (typeof content !== 'string' || !content) return '';
 
   // Don't wrap if content already has font-family style
   if (content.includes('style="font-family:')) {
@@ -299,6 +299,9 @@ export const getEmailTemplate = (
   customEmail?: { subject: string; html: string },
   isPWA = false
 ): { subject: string; html: string } => {
+  if (templateId === 'custom' && (!customEmail?.subject || !customEmail?.html)) {
+    throw new Error('Custom email requires both subject and HTML content');
+  }
   try {
     let finalHtml = '';
     const subject = `Order #${order.id} - Way of Glory Media`;
@@ -352,11 +355,9 @@ export const getEmailTemplate = (
 };
 
 export const formatEmailPreview = async (content: string): Promise<string> => {
-  // Wrap and sanitize the content
-  const cleanContent = sanitizeHtml(wrapContent(content));
-  
-  // Return a full HTML document for the preview
-  return `<!DOCTYPE html>
+  try {
+    const cleanContent = sanitizeHtml(wrapContent(content));
+    return `<!DOCTYPE html>
 <html>
   <head>
     <meta charset="UTF-8">
@@ -367,6 +368,10 @@ export const formatEmailPreview = async (content: string): Promise<string> => {
     ${createEmailWrapper(cleanContent)}
   </body>
 </html>`;
+  } catch (error) {
+    console.error('Error formatting email preview, returning unformatted content');
+    return content;
+  }
 };
 
 export const processEmailTemplate = (template: string, order: Order) => {
