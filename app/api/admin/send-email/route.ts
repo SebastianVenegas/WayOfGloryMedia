@@ -284,7 +284,7 @@ const generateEmailHTML = (order: Order, formattedContent: string): string => {
               <!-- Header -->
               <tr>
                 <td style="background: linear-gradient(to right, #2563eb, #3b82f6); padding: 32px 24px; text-align: center;">
-                  <img src="https://wayofglorymedia.com/images/logo/LogoLight.png" alt="Way of Glory Media" style="width: 200px; height: auto; margin-bottom: 16px; max-width: 100%;" />
+                  <img src="https://wayofglorymedia.com/images/logo/Logo.png" alt="Way of Glory Media" style="width: 200px; height: auto; margin-bottom: 16px; max-width: 100%;" />
                   <h1 style="color: white; margin: 0; font-size: 24px; font-weight: 600; line-height: 1.4;">Installation Confirmation for Order #${order.id}</h1>
                 </td>
               </tr>
