@@ -3,28 +3,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getEmailTemplate } from '@/lib/email-templates';
 import nodemailer from 'nodemailer';
 
-// Check for required environment variables
-if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
-  throw new Error('Missing required email configuration environment variables');
-}
-
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_APP_PASSWORD
-  }
-});
-
-// Verify email configuration on startup
-transporter.verify(function(error, success) {
-  if (error) {
-    console.error('Email configuration error:', error);
-  } else {
-    console.log('Email server is ready to send messages');
-  }
-});
-
 const createEmailHtml = (content: string) => {
   // Basic inline styles for email compatibility
   return `
@@ -42,6 +20,29 @@ const createEmailHtml = (content: string) => {
 };
 
 export async function POST(request: NextRequest) {
+  // Check for required email configuration environment variables
+  if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+    console.error('Missing required email configuration environment variables');
+    return NextResponse.json({ error: 'Missing required email configuration environment variables' }, { status: 500 });
+  }
+  
+  // Create transporter and verify configuration
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.GMAIL_USER,
+      pass: process.env.GMAIL_APP_PASSWORD
+    }
+  });
+  
+  try {
+    await transporter.verify();
+    console.log('Email server is ready to send messages');
+  } catch (verifyError) {
+    console.error('Email transporter verification error:', verifyError);
+    return NextResponse.json({ error: 'Email transporter verification error: ' + (verifyError instanceof Error ? verifyError.message : 'Unknown error') }, { status: 500 });
+  }
+
   try {
     const url = new URL(request.url);
     const orderId = url.pathname.split('/').slice(-2, -1)[0];
