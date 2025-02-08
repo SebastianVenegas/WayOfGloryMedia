@@ -12,13 +12,12 @@ interface OrderItem {
 }
 
 export async function GET(
-  request: Request | NextRequest,
+  request: NextRequest,
   context: any
-): Promise<Response | NextResponse> {
+): Promise<NextResponse> {
   try {
     const { orderId } = context.params;
-    const url = new URL(request.url);
-    const templateId = url.searchParams.get('templateId');
+    const templateId = request.nextUrl.searchParams.get('templateId');
 
     if (!templateId) {
       return NextResponse.json(
@@ -53,18 +52,31 @@ export async function GET(
 
     const order = result.rows[0] as Order;
 
-    // Get email template
-    const template = getEmailTemplate(templateId, order);
+    try {
+      // Get email template
+      const template = getEmailTemplate(templateId, order);
 
-    if (!template) {
-      return NextResponse.json({ error: "Invalid template ID" }, { status: 400 });
+      if (!template || !template.html) {
+        return NextResponse.json({ error: "Invalid template or empty HTML content" }, { status: 400 });
+      }
+
+      // Ensure we're returning a properly structured JSON response
+      return NextResponse.json({
+        subject: template.subject || `Order #${order.id} - Way of Glory Media`,
+        content: template.html,
+        html: template.html
+      });
+    } catch (templateError) {
+      console.error('Error generating template:', templateError);
+      return NextResponse.json(
+        { error: 'Failed to generate email template', details: templateError instanceof Error ? templateError.message : 'Unknown error' },
+        { status: 500 }
+      );
     }
-
-    return NextResponse.json(template);
   } catch (error) {
     console.error('Error generating email preview:', error);
     return NextResponse.json(
-      { error: 'Failed to generate email preview' },
+      { error: 'Failed to generate email preview', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

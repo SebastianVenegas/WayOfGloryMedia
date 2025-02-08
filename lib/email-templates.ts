@@ -132,7 +132,7 @@ const createEmailWrapper = (content: string) => `
       <span>Way of Glory</span>
       <div class="contact-links">
         <a href="tel:+13108729781">(310) 872-9781</a>
-        <a href="mailto:help@wayofglory.com">help@wayofglory.com</a>
+          <a href="mailto:help@wayofglory.com">help@wayofglory.com</a>
         <a href="https://www.wayofglory.com">wayofglory.com</a>
       </div>
     </div>
@@ -293,27 +293,51 @@ export const getEmailTemplate = (
   order: Order, 
   customEmail?: { subject: string; html: string },
   isPWA = false
-) => {
-  // For custom emails, wrap the content in our standard template
-  if (templateId === 'custom' && customEmail) {
-    const wrappedHtml = wrapContent(customEmail.html, isPWA);
-    const cleanHtml = sanitizeHtml(wrappedHtml, isPWA);
-    const processedHtml = processEmailTemplate(createEmailWrapper(cleanHtml), order);
+): { subject: string; html: string } => {
+  try {
+    // For custom emails, wrap the content in our standard template
+    if (templateId === 'custom' && customEmail) {
+      const wrappedHtml = wrapContent(customEmail.html, isPWA);
+      const cleanHtml = sanitizeHtml(wrappedHtml, isPWA);
+      const processedHtml = processEmailTemplate(createEmailWrapper(cleanHtml), order);
+      return {
+        subject: customEmail.subject || `Order #${order.id} - Way of Glory Media`,
+        html: `${baseStyle}${processedHtml}`
+      };
+    }
+
+    // Handle default template
+    const content = getEmailPrompt(templateId, order);
+    const wrappedContent = wrapContent(content, isPWA);
+    const processedHtml = processEmailTemplate(createEmailWrapper(wrappedContent), order);
+
     return {
-      subject: customEmail.subject,
+      subject: `Order #${order.id} - Way of Glory Media`,
       html: `${baseStyle}${processedHtml}`
     };
+  } catch (error) {
+    console.error('Error generating email template:', error);
+    // Return a basic fallback template
+    return {
+      subject: `Order #${order.id} - Way of Glory Media`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            ${baseStyle}
+          </head>
+          <body>
+            <div style="padding: 20px; text-align: center;">
+              <h1>Order #${order.id}</h1>
+              <p>Thank you for your order. We will be in touch shortly.</p>
+            </div>
+          </body>
+        </html>
+      `
+    };
   }
-
-  // Handle default template
-  const content = getEmailPrompt(templateId, order);
-  const wrappedContent = wrapContent(content, isPWA);
-  const processedHtml = processEmailTemplate(createEmailWrapper(wrappedContent), order);
-
-  return {
-    subject: `Order #${order.id} - Way of Glory Media`,
-    html: `${baseStyle}${processedHtml}`
-  };
 };
 
 export const formatEmailPreview = async (content: string): Promise<string> => {
