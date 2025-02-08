@@ -13,7 +13,7 @@ interface OrderItem {
 
 export async function GET(
   request: Request | NextRequest,
-  context: { params: { orderId: string } }
+  context: any
 ): Promise<Response | NextResponse> {
   try {
     const { orderId } = context.params;
