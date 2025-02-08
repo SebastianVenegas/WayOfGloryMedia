@@ -280,12 +280,12 @@ const generateEmailHTML = (order: Order, formattedContent: string): string => {
       <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5;">
         <tr>
           <td align="center" style="padding: 20px;">
-            <table width="600" cellpadding="0" cellspacing="0" style="background-color: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+            <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
               <!-- Header -->
               <tr>
-                <td style="background: linear-gradient(to right, #000000, #111827); padding: 32px 24px; text-align: center;">
-                  <img src="https://wayofglorymedia.com/images/logo/LogoLight.png" alt="Way of Glory Media" style="width: 200px; height: auto; margin-bottom: 16px;" />
-                  <h1 style="color: white; margin: 0; font-size: 24px; font-weight: 600;">Installation Confirmation for Order #${order.id}</h1>
+                <td style="background: linear-gradient(to right, #2563eb, #3b82f6); padding: 32px 24px; text-align: center;">
+                  <img src="https://wayofglorymedia.com/images/logo/LogoLight.png" alt="Way of Glory Media" style="width: 200px; height: auto; margin-bottom: 16px; max-width: 100%;" />
+                  <h1 style="color: white; margin: 0; font-size: 24px; font-weight: 600; line-height: 1.4;">Installation Confirmation for Order #${order.id}</h1>
                 </td>
               </tr>
 
