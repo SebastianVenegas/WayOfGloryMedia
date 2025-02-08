@@ -10,18 +10,12 @@ interface OrderItem {
   };
 }
 
-type RouteContext = {
-  params: {
-    orderId: string;
-  };
-};
-
 export async function GET(
   request: NextRequest,
-  context: RouteContext
+  { params }: { params: { orderId: string } }
 ) {
   try {
-    const { orderId } = context.params;
+    const { orderId } = params;
     const templateId = request.nextUrl.searchParams.get('templateId');
 
     if (!templateId) {
