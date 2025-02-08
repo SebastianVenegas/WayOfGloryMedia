@@ -11,12 +11,11 @@ interface OrderItem {
 }
 
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { orderId: string } }
 ) {
   try {
-    const { searchParams } = new URL(request.url);
-    const templateId = searchParams.get('templateId');
+    const templateId = request.nextUrl.searchParams.get('templateId');
 
     if (!templateId) {
       return NextResponse.json(
