@@ -29,7 +29,7 @@ export async function GET(
     // Fetch order details
     const result = await sql`
       SELECT o.*, 
-        json_agg(json_build_object(
+        COALESCE(json_agg(json_build_object(
           'id', oi.id,
           'product_id', oi.product_id,
           'quantity', oi.quantity,
@@ -38,7 +38,7 @@ export async function GET(
             'title', p.title,
             'category', p.category
           )
-        )) as order_items
+        )) FILTER (WHERE oi.id IS NOT NULL), '[]') as order_items
       FROM orders o
       LEFT JOIN order_items oi ON o.id = oi.order_id
       LEFT JOIN products p ON oi.product_id = p.id
@@ -60,11 +60,20 @@ export async function GET(
         return NextResponse.json({ error: "Invalid template or empty HTML content" }, { status: 400 });
       }
 
-      // Ensure we're returning a properly structured JSON response
-      return NextResponse.json({
+      // Ensure all content is properly stringified
+      const response = {
         subject: template.subject || `Order #${order.id} - Way of Glory Media`,
-        content: template.html,
-        html: template.html
+        content: JSON.stringify(template.html),
+        html: JSON.stringify(template.html)
+      };
+
+      // Return the response with proper headers
+      return new NextResponse(JSON.stringify(response), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-store, max-age=0'
+        }
       });
     } catch (templateError) {
       console.error('Error generating template:', templateError);

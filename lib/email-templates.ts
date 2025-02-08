@@ -147,10 +147,13 @@ const getInstallationTemplate = (date: string, time: string) => `
 `;
 
 const sanitizeHtml = (html: string, isPWA = false) => {
+  if (!html) return '';
+  
   let sanitized = html
     .replace(/\n\s*/g, ' ')  // Replace newlines and following spaces with a single space
     .replace(/>\s+</g, '><')  // Remove spaces between tags
     .replace(/\s{2,}/g, ' ')  // Replace multiple spaces with a single space
+    .replace(/[^\x20-\x7E\s]/g, '') // Remove non-printable characters
     .trim();
 
   if (isPWA) {
@@ -166,6 +169,8 @@ const sanitizeHtml = (html: string, isPWA = false) => {
 };
 
 const wrapContent = (content: string, isPWA = false) => {
+  if (!content) return '';
+
   // Don't wrap if content already has font-family style
   if (content.includes('style="font-family:')) {
     return isPWA ? sanitizeHtml(content, true) : content;
@@ -295,47 +300,53 @@ export const getEmailTemplate = (
   isPWA = false
 ): { subject: string; html: string } => {
   try {
+    let finalHtml = '';
+    const subject = `Order #${order.id} - Way of Glory Media`;
+
     // For custom emails, wrap the content in our standard template
-    if (templateId === 'custom' && customEmail) {
+    if (templateId === 'custom' && customEmail?.html) {
       const wrappedHtml = wrapContent(customEmail.html, isPWA);
       const cleanHtml = sanitizeHtml(wrappedHtml, isPWA);
       const processedHtml = processEmailTemplate(createEmailWrapper(cleanHtml), order);
-      return {
-        subject: customEmail.subject || `Order #${order.id} - Way of Glory Media`,
-        html: `${baseStyle}${processedHtml}`
-      };
+      finalHtml = `${baseStyle}${processedHtml}`;
+    } else {
+      // Handle default template
+      const content = getEmailPrompt(templateId, order);
+      const wrappedContent = wrapContent(content, isPWA);
+      const processedHtml = processEmailTemplate(createEmailWrapper(wrappedContent), order);
+      finalHtml = `${baseStyle}${processedHtml}`;
     }
 
-    // Handle default template
-    const content = getEmailPrompt(templateId, order);
-    const wrappedContent = wrapContent(content, isPWA);
-    const processedHtml = processEmailTemplate(createEmailWrapper(wrappedContent), order);
+    // Ensure the HTML is properly escaped and formatted
+    finalHtml = sanitizeHtml(finalHtml, isPWA);
 
     return {
-      subject: `Order #${order.id} - Way of Glory Media`,
-      html: `${baseStyle}${processedHtml}`
+      subject: customEmail?.subject || subject,
+      html: finalHtml
     };
   } catch (error) {
     console.error('Error generating email template:', error);
     // Return a basic fallback template
+    const fallbackHtml = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          ${baseStyle}
+        </head>
+        <body>
+          <div style="padding: 20px; text-align: center;">
+            <h1>Order #${order.id}</h1>
+            <p>Thank you for your order. We will be in touch shortly.</p>
+          </div>
+        </body>
+      </html>
+    `;
+
     return {
       subject: `Order #${order.id} - Way of Glory Media`,
-      html: `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            ${baseStyle}
-          </head>
-          <body>
-            <div style="padding: 20px; text-align: center;">
-              <h1>Order #${order.id}</h1>
-              <p>Thank you for your order. We will be in touch shortly.</p>
-            </div>
-          </body>
-        </html>
-      `
+      html: sanitizeHtml(fallbackHtml)
     };
   }
 };
