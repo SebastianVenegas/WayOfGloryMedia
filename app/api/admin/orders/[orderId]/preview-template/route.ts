@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import { sql } from '@vercel/postgres';
 import { getEmailTemplate, type Order } from '@/lib/email-templates';
 
@@ -10,13 +11,19 @@ interface OrderItem {
   };
 }
 
+type Context = {
+  params: {
+    orderId: string;
+  };
+};
+
 export async function GET(
-  request: NextRequest,
-  { params }: { params: { orderId: string } }
-) {
+  req: NextRequest,
+  context: Context
+): Promise<NextResponse> {
   try {
-    const { orderId } = params;
-    const templateId = request.nextUrl.searchParams.get('templateId');
+    const { orderId } = context.params;
+    const templateId = req.nextUrl.searchParams.get('templateId');
 
     if (!templateId) {
       return NextResponse.json(
