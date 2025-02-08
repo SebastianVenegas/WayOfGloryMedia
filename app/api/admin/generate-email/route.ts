@@ -4,10 +4,6 @@ import prisma from '@/lib/prisma'
 import OpenAI from 'openai'
 import { sql } from '@vercel/postgres'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
-
 interface Order {
   id: number;
   customer_name: string;
@@ -51,6 +47,12 @@ function processVariables(content: string, order: any) {
 }
 
 export async function POST(req: Request) {
+  if (!process.env.OPENAI_API_KEY) {
+    console.error('Missing OPENAI_API_KEY environment variable.');
+    return NextResponse.json({ error: 'Missing OPENAI_API_KEY environment variable.' }, { status: 500 });
+  }
+  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
   try {
     const { orderId, templateType, content, customPrompt, isPWA } = await req.json()
 
@@ -141,33 +143,35 @@ export async function POST(req: Request) {
       `
     } else {
       // Generate email content using AI
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4",
-        messages: [
-          {
-            role: "system",
-            content: "You are a professional email composer for Way of Glory Media, an audio and visual solutions company. Write emails that are clear, professional, and maintain the company's friendly yet professional tone. Include specific order details and make the email personal."
-          },
-          {
-            role: "user",
-            content: customPrompt || `Write a professional email for order #${order.id} that:
+      try {
+        const completion = await openai.chat.completions.create({
+          model: "gpt-4",
+          messages: [
+            {
+              role: "system",
+              content: "You are a professional email composer for Way of Glory Media, an audio and visual solutions company. Write emails that are clear, professional, and maintain the company's friendly yet professional tone. Include specific order details and make the email personal."
+            },
+            {
+              role: "user",
+              content: customPrompt || `Write a professional email for order #${order.id} that:
               - Addresses the customer by their full name: ${order.first_name} ${order.last_name}
               - References their order #${order.id} placed on ${new Date(order.created_at).toLocaleDateString()}
               - Mentions the total amount: $${Number(order.total_amount || 0).toFixed(2)}
               - Lists the ordered items:
-                ${order.order_items.map((item: any) => 
-                  `- ${item.product.title} (Quantity: ${item.quantity})`
-                ).join('\n                ')}
+                ${order.order_items.map((item: any) => `- ${item.product.title} (Quantity: ${item.quantity})`).join('\n                ')}
               - Maintains a professional and friendly tone
               - Includes our contact information
               - Follows Way of Glory Media's brand voice`
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: 1000
-      })
-
-      processedContent = completion.choices[0]?.message?.content || ''
+            }
+          ],
+          temperature: 0.7,
+          max_tokens: 1000
+        });
+        processedContent = completion.choices[0]?.message?.content || '';
+      } catch (openaiError) {
+        console.error('OpenAI API error:', openaiError);
+        return NextResponse.json({ error: 'OpenAI API error: ' + (openaiError instanceof Error ? openaiError.message : 'Unknown error') }, { status: 500 });
+      }
     }
 
     // Format the email with proper styling
