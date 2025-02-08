@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button"
 import { Wrench, X, ArrowRight, Edit, Eye, Clock, Check, DollarSign, Plus, Save, Sparkles, Loader2 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/lib/utils"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 
@@ -453,35 +453,35 @@ export function SelectCustomServiceModal({
   const [isEditMode, setIsEditMode] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
-  const refreshData = async () => {
-    if (!onRefresh) return
-    setIsLoading(true)
-    try {
-      await onRefresh()
-    } catch (error) {
-      console.error('Error refreshing services:', error)
-    } finally {
-      setIsLoading(false)
+  // Wrap refreshData in useCallback to prevent unnecessary re-renders
+  const handleRefreshData = useCallback(() => {
+    if (onRefresh) {
+      setIsLoading(true)
+      onRefresh()
+        .then(() => {
+          setIsLoading(false)
+        })
+        .catch((error) => {
+          console.error('Error refreshing services:', error)
+          setIsLoading(false)
+        })
     }
-  }
+  }, [onRefresh])
 
-  // Auto refresh when modal opens
   useEffect(() => {
     if (isOpen) {
-      refreshData()
+      handleRefreshData()
     }
-  }, [isOpen])
+  }, [isOpen, handleRefreshData])
 
-  // Auto refresh every 30 seconds
   useEffect(() => {
-    if (!isOpen) return
-
-    const interval = setInterval(() => {
-      refreshData()
-    }, 30000) // 30 seconds
-
-    return () => clearInterval(interval)
-  }, [isOpen])
+    if (!isOpen) {
+      const interval = setInterval(() => {
+        handleRefreshData()
+      }, 30000) // 30 seconds
+      return () => clearInterval(interval)
+    }
+  }, [isOpen, handleRefreshData])
 
   const formatPrice = (price: string | number) => {
     const numericPrice = typeof price === 'string' ? parseFloat(price) : price
@@ -532,7 +532,7 @@ export function SelectCustomServiceModal({
                 <Button
                   variant="outline"
                   size="icon"
-                  onClick={refreshData}
+                  onClick={handleRefreshData}
                   disabled={isLoading}
                   className={cn(
                     "rounded-full w-8 h-8 border-gray-200 text-gray-600 hover:text-blue-600 hover:border-blue-200",

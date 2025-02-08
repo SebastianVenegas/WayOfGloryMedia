@@ -10,11 +10,18 @@ interface OrderItem {
   };
 }
 
+type RouteContext = {
+  params: {
+    orderId: string;
+  };
+};
+
 export async function GET(
   request: NextRequest,
-  { params }: { params: { orderId: string } }
+  context: RouteContext
 ) {
   try {
+    const { orderId } = context.params;
     const templateId = request.nextUrl.searchParams.get('templateId');
 
     if (!templateId) {
@@ -40,7 +47,7 @@ export async function GET(
       FROM orders o
       LEFT JOIN order_items oi ON o.id = oi.order_id
       LEFT JOIN products p ON oi.product_id = p.id
-      WHERE o.id = ${params.orderId}
+      WHERE o.id = ${orderId}
       GROUP BY o.id
     `;
 
