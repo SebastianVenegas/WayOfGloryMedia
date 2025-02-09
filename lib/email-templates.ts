@@ -1,399 +1,600 @@
+// AI Configuration for Email Generation
+const AI_EMAIL_CONFIG = {
+  model: "gpt-4",
+  temperature: 0.7,
+  max_tokens: 2000,
+  system_prompt: `You are the email composer for Way of Glory Media, a professional audio and visual solutions company. 
+  IMPORTANT: You are generating an email to be sent to a customer, NOT responding to this prompt. Write the email directly.
+
+  TONE & STYLE:
+  - Professional yet warm and approachable
+  - Clear and concise
+  - Enthusiastic about enhancing worship experiences
+  - Confident but humble
+  - Solution-oriented and helpful
+
+  FORMATTING:
+  - Use proper paragraph breaks for readability
+  - Keep paragraphs short (2-4 sentences)
+  - Use bullet points for lists or steps
+  - Include clear section breaks
+
+  CONTENT RULES:
+  1. NEVER mention or reference any physical office location
+  2. Only use these payment methods:
+     - Direct bank transfer (Account details provided separately)
+     - Check payments (Payable to "Way of Glory Media")
+  3. Only use these contact methods:
+     - Email: help@wayofglory.com
+     - Phone: (310) 872-9781
+  4. Always include order number in communications
+  5. Never mention specific employee names
+  6. Always refer to "our team" or "the Way of Glory team"
+  7. Focus on digital communication and remote support
+  8. For installations, emphasize coordination with customer
+  9. Use accurate pricing from provided variables
+  10. Don't make assumptions about delivery times
+  11. Don't say anything that you are not sure about
+
+  STRUCTURE:
+  1. Opening: Warm, personal greeting using first name
+  2. Purpose: Clear statement of email's purpose
+  3. Details: Relevant information, clearly organized
+  4. Next Steps: Clear action items or expectations
+  5. Support: Contact information
+  6. Closing: Warm, professional sign-off
+
+  BRANDING:
+  - Company Name: Way of Glory Media
+  - Mission: Enhancing worship experiences
+  - Values: Excellence, Professionalism, Service
+  - Voice: Modern, Professional, Ministry-Focused`
+};
+
 export interface Order {
   id: number;
   first_name: string;
   last_name: string;
   email: string;
-  phone: string;
-  organization: string;
-  shipping_address: string;
-  shipping_city: string;
-  shipping_state: string;
-  shipping_zip: string;
-  shipping_instructions: string;
-  installation_address: string;
-  installation_city: string;
-  installation_state: string;
-  installation_zip: string;
-  installation_date: string;
-  installation_time: string;
-  access_instructions: string;
-  contact_onsite: string;
-  contact_onsite_phone: string;
-  payment_method: string;
   total_amount: number | string;
-  total_cost: number | string;
-  total_profit: number | string;
-  installation_price: number | string;
-  signature_url: string;
-  status: 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'delayed';
+  tax_amount?: number | string;
   created_at: string;
+  status: string;
   order_items?: any[];
-  notes?: string;
+  installation_date?: string;
+  installation_price?: number | string;
+  subtotal?: number;
+  hasInstallation?: boolean;
+  orderStatus?: string;
 }
 
-const baseStyle = `
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      background-color: #ffffff;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-      line-height: 1.4;
-      color: #333;
-      font-size: 13px;
-    }
-    .email-container {
-      max-width: 600px;
-      margin: 0 auto;
-      padding: 15px;
-    }
-    .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 15px;
-      padding-bottom: 10px;
-      border-bottom: 1px solid #eee;
-    }
-    .order-info {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 10px;
-      margin-bottom: 15px;
-    }
-    .info-box {
-      background: #f8f9fa;
-      padding: 8px 12px;
-      border-radius: 4px;
-    }
-    .info-box-label {
-      color: #666;
-      font-size: 12px;
-      margin-bottom: 2px;
-    }
-    .info-box-value {
-      color: #333;
-      font-weight: 500;
-    }
-    .content {
-      color: #333;
-      margin-bottom: 15px;
-    }
-    .footer {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding-top: 10px;
-      border-top: 1px solid #eee;
-      font-size: 12px;
-      color: #666;
-    }
-    .contact-links a {
-      color: #0066cc;
-      text-decoration: none;
-      margin: 0 5px;
-    }
-  </style>
-`;
-
-const createEmailWrapper = (content: string) => `
-  <div class="email-container">
-    <div class="header">
-      <div>
-        <div style="color: #666; font-size: 12px;">ORDER CONFIRMATION</div>
-        <div style="color: #333; font-weight: 600; font-size: 15px;">#{orderId}</div>
-      </div>
-      <div style="text-align: right;">
-        <div style="color: #666; font-size: 12px;">{orderDate}</div>
-        <div style="color: #333; font-weight: 600; font-size: 15px;">{totalAmount}</div>
-      </div>
-    </div>
-
-    <div class="content">
-      <div style="margin-bottom: 10px;">
-        <span style="color: #666;">Dear</span> {firstName} {lastName},
-      </div>
-      ${content}
-    </div>
-
-    <div class="order-info">
-      <div class="info-box">
-        <div class="info-box-label">Order Status</div>
-        <div class="info-box-value">{status}</div>
-      </div>
-      <div class="info-box">
-        <div class="info-box-label">Payment Method</div>
-        <div class="info-box-value">{paymentMethod}</div>
-      </div>
-      {installationDate}
-    </div>
-
-    <div class="footer">
-      <span>Way of Glory</span>
-      <div class="contact-links">
-        <a href="tel:+13108729781">(310) 872-9781</a>
-          <a href="mailto:help@wayofglory.com">help@wayofglory.com</a>
-        <a href="https://www.wayofglory.com">wayofglory.com</a>
-      </div>
-    </div>
-  </div>
-`;
-
-const getInstallationTemplate = (date: string, time: string) => `
-  <div class="info-box">
-    <div class="info-box-label">Installation</div>
-    <div class="info-box-value">${date} ${time}</div>
-  </div>
-`;
-
-const sanitizeHtml = (html: string, isPWA = false) => {
-  if (typeof html !== 'string') return '';
-  if (!html) return '';
-  let sanitized = html
-    .replace(/\n\s*/g, ' ')  // Replace newlines and following spaces with a single space
-    .replace(/>\s+</g, '><')  // Remove spaces between tags
-    .replace(/\s{2,}/g, ' ')  // Replace multiple spaces with a single space
-    .replace(/[^\x20-\x7E\s]/g, '') // Remove non-printable characters
-    .trim();
-
-  if (isPWA) {
-    sanitized = sanitized
-      .replace(/&nbsp;/g, ' ')
-      .replace(/<p><br><\/p>/g, '<p></p>')
-      .replace(/<p><\/p>/g, '<br>')
-      .replace(/\r?\n|\r/g, '')
-      .replace(/(<br\s*\/?>(\s*)?){3,}/gi, '<br><br>'); // Limit consecutive line breaks
-  }
-
-  return sanitized;
-};
-
-const wrapContent = (content: string, isPWA = false) => {
-  if (typeof content !== 'string' || !content) return '';
-
-  // Don't wrap if content already has font-family style
-  if (content.includes('style="font-family:')) {
-    return isPWA ? sanitizeHtml(content, true) : content;
-  }
-
-  const wrapped = `
-    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; line-height: 1.6;">
-      ${content}
-    </div>
-  `.trim();
-
-  return isPWA ? sanitizeHtml(wrapped, true) : wrapped;
-};
-
-const emailPrompts = {
-  payment_reminder: `Write a professional payment reminder email that:
-    - Addresses the customer by name
-    - Mentions the order number and total amount due
-    - Directs them to contact us for payment arrangements
-    - Has a polite but firm tone
-    - Includes contact information
-    - Maintains Way of Glory Media's professional image`,
-
-  installation_details: `Write a detailed installation confirmation email that:
-    - Addresses the customer by name
-    - Confirms the installation date and time
-    - Provides preparation instructions
-    - Includes contact information for questions
-    - Maintains a helpful and professional tone`,
-
-  shipping_update: `Write a shipping status update email that:
-    - Addresses the customer by name
-    - Provides current shipping status
-    - Includes tracking information if available
-    - Estimates delivery timeframe
-    - Includes contact information for questions
-    - Maintains an informative and professional tone`,
-
-  thank_you: `Write a thank you email that:
-    - Addresses the customer by name
-    - Expresses genuine appreciation for their business
-    - Summarizes their order details
-    - Provides next steps or what to expect
-    - Includes contact information
-    - Maintains a warm and professional tone`,
-
-  default_template: `Dear {customerName},
-
-Thank you for your order #{orderId}. Please review the details below:
-
-Order Information:
-• Order Number: #{orderId}
-• Order Date: {orderDate}
-• Total Amount: {orderTotal}
-• Status: {orderStatus}
-
-Ordered Items:
-{orderItems}
-{installationInfo}
-
-Need Assistance:
-If you have any questions, please contact us at:
-• Phone: (310) 872-9781
-• Email: help@wayofglory.com
-• Hours: Monday - Friday, 9:00 AM - 6:00 PM PST
-
-Best regards,
-Way of Glory Media Team
-Professional Audio & Visual Solutions`
-};
-
-export const getEmailPrompt = (templateId: string, order: Order): string => {
-  // If templateId is 'default', return the default template with variables
-  if (templateId === 'default') {
-    return emailPrompts.default_template
-      .replace('{customerName}', `${order.first_name} ${order.last_name}`)
-      .replace('{orderId}', `${order.id}`)
-      .replace('{orderDate}', new Date(order.created_at).toLocaleDateString())
-      .replace('{orderTotal}', `$${Number(order.total_amount || 0).toFixed(2)}`)
-      .replace('{orderItems}', order.order_items?.map((item: any) => 
-        `• ${item.product.title} (Quantity: ${item.quantity})`
-      ).join('\n') || 'No items')
-      .replace('{orderStatus}', `Your order is currently ${order.status}. ${
-        order.status === 'pending' ? 'We will process it shortly.' :
-        order.status === 'confirmed' ? 'We are preparing your order.' :
-        order.status === 'completed' ? 'Thank you for your business.' :
-        order.status === 'cancelled' ? 'Please contact us if you have any questions.' :
-        'Please contact us if you need any updates.'
-      }`)
-      .replace('{installationInfo}', order.installation_date ? 
-        `Installation is scheduled for ${order.installation_date}${order.installation_time ? ` at ${order.installation_time}` : ''}.` :
-        'We will contact you to schedule any necessary installation or setup.')
-      .replace('{actionItems}', order.status === 'pending' ? 
-        'Please review the order details and let us know if any adjustments are needed.' :
-        order.status === 'confirmed' ? 
-        'No action is required from you at this time.' :
-        order.status === 'completed' ? 
-        'Please let us know if you need any assistance with your products or services.' :
-        'Please contact us if you have any questions or concerns.')
-      .replace('{additionalNotes}', order.notes ? `Additional Notes: ${order.notes}` : '')
-  }
-
-  const prompt = emailPrompts[templateId as keyof typeof emailPrompts];
-  if (!prompt) {
-    throw new Error('Invalid template ID');
-  }
-
-  // Add order-specific context to the prompt
-  return `${prompt}
-
-Order Context:
-- Customer Name: ${order.first_name} ${order.last_name}
-- Order ID: ${order.id}
-- Total Amount: $${order.total_amount}
-${order.installation_date ? `- Installation Date: ${order.installation_date}` : ''}
-${order.installation_time ? `- Installation Time: ${order.installation_time}` : ''}
-${order.installation_address ? `- Installation Address: ${order.installation_address}, ${order.installation_city}, ${order.installation_state} ${order.installation_zip}` : ''}
-${order.shipping_address ? `- Shipping Address: ${order.shipping_address}, ${order.shipping_city}, ${order.shipping_state} ${order.shipping_zip}` : ''}
-
-Please generate a professional email that follows Way of Glory Media's brand voice: friendly, professional, and customer-focused.`;
-};
+interface EmailTemplate {
+  subject: string;
+  prompt: string;
+  variables: Record<string, any>;
+}
 
 export const getEmailTemplate = (
   templateId: string, 
-  order: Order, 
-  customEmail?: { subject: string; html: string },
-  isPWA = false
-): { subject: string; html: string } => {
-  if (templateId === 'custom' && (!customEmail?.subject || !customEmail?.html)) {
-    throw new Error('Custom email requires both subject and HTML content');
-  }
-  try {
-    let finalHtml = '';
-    const subject = `Order #${order.id} - Way of Glory Media`;
+  order: Order
+): EmailTemplate => {
+  // Check for installation and training services
+  const hasInstallationService = order.installation_price && Number(order.installation_price) > 0;
+  
+  const hasTrainingService = order.order_items?.some(item => 
+    item.product?.title?.toLowerCase().includes('audio equipment training')
+  );
 
-    // For custom emails, wrap the content in our standard template
-    if (templateId === 'custom' && customEmail?.html) {
-      const wrappedHtml = wrapContent(customEmail.html, isPWA);
-      const cleanHtml = sanitizeHtml(wrappedHtml, isPWA);
-      const processedHtml = processEmailTemplate(createEmailWrapper(cleanHtml), order);
-      finalHtml = `${baseStyle}${processedHtml}`;
-    } else {
-      // Handle default template
-      const content = getEmailPrompt(templateId, order);
-      const wrappedContent = wrapContent(content, isPWA);
-      const processedHtml = processEmailTemplate(createEmailWrapper(wrappedContent), order);
-      finalHtml = `${baseStyle}${processedHtml}`;
-    }
+  const showInstallation = ((order.installation_date && order.installation_date.trim() !== '') || (order.installation_price && Number(order.installation_price) > 0)) ? true : false;
 
-    // Ensure the HTML is properly escaped and formatted
-    finalHtml = sanitizeHtml(finalHtml, isPWA);
+  const installationDateTime = order.installation_date ? new Date(order.installation_date) : null;
+  const formattedInstallationDate = installationDateTime ? installationDateTime.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'To be scheduled';
+  const formattedInstallationTime = installationDateTime ? installationDateTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '';
+
+  const baseVariables = {
+    orderId: order.id,
+    firstName: order.first_name,
+    lastName: order.last_name,
+    email: order.email,
+    totalAmount: order.total_amount,
+    taxAmount: order.tax_amount || 0,
+    createdAt: order.created_at,
+    status: order.status,
+    order_items: order.order_items || [],
+    companyName: 'Way of Glory Media',
+    supportEmail: 'help@wayofglory.com',
+    supportPhone: '(310) 872-9781',
+    websiteUrl: 'https://wayofglory.com',
+    logoUrl: '/images/logo/LogoLight.png',
+    year: new Date().getFullYear(),
+    includesInstallation: showInstallation,
+    includesTraining: hasTrainingService,
+    ai_config: {
+      ...AI_EMAIL_CONFIG,
+      additional_context: `Email Type: ${templateId}
+      Customer: ${order.first_name} ${order.last_name}
+      Order ID: ${order.id}
+      Status: ${order.status}
+      Includes Installation: ${showInstallation ? 'Yes' : 'No'}
+      Includes Training: ${hasTrainingService ? 'Yes' : 'No'}`
+    },
+    installationPrice: order.installation_price,
+    installationDate: formattedInstallationDate,
+    installationTime: formattedInstallationTime,
+  };
+
+  switch (templateId) {
+    case 'order_confirmation':
+      return {
+        subject: `Order Confirmation - Way of Glory Order #${order.id}`,
+        prompt: `Write an order confirmation email to the customer with these requirements:
+          - Address the customer by their first name (${order.first_name})
+          - Write from Way of Glory Media's perspective
+          - Confirm receipt of their order (#${order.id})
+          - Include order details and total amount ($${order.total_amount})
+          - Explain next steps in the process:
+            ${showInstallation ? '* Mention that our team will contact them to schedule installation' : '* Explain shipping process'}
+            ${hasTrainingService ? '* Note that training will be scheduled after installation' : ''}
+          - Provide our support contact information (help@wayofglory.com and (310) 872-9781)
+          - End with a warm closing
+          
+          Important guidelines:
+          - Write as if you are Way of Glory Media writing TO the customer
+          - Keep the tone professional and clear
+          - Focus on confirming their order and next steps
+          ${showInstallation ? '          - Mention installation scheduling process' : '          - Do not mention installation services'}
+          ${hasTrainingService ? '          - Include brief mention of training session' : '          - Do not mention training services'}
+          
+          Customer details:
+          Name: ${order.first_name} ${order.last_name}
+          Order: #${order.id}
+          ${showInstallation ? `Installation Date: ${baseVariables.installationDate}\n          Installation Time: ${baseVariables.installationTime}\n` : ''}Total: $${order.total_amount}
+          Status: ${order.status}
+          Includes Installation: ${showInstallation ? 'Yes' : 'No'}
+          Includes Training: ${hasTrainingService ? 'Yes' : 'No'}`,
+        variables: {
+          ...baseVariables,
+          emailType: 'Order Confirmation'
+        }
+      };
+
+    case 'order_shipped':
+      return {
+        subject: `Shipping Confirmation - Way of Glory Order #${order.id}`,
+        prompt: `Write a shipping notification email to the customer with these requirements:
+          - Address the customer by their first name (${order.first_name})
+          - Write from Way of Glory Media's perspective (as the business writing to the customer)
+          - Announce that their order (#${order.id}) has shipped
+          - Include tracking information placeholder
+          - Provide estimated delivery timeframe
+          - Include installation/setup guidance if applicable
+          - Provide our support contact information (help@wayofglory.com and (310) 872-9781)
+          - End with a warm closing
+          
+          Important guidelines:
+          - Write as if you are Way of Glory Media writing TO the customer
+          - Keep the tone professional and clear
+          - Focus on shipping details and next steps
+          - Make it clear this is from the business to the customer
+          
+          Customer details:
+          Name: ${order.first_name} ${order.last_name}
+          Order: #${order.id}
+          ${showInstallation ? `Installation Date: ${baseVariables.installationDate}\n          Installation Time: ${baseVariables.installationTime}\n` : ''}Status: ${order.status}`,
+        variables: {
+          ...baseVariables,
+          emailType: 'Shipping Confirmation'
+        }
+      };
+
+    case 'order_delayed':
+      return {
+        subject: `Delay Notification - Way of Glory Order #${order.id}`,
+        prompt: `Write a delay notification email to the customer with these requirements:
+          - Address the customer by their first name (${order.first_name})
+          - Write from Way of Glory Media's perspective
+          - Professionally explain the delay with order #${order.id}
+          - Provide a new estimated timeline
+          ${showInstallation ? '          - Explain how this affects installation scheduling' : ''}
+          ${hasTrainingService ? '          - Address any impact on training session timing' : ''}
+          - Offer a goodwill gesture (10% off next purchase)
+          - Provide our support contact information (help@wayofglory.com and (310) 872-9781)
+          - End with an apologetic but professional closing
+          
+          Important guidelines:
+          - Write as if you are Way of Glory Media writing TO the customer
+          - Keep the tone apologetic but professional
+          - Focus on the solution and next steps
+          ${showInstallation ? '          - Address installation timeline changes' : '          - Do not mention installation'}
+          ${hasTrainingService ? '          - Include updated training timeline' : '          - Do not mention training'}
+          
+          Customer details:
+          Name: ${order.first_name} ${order.last_name}
+          Order: #${order.id}
+          ${showInstallation ? `Installation Date: ${baseVariables.installationDate}\n          Installation Time: ${baseVariables.installationTime}\n` : ''}Status: ${order.status}
+          Includes Installation: ${showInstallation ? 'Yes' : 'No'}
+          Includes Training: ${hasTrainingService ? 'Yes' : 'No'}`,
+        variables: {
+          ...baseVariables,
+          emailType: 'Delay Notification'
+        }
+      };
+
+    case 'order_completed':
+      // Ensure order_items exists and map them correctly
+      const orderItems = order.order_items?.map(item => {
+        const price = Number(item.price_at_time);
+        const quantity = Number(item.quantity);
+    return {
+          title: item.product?.title || 'Product',
+          quantity: quantity,
+          price: price * quantity,
+          pricePerUnit: price,
+          product: item.product
+        };
+      }) || [];
+
+      const subtotal = orderItems.reduce((sum, item) => sum + item.price, 0);
+
+      // Create the variables object with all necessary data
+      const emailVariables = {
+        ...baseVariables,
+        emailType: 'Thank You for Your Order',
+        orderId: order.id,
+        firstName: order.first_name,
+        lastName: order.last_name,
+        createdAt: order.created_at,
+        order_items: orderItems,
+        subtotal: subtotal,
+        totalAmount: Number(order.total_amount),
+        supportEmail: 'help@wayofglory.com'
+      };
+
+      console.log('Email variables:', {
+        order_items: emailVariables.order_items,
+        subtotal: emailVariables.subtotal,
+        totalAmount: emailVariables.totalAmount
+      });
 
     return {
-      subject: customEmail?.subject || subject,
-      html: finalHtml
-    };
-  } catch (error) {
-    console.error('Error generating email template:', error);
-    // Return a basic fallback template
-    const fallbackHtml = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          ${baseStyle}
-        </head>
-        <body>
-          <div style="padding: 20px; text-align: center;">
-            <h1>Order #${order.id}</h1>
-            <p>Thank you for your order. We will be in touch shortly.</p>
-          </div>
-        </body>
-      </html>
-    `;
+        subject: `Order Completed - Way of Glory Order #${order.id}`,
+        prompt: `Write a completion thank you email to the customer with these requirements:
+          - Address the customer by their first name (${order.first_name})
+          - Write from Way of Glory Media's perspective
+          - Confirm their order (#${order.id}) is complete
+          - Express appreciation for their business
+          ${showInstallation ? '          - Reference successful installation completion' : ''}
+          ${hasTrainingService ? '          - Mention completed training session and ongoing support' : ''}
+          - Request feedback about their experience
+          - Include a special offer (10% off next purchase)
+          - Provide our support contact information (help@wayofglory.com)
+          - End with a warm closing
+          
+          Important guidelines:
+          - Write as if you are Way of Glory Media writing TO the customer
+          - Keep the tone warm and professional
+          - Focus on appreciation and future relationship
+          ${showInstallation ? '          - Include feedback request about installation' : ''}
+          ${hasTrainingService ? '          - Ask about training experience' : ''}
+          
+          Customer details:
+          Name: ${order.first_name} ${order.last_name}
+          Order: #${order.id}
+          ${showInstallation ? `Installation Date: ${baseVariables.installationDate}\n          Installation Time: ${baseVariables.installationTime}\n` : ''}Status: ${order.status}
+          Includes Installation: ${showInstallation ? 'Yes' : 'No'}
+          Includes Training: ${hasTrainingService ? 'Yes' : 'No'}`,
+        variables: {
+          ...emailVariables,
+          emailType: 'Order Completed'
+        }
+      };
 
-    return {
-      subject: `Order #${order.id} - Way of Glory Media`,
-      html: sanitizeHtml(fallbackHtml)
+    case 'thank_you':
+      // Process order items and calculate totals
+      const thankYouOrderItems = order.order_items?.map(item => ({
+        ...item,
+        price_at_time: Number(item.price_at_time),
+        quantity: Number(item.quantity),
+        title: item.product?.title || item.title || 'Product'
+      })) || [];
+
+      const thankYouSubtotal = thankYouOrderItems.reduce((sum, item) => 
+        sum + (item.price_at_time * item.quantity), 0
+      );
+
+      const thankYouVariables = {
+        ...baseVariables,
+        emailType: 'Thank You for Your Order',
+        order_items: thankYouOrderItems,
+        subtotal: thankYouSubtotal,
+        tax_amount: Number(order.tax_amount || 0),
+        installation_price: Number(order.installation_price || 0),
+        total_amount: Number(order.total_amount || 0)
+      };
+
+      return {
+        subject: `Thank You for Your Order - Way of Glory #${order.id}`,
+        prompt: `Write a heartfelt thank you email with these requirements:
+          - Begin with a warm, personal greeting to ${order.first_name}
+          - Write from Way of Glory Media's perspective
+          - Express genuine appreciation for choosing Way of Glory Media
+          - Acknowledge order #${order.id} with enthusiasm
+          - Share our excitement about enhancing their worship experience:
+            * Mention our commitment to excellence
+            * Emphasize the impact on their ministry
+            * Express anticipation of their success
+          - Outline next steps clearly:
+            * Order processing timeline
+            ${showInstallation ? '            * Installation scheduling process' : '            * Shipping process'}
+            ${hasTrainingService ? '            * Training session coordination' : ''}
+            * How we'll stay in touch
+          - Include our support contact information (help@wayofglory.com and (310) 872-9781)
+          - Close with a warm message about our ongoing partnership
+          
+          Important guidelines:
+          - Make it personal and genuine
+          - Focus on the relationship, not just the transaction
+          - Emphasize our shared mission in worship ministry
+          ${showInstallation ? '          - Include excitement about upcoming installation' : ''}
+          ${hasTrainingService ? '          - Express enthusiasm about training and support' : ''}
+          
+          Customer details:
+          Name: ${order.first_name} ${order.last_name}
+          Order: #${order.id}
+          ${showInstallation ? `Installation Date: ${baseVariables.installationDate}\n          Installation Time: ${baseVariables.installationTime}\n` : ''}Status: ${order.status}
+          Includes Installation: ${showInstallation ? 'Yes' : 'No'}
+          Includes Training: ${hasTrainingService ? 'Yes' : 'No'}`,
+        variables: thankYouVariables
+      };
+
+    case 'payment_reminder':
+      return {
+        subject: `Payment Reminder - Way of Glory Order #${order.id}`,
+        prompt: `Write a professional payment reminder email with these requirements:
+          - Start with a friendly greeting to ${order.first_name}
+          - Write from Way of Glory Media's perspective
+          - Gently remind about the pending payment for order #${order.id}
+          - State the total amount due ($${order.total_amount}) clearly
+          - List accepted payment methods:
+            * Direct bank transfer (details will be provided separately)
+            * Check payments (payable to "Way of Glory Media")
+          ${showInstallation ? '          - Mention that installation scheduling will begin after payment is received' : '          - Mention that shipping will begin after payment is received'}
+          - Include our support contact information (help@wayofglory.com and (310) 872-9781)
+          - End with a courteous closing that encourages quick action
+          
+          Important guidelines:
+          - Keep the tone polite and understanding, not demanding
+          - Be clear about expectations but maintain a helpful attitude
+          - Focus on facilitating payment rather than demanding it
+          ${showInstallation ? '          - Reference installation scheduling process' : '          - Do not mention installation'}
+          ${hasTrainingService ? '          - Include brief mention of training session timing' : '          - Do not mention training'}
+          
+          Customer details:
+          Name: ${order.first_name} ${order.last_name}
+          Order: #${order.id}
+          ${showInstallation ? `Installation Date: ${baseVariables.installationDate}\n          Installation Time: ${baseVariables.installationTime}\n` : ''}Total Due: $${order.total_amount}
+          Status: ${order.status}
+          Includes Installation: ${showInstallation ? 'Yes' : 'No'}
+          Includes Training: ${hasTrainingService ? 'Yes' : 'No'}`,
+        variables: {
+          ...baseVariables,
+          emailType: 'Payment Reminder'
+        }
+      };
+
+    case 'installation_confirmation':
+      return {
+        subject: `Installation Confirmation - Way of Glory Order #${order.id}`,
+        prompt: `Write a detailed installation confirmation email with these requirements:
+          - Begin with a warm greeting to ${order.first_name}
+          - Write from Way of Glory Media's perspective
+          - Express excitement about the upcoming installation
+          - Confirm installation details for order #${order.id}:
+            * Installation Date: ${baseVariables.installationDate}
+            * Installation Time: ${baseVariables.installationTime}
+            * Location: [Customer's address]
+            * Estimated Duration: ${hasTrainingService ? '3-4' : '2-3'} hours
+          - Provide a clear preparation checklist:
+            * Clear access to installation area
+            * Power outlets availability
+            * Space requirements
+            * Remove any obstacles
+          - Explain what to expect during installation:
+            * Our team will arrive in the specified time window
+            * Equipment setup and testing process
+            * Quality assurance checks
+            ${hasTrainingService ? '            * Comprehensive training session on equipment usage and best practices' : ''}
+          - Include our support contact information (help@wayofglory.com and (310) 872-9781)
+          - End with an enthusiastic closing about enhancing their worship experience
+          
+          Important guidelines:
+          - Maintain a professional but warm tone
+          - Focus on making the customer feel prepared and confident
+          - Emphasize our expertise and commitment to quality
+          - Show excitement about helping enhance their worship space
+          
+          
+          Customer details:
+          Name: ${order.first_name} ${order.last_name}
+          Order: #${order.id}
+          Installation Date: ${baseVariables.installationDate}
+          Installation Time: ${baseVariables.installationTime}
+          Status: ${order.status}
+          Includes Training: ${hasTrainingService ? 'Yes' : 'No'}`,
+        variables: {
+          ...baseVariables,
+          emailType: 'Installation Confirmation',
+          includesTraining: hasTrainingService
+        }
+      };
+
+    case 'shipping_update':
+      return {
+        subject: `Shipping Update - Way of Glory Order #${order.id}`,
+        prompt: `Write a shipping update email with these requirements:
+          - Start with a friendly greeting to ${order.first_name}
+          - Write from Way of Glory Media's perspective
+          - Provide clear status update for order #${order.id}:
+            * Current shipment location/status
+            * Expected delivery timeline
+            * Any relevant tracking information
+          - Include any special delivery instructions or requirements
+          - Explain next steps after delivery:
+            * Inspection process
+            ${showInstallation ? '            * Installation scheduling and coordination\n            * Pre-installation preparation requirements' : '            * Basic setup recommendations'}
+          - Include our support contact information (help@wayofglory.com and (310) 872-9781)
+          - End with an assuring message about their order's progress
+          
+          Important guidelines:
+          - Keep the tone informative and confident
+          - Focus on transparency and clear communication
+          - Show attention to detail and care for their order
+          - Emphasize our commitment to successful delivery
+          ${showInstallation ? '          - Include information about installation coordination\n          - Mention that our team will contact them to schedule installation' : '          - Do not mention installation services or scheduling\n          - Focus on self-setup guidance if needed'}
+          
+          Customer details:
+          Name: ${order.first_name} ${order.last_name}
+          Order: #${order.id}
+          ${showInstallation ? `Installation Date: ${baseVariables.installationDate}\n          Installation Time: ${baseVariables.installationTime}\n` : ''}Status: ${order.status}
+          Includes Installation: ${showInstallation ? 'Yes' : 'No'}`,
+        variables: {
+          ...baseVariables,
+          emailType: 'Shipping Update',
+          includesInstallation: showInstallation
+        }
+      };
+
+    default:
+      return {
+        subject: `Order Status Update - Way of Glory #${order.id}`,
+        prompt: `Write an order update email to the customer with these requirements:
+          - Address the customer by their first name (${order.first_name})
+          - Write from Way of Glory Media's perspective
+          - Provide clear update about their order (#${order.id})
+          - Include current order status and next steps:
+            ${showInstallation ? '* Update on installation scheduling/status' : '* Update on order processing'}
+            ${hasTrainingService ? '* Information about training session timing' : ''}
+          - Provide our support contact information (help@wayofglory.com and (310) 872-9781)
+          - End with a professional closing
+          
+          Important guidelines:
+          - Write as if you are Way of Glory Media writing TO the customer
+          - Keep the tone professional and clear
+          - Focus on the status update and next steps
+          ${showInstallation ? '          - Include installation-related updates' : '          - Do not mention installation'}
+          ${hasTrainingService ? '          - Include training-related updates' : '          - Do not mention training'}
+          
+          Customer details:
+          Name: ${order.first_name} ${order.last_name}
+          Order: #${order.id}
+          ${showInstallation ? `Installation Date: ${baseVariables.installationDate}\n          Installation Time: ${baseVariables.installationTime}\n` : ''}Status: ${order.status}
+          Includes Installation: ${showInstallation ? 'Yes' : 'No'}
+          Includes Training: ${hasTrainingService ? 'Yes' : 'No'}`,
+        variables: {
+          ...baseVariables,
+          emailType: 'Order Status Update'
+        }
     };
   }
 };
 
-export const formatEmailPreview = async (content: string): Promise<string> => {
-  try {
-    const cleanContent = sanitizeHtml(wrapContent(content));
-    return `<!DOCTYPE html>
+const formatEmailContent = (content: string, variables: Record<string, any>): string => {
+  // Split content into paragraphs and wrap them in styled divs
+  const formattedContent = content
+    .split('\n')
+    .filter(paragraph => paragraph.trim() !== '')
+    .map(paragraph => `<div style="margin-bottom: 16px; color: #334155; line-height: 1.6;">${paragraph}</div>`)
+    .join('');
+
+  // Format order details section with items, tax, and installation
+  const orderDetailsHtml = variables.order_items?.length ? `
+    <div style="margin-bottom: 32px;">
+      <h2 style="margin: 0 0 16px 0; color: #0f172a; font-size: 18px; font-weight: 600;">Order Details</h2>
+      <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse;">
+        <tr style="background-color: #f8fafc;">
+          <th style="text-align: left; padding: 12px; border-bottom: 2px solid #e2e8f0; color: #0f172a; font-size: 14px;">Item</th>
+          <th style="text-align: center; padding: 12px; border-bottom: 2px solid #e2e8f0; color: #0f172a; font-size: 14px;">Quantity</th>
+          <th style="text-align: right; padding: 12px; border-bottom: 2px solid #e2e8f0; color: #0f172a; font-size: 14px;">Price</th>
+        </tr>
+        ${variables.order_items.map((item: any) => {
+          const title = item.product?.title || item.title || 'Product';
+          const quantity = Number(item.quantity);
+          const pricePerUnit = Number(item.price_at_time);
+          const totalPrice = pricePerUnit * quantity;
+          
+          return `
+            <tr>
+              <td style="text-align: left; padding: 16px 12px; border-bottom: 1px solid #e2e8f0; color: #334155;">
+                <div style="font-weight: 500;">${title}</div>
+                <div style="font-size: 12px; color: #64748b; margin-top: 4px;">$${pricePerUnit.toFixed(2)} each</div>
+              </td>
+              <td style="text-align: center; padding: 16px 12px; border-bottom: 1px solid #e2e8f0; color: #334155;">${quantity}</td>
+              <td style="text-align: right; padding: 16px 12px; border-bottom: 1px solid #e2e8f0; color: #334155;">$${totalPrice.toFixed(2)}</td>
+            </tr>
+          `;
+        }).join('')}
+        ${Number(variables.installationPrice) > 0 ? `
+        <tr>
+          <td style="text-align: left; padding: 16px 12px; border-bottom: 1px solid #e2e8f0; color: #334155;">
+            <div style="font-weight: 500;">Professional Installation Service</div>
+          </td>
+          <td style="text-align: center; padding: 16px 12px; border-bottom: 1px solid #e2e8f0; color: #334155;">1</td>
+          <td style="text-align: right; padding: 16px 12px; border-bottom: 1px solid #e2e8f0; color: #334155;">$${Number(variables.installationPrice).toFixed(2)}</td>
+        </tr>
+        ` : ''}
+        <tr>
+          <td colspan="2" style="text-align: right; padding: 16px 12px; font-weight: 600; color: #0f172a;">Subtotal:</td>
+          <td style="text-align: right; padding: 16px 12px; color: #0f172a;">$${(variables.order_items.reduce((sum: number, item: any) => sum + (Number(item.price_at_time) * item.quantity), 0) + (Number(variables.installationPrice) || 0)).toFixed(2)}</td>
+        </tr>
+        ${Number(variables.taxAmount) > 0 ? `
+        <tr>
+          <td colspan="2" style="text-align: right; padding: 16px 12px; font-weight: 600; color: #0f172a;">Tax:</td>
+          <td style="text-align: right; padding: 16px 12px; color: #0f172a;">$${Number(variables.taxAmount).toFixed(2)}</td>
+        </tr>
+        ` : ''}
+        <tr>
+          <td colspan="2" style="text-align: right; padding: 16px 12px; font-weight: 600; color: #0f172a; font-size: 18px;">Total:</td>
+          <td style="text-align: right; padding: 16px 12px; color: #2563eb; font-weight: 600; font-size: 18px;">$${Number(variables.totalAmount).toFixed(2)}</td>
+        </tr>
+      </table>
+    </div>
+  ` : '';
+
+  return `
+    <!DOCTYPE html>
 <html>
   <head>
-    <meta charset="UTF-8">
+        <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    ${baseStyle}
+        <title>${variables.companyName} - Order Update</title>
   </head>
-  <body>
-    ${createEmailWrapper(cleanContent)}
+      <body style="margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; line-height: 1.6; background-color: #f8fafc;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f8fafc;">
+          <tr>
+            <td align="center" style="padding: 20px 0;">
+              <!-- Container -->
+              <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                <!-- Header -->
+                <tr>
+                  <td style="background-color: #0f172a; padding: 32px 24px; text-align: center;">
+                    <img src="${variables.logoUrl}" alt="${variables.companyName}" style="height: 40px; margin-bottom: 24px;" />
+                    <h1 style="color: #ffffff; font-size: 28px; font-weight: 600; margin: 0 0 8px 0;">${variables.emailType || 'Order Update'}</h1>
+                    <p style="color: #e2e8f0; margin: 0; font-size: 16px;">Order #${variables.orderId}</p>
+                  </td>
+                </tr>
+
+                <!-- Content -->
+                <tr>
+                  <td style="padding: 32px 24px;">
+                    ${formattedContent}
+                    ${orderDetailsHtml}
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
   </body>
-</html>`;
-  } catch (error) {
-    console.error('Error formatting email preview, returning unformatted content');
-    return content;
-  }
-};
-
-export const processEmailTemplate = (template: string, order: Order) => {
-  let processed = template
-    .replace(/{firstName}/g, order.first_name)
-    .replace(/{lastName}/g, order.last_name)
-    .replace(/#{orderId}/g, `#${order.id}`)
-    .replace(/{orderDate}/g, new Date(order.created_at).toLocaleDateString())
-    .replace(/{totalAmount}/g, `$${Number(order.total_amount).toFixed(2)}`)
-    .replace(/{status}/g, order.status)
-    .replace(/{paymentMethod}/g, order.payment_method || 'Not specified');
-
-  // Handle installation date separately
-  if (order.installation_date) {
-    const installTemplate = getInstallationTemplate(
-      order.installation_date,
-      order.installation_time || ''
-    );
-    processed = processed.replace(/{installationDate}/g, installTemplate);
-  } else {
-    processed = processed.replace(/{installationDate}/g, '');
-  }
-
-  return processed;
+    </html>
+  `;
 }; 

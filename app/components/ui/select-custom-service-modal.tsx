@@ -445,7 +445,7 @@ export function SelectCustomServiceModal({
   onClose, 
   onSelect, 
   onUpdate,
-  services,
+  services = [], // Add default empty array
   onRefresh 
 }: SelectCustomServiceModalProps) {
   const [previewService, setPreviewService] = useState<CustomService | null>(null)
@@ -636,7 +636,7 @@ export function SelectCustomServiceModal({
                                   </div>
                                 </div>
                                 <p className="text-gray-600 text-sm mb-4 line-clamp-2">{service.description}</p>
-                                {service.features.length > 0 && (
+                                {service.features && service.features.length > 0 && (
                                   <ul className="space-y-2.5 border-t pt-4">
                                     {service.features.map((feature, index) => (
                                       <li key={index} className="flex items-start text-sm text-gray-600 group/feature">

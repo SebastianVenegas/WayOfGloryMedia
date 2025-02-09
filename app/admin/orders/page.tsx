@@ -573,6 +573,11 @@ export default function OrdersPage() {
     },
   ]
 
+  const getEmailTemplate = (templateId: string, order: Order): { subject: string } => {
+    const template = emailTemplates.find(t => t.id === templateId);
+    return template ? { subject: template.subject } : { subject: '' };
+  };
+
   const filterAndSortOrders = useCallback(() => {
     let filtered = [...orders]
 
@@ -889,8 +894,17 @@ export default function OrdersPage() {
         throw new Error(data.error || 'Failed to generate content')
       }
 
-      setPreviewHtml(data.content || '')
+      console.log('Generated email content:', {
+        html: data.html,
+        subject: data.subject,
+        responseData: data
+      })
+
+      // Store the raw AI-generated content
+      setEditedContent(data.html || '')
+      setPreviewHtml(data.html || '')
       setEditedSubject(data.subject || '')
+      setIsAiPromptOpen(false)
       toast.success('Email content generated successfully')
     } catch (error) {
       console.error('Error generating content:', error)
@@ -902,6 +916,15 @@ export default function OrdersPage() {
 
   // Clear email state function
   const clearEmailState = () => {
+    console.log('Clearing email state')
+    console.log('Previous state:', {
+      hasPreviewHtml: !!previewHtml,
+      hasEditedSubject: !!editedSubject,
+      hasEditedContent: !!editedContent,
+      selectedTemplate,
+      viewMode
+    })
+    
     setPreviewHtml('')
     setEditedSubject('')
     setEditedContent('')
@@ -933,41 +956,62 @@ export default function OrdersPage() {
         return
       }
       
-      // Only proceed with AI generation if we have a template and selected order
+      // Only proceed if we have a template and selected order
       if (templateId && selectedOrder?.id) {
         setIsGeneratingAI(true)
         
-        const response = await fetch('/api/admin/generate-email', {
-          method: 'POST',
+        console.log('Generating preview for:', {
+          templateId,
+          orderId: selectedOrder.id,
+          hasInstallation: !!selectedOrder.installation_date,
+          orderStatus: selectedOrder.status
+        })
+        
+        // Use the preview-template endpoint instead
+        const response = await fetch(`/api/admin/orders/${selectedOrder.id}/preview-template?templateId=${templateId}`, {
+          method: 'GET',
           headers: {
             'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            orderId: selectedOrder.id,
-            content: '',
-            customPrompt: getTemplatePrompt(templateId),
-            templateId: templateId,
-            isPWA: false
-          }),
+          }
         })
 
         const data = await response.json()
         
         if (!response.ok) {
-          throw new Error(data.error || 'Failed to generate content')
+          console.error('Preview generation failed:', {
+            status: response.status,
+            statusText: response.statusText,
+            error: data.error,
+            details: data.details
+          })
+          throw new Error(data.details || data.error || 'Failed to generate preview')
         }
 
-        setPreviewHtml(data.html || '')
-        setEditedContent(data.content || '')
-        setEditedSubject(data.subject || '')
+        if (!data.html || !data.content) {
+          console.error('Invalid preview response:', data)
+          throw new Error('Preview generation returned invalid content')
+        }
+
+        // Set the preview HTML and content
+        setPreviewHtml(data.html)
+        setEditedContent(data.content)
+        setEditedSubject(data.subject || `Order Update - Way of Glory #${selectedOrder.id}`)
         setIsAiPromptOpen(false)
-        toast.success('Email content generated successfully')
+        toast.success('Email preview generated successfully')
       } else {
+        console.error('Missing required data:', {
+          hasTemplateId: !!templateId,
+          hasSelectedOrder: !!selectedOrder
+        })
         toast.error('Please select an order first')
       }
     } catch (error) {
-      console.error('Error generating content:', error)
-      toast.error(error instanceof Error ? error.message : 'Failed to generate content. Please try again.')
+      console.error('Error in handleTemplateSelect:', {
+        error,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined
+      })
+      toast.error(error instanceof Error ? error.message : 'Failed to generate preview. Please try again.')
     } finally {
       setIsGeneratingAI(false)
     }
@@ -980,6 +1024,8 @@ export default function OrdersPage() {
       clearEmailState()
       setIsGeneratingAI(true)
       
+      console.log('Starting email generation with prompt:', aiPrompt)
+
       const response = await fetch('/api/admin/generate-email', {
         method: 'POST',
         headers: {
@@ -1005,9 +1051,27 @@ export default function OrdersPage() {
         throw new Error(data.error || 'Failed to generate content')
       }
 
-      setPreviewHtml(viewMode === 'preview' ? data.html : data.content)
-      setEditedContent(data.content)
-      setEditedSubject(data.subject || '')
+      console.log('Generation response:', {
+        hasHtml: !!data.html,
+        htmlLength: data.html?.length,
+        hasSubject: !!data.subject,
+        subject: data.subject,
+        rawResponse: data
+      })
+
+      // Store the raw AI-generated content
+      setEditedContent(data.html || '')
+      setPreviewHtml(data.html || '')
+      if (!data.subject) {
+        if (selectedTemplate && selectedTemplate !== 'custom' && selectedOrder) {
+          const template = getEmailTemplate(selectedTemplate, selectedOrder);
+          setEditedSubject(template.subject);
+        } else {
+          setEditedSubject('Your Way of Glory Order');
+        }
+      } else {
+        setEditedSubject(data.subject);
+      }
       setIsAiPromptOpen(false)
       toast.success('Email content generated successfully')
     } catch (error) {
@@ -1028,68 +1092,65 @@ export default function OrdersPage() {
     try {
       setSendingTemplateId('sending')
       
-      // First generate the email content if using AI template
-      let emailContent = editedContent
-      let emailSubject = editedSubject
-      
-      if (selectedTemplate && selectedTemplate !== 'custom') {
-        const generateResponse = await fetch('/api/admin/generate-email', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            orderId: selectedOrder.id,
-            templateType: selectedTemplate,
-            content: getTemplatePrompt(selectedTemplate),
-            customPrompt: null,
-            isPWA: false
-          }),
-        })
+      // Use fallback values if email content or subject are missing
+      const finalContent = editedContent && editedContent.trim() !== '' ? editedContent : '<p>No email content was generated.</p>';
+      const finalSubject = editedSubject && editedSubject.trim() !== '' ? editedSubject : `Your Way of Glory Order #${selectedOrder.id}`;
 
-        if (!generateResponse.ok) {
-          const errorData = await generateResponse.json().catch(() => ({ error: 'Failed to generate email content' }));
-          throw new Error(errorData.error || 'Failed to generate email content');
-        }
-
-        const generatedEmail = await generateResponse.json().catch(() => null)
-        if (!generatedEmail) {
-          throw new Error('Failed to parse generated email response')
-        }
-        emailSubject = generatedEmail.subject
-        emailContent = generatedEmail.content
+      if(editedContent !== finalContent || editedSubject !== finalSubject) {
+        toast('Some fields were missing. Fallback values have been used.');
       }
 
-      // Send the email using our Gmail-based system
-      const response = await fetch(`/api/admin/send-email`, {
+      // Use final values for sending
+      const emailContent = finalContent;
+      const emailSubject = finalSubject;
+
+      console.log('Email content state:', {
+        hasEditedContent: !!editedContent,
+        editedContentLength: editedContent?.length,
+        hasEditedSubject: !!editedSubject,
+        editedSubject: editedSubject,
+        emailContent: emailContent?.slice(0, 100) + '...' // Log first 100 chars
+      })
+
+      if (!emailContent || !emailSubject) {
+        console.error('Missing required fields:', {
+          hasContent: !!emailContent,
+          hasSubject: !!emailSubject
+        })
+        throw new Error('Missing email content or subject')
+      }
+
+      console.log('Sending email with:', {
+        orderId: selectedOrder.id,
+        hasContent: !!emailContent,
+        contentLength: emailContent?.length,
+        subject: emailSubject
+      })
+
+      // Send the email using the send-template endpoint
+      const response = await fetch(`/api/admin/orders/${selectedOrder.id}/send-template`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          orderId: selectedOrder.id,
-          email: selectedOrder.email,
-          subject: emailSubject,
-          content: emailContent,
-          customerName: `${selectedOrder.first_name} ${selectedOrder.last_name}`,
-          templateId: selectedTemplate || 'custom',
-          order: selectedOrder // Pass the full order for proper email formatting
+          templateId: 'custom',
+          customEmail: {
+            subject: emailSubject,
+            html: emailContent
+          },
+          isPWA: false
         }),
       })
 
-      let errorData;
-      if (!response.ok) {
-        try {
-          errorData = await response.json();
-        } catch (e) {
-          throw new Error('Failed to send email: Network error');
-        }
-        throw new Error(errorData.error || 'Failed to send email');
-      }
+      const data = await response.json()
 
-      const result = await response.json().catch(() => null);
-      if (!result?.success) {
-        throw new Error('Failed to send email: Invalid response');
+      if (!response.ok) {
+        console.error('Send email failed:', {
+          status: response.status,
+          data: data
+        })
+        throw new Error(data.details || data.error || 'Failed to send email')
       }
 
       toast.success('Email sent successfully')
@@ -1098,7 +1159,7 @@ export default function OrdersPage() {
       setSelectedTemplate(null)
       setIsEmailTemplatesOpen(false)
     } catch (error) {
-      console.error('Error sending email:', error)
+      console.error('Error in handleSendEmail:', error)
       toast.error(error instanceof Error ? error.message : 'Failed to send email')
     } finally {
       setSendingTemplateId(null)
@@ -1108,50 +1169,43 @@ export default function OrdersPage() {
   // Handle quick generate
   const handleQuickGenerate = async (templateId: string) => {
     try {
-      clearEmailState()
-      setPreviewHtml('<p>Generating your email content...</p>')
-      setIsGeneratingAI(true)
-      
-      const templatePrompt = getTemplatePrompt(templateId)
-      if (!templatePrompt) return
+      clearEmailState();
+      setPreviewHtml('<p>Generating your email content...</p>');
+      setIsGeneratingAI(true);
 
-      const response = await fetch('/api/admin/generate-email', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          prompt: templatePrompt,
-          templateType: templateId,
-          order: selectedOrder,
-          viewMode,
-          variables: {
-            customerName: `${selectedOrder?.first_name} ${selectedOrder?.last_name}`,
-            orderNumber: selectedOrder?.id,
-            amount: selectedOrder?.total_amount,
-            installationDate: selectedOrder?.installation_date,
-          }
-        }),
-      })
-
-      const data = await response.json()
-      
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to generate content')
+      // Check if an order is selected
+      if (!selectedOrder) {
+        toast.error('Please select an order first');
+        return;
       }
 
-      setPreviewHtml(data.html || '')
-      setEditedSubject(data.subject || '')
-      setIsAiPromptOpen(false)
-      toast.success('Email content generated successfully')
+      // Use the preview-template endpoint
+      const response = await fetch(`/api/admin/orders/${selectedOrder.id}/preview-template?templateId=${templateId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to generate preview');
+      }
+
+      // Set the email content
+      setEditedContent(data.content || '');
+      setPreviewHtml(data.html || '');
+      setEditedSubject(data.subject || '');
+      setIsAiPromptOpen(false);
+      toast.success('Email preview generated successfully');
     } catch (error) {
-      console.error('Error generating content:', error)
-      toast.error(error instanceof Error ? error.message : 'Failed to generate content. Please try again.')
-      setPreviewHtml('<p>Start typing your email content here...</p>')
+      console.error('Error generating preview:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to generate preview');
     } finally {
-      setIsGeneratingAI(false)
+      setIsGeneratingAI(false);
     }
-  }
+  };
 
   // Handle new email
   const handleNewEmail = () => {
