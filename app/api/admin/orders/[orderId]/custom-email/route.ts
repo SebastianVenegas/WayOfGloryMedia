@@ -71,11 +71,16 @@ interface OrderItem {
 }
 
 export async function POST(
-  request: NextRequest,
-  { params }: { params: { orderId: string } }
+  request: NextRequest
 ): Promise<NextResponse> {
   try {
-    const orderIdInt = parseInt(params.orderId);
+    const orderId = request.nextUrl.pathname.split('/')[4]; // Get orderId from URL path
+    const orderIdInt = parseInt(orderId);
+
+    if (isNaN(orderIdInt)) {
+      console.error('Invalid orderId format:', orderId);
+      return NextResponse.json({ error: 'Invalid Order ID' }, { status: 400 });
+    }
 
     // Validate OpenAI API key
     if (!process.env.OPENAI_API_KEY) {
