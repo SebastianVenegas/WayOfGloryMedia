@@ -18,11 +18,13 @@ export async function safeFetch(url: string, options: RequestInit): Promise<{ ok
 
     const text = await response.text();
     console.log('Response status:', response.status);
-
-    const contentType = response.headers.get('content-type') || '';
-    if (!contentType.includes('application/json')) {
-      console.error('Expected JSON response but received:', text);
-      throw new Error(text);
+    const trimmed = text.trim();
+    if (!(trimmed.startsWith('{') || trimmed.startsWith('['))) {
+      console.error('Response does not start with a JSON object or array. Response text:', text);
+      if (trimmed.startsWith('<')) {
+        throw new Error('HTML response received in safeFetch. Response snippet: ' + text.slice(0,200));
+      }
+      throw new Error('Non-JSON response received in safeFetch: ' + text.slice(0,200));
     }
 
     let data;
