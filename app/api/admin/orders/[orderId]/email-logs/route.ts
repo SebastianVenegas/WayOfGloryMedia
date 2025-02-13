@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@vercel/postgres';
 
-export async function GET(request: NextRequest, { params }: { params: { orderId: string } }): Promise<NextResponse> {
+export async function GET(request: NextRequest, { params }: any): Promise<NextResponse> {
   try {
     const orderId = params.orderId;
     const orderIdInt = parseInt(orderId);
