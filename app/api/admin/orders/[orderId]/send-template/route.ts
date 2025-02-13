@@ -25,9 +25,9 @@ interface OrderItem {
   product?: Product;
 }
 
-// Use Edge Runtime instead of Node.js runtime
-export const runtime = 'edge';
+// Configure for Vercel Serverless Function
 export const dynamic = 'force-dynamic';
+export const maxDuration = 10; // 10 seconds max for initial response
 
 async function safeJsonParse(text: string) {
   try {
@@ -53,7 +53,7 @@ function timeout(ms: number) {
 
 async function safeFetch(url: string, options: RequestInit) {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+  const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
 
   try {
     console.log('Making request to:', url);
@@ -91,7 +91,7 @@ async function safeFetch(url: string, options: RequestInit) {
     clearTimeout(timeoutId);
     
     if (error.name === 'AbortError') {
-      throw new Error('Request timed out after 15 seconds');
+      throw new Error('Request timed out after 8 seconds');
     }
     
     throw error;
