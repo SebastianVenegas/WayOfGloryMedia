@@ -208,10 +208,6 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
       year: new Date().getFullYear()
     });
 
-    if (customEmail.formatOnly) {
-      return NextResponse.json({ html: emailContent, subject: subject });
-    }
-
     // Log the email with timeout
     await Promise.race([
       sql`
@@ -223,7 +219,7 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
 
     try {
       const sendEmailUrl = `${baseUrl}/api/admin/send-email`;
-      const { data: sendResult } = await safeFetch(sendEmailUrl, {
+      await safeFetch(sendEmailUrl, {
         method: 'POST',
         body: JSON.stringify({ 
           email: order.email, 
