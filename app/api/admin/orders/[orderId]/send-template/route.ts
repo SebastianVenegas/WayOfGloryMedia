@@ -36,9 +36,11 @@ async function safeJsonParse(text: string) {
 }
 
 function getBaseUrl(request: NextRequest): string {
-  // In production, always use the deployed domain
+  // For production, use the Vercel deployment URL from environment variable or fallback
   if (process.env.VERCEL_ENV === 'production') {
-    return 'https://wayofglory.com';
+    return process.env.VERCEL_URL ? 
+      `https://${process.env.VERCEL_URL}` : 
+      'https://way-of-glory-media.vercel.app';
   }
   
   // For development
@@ -48,9 +50,12 @@ function getBaseUrl(request: NextRequest): string {
 
 async function safeFetch(url: string, options: RequestInit) {
   try {
-    console.log('Making request to:', url, {
+    // Log the full request details for debugging
+    console.log('Making request with full details:', {
+      url,
       method: options.method,
-      headers: options.headers
+      headers: options.headers,
+      body: options.body ? JSON.parse(options.body.toString()) : undefined
     });
 
     const response = await fetch(url, {
@@ -63,16 +68,27 @@ async function safeFetch(url: string, options: RequestInit) {
       next: { revalidate: 0 } // Disable caching
     });
 
+    // Log the full response details
     const text = await response.text();
-    console.log('Response text:', text.substring(0, 200) + '...');
+    console.log('Full response details:', {
+      status: response.status,
+      statusText: response.statusText,
+      headers: Object.fromEntries(response.headers.entries()),
+      text: text.substring(0, 500) // Log more of the response for debugging
+    });
 
     let data;
     try {
       data = JSON.parse(text);
-    } catch (parseError) {
-      console.error('JSON Parse Error:', parseError);
-      console.error('Raw text:', text);
-      throw new Error('Failed to parse response as JSON');
+    } catch (error) {
+      const parseError = error as Error;
+      console.error('JSON Parse Error:', {
+        error: parseError,
+        text: text,
+        textLength: text.length,
+        textPreview: text.substring(0, 1000)
+      });
+      throw new Error(`Failed to parse response as JSON: ${parseError.message}`);
     }
 
     if (!response.ok) {
@@ -81,10 +97,11 @@ async function safeFetch(url: string, options: RequestInit) {
 
     return { ok: true, data };
   } catch (error: any) {
-    console.error('Fetch error:', {
+    console.error('Fetch error with full details:', {
       error,
       message: error.message,
       name: error.name,
+      stack: error.stack,
       url
     });
     throw error;
@@ -102,17 +119,23 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
     const baseUrl = getBaseUrl(request);
     console.log('Using base URL:', baseUrl);
 
-    // Use absolute URLs for logos
-    const logoLightUrl = 'https://wayofglory.com/images/logo/LogoLight.png';
-    const logoNormalUrl = 'https://wayofglory.com/images/logo/logo.png';
+    // Use dynamic base URL for logos
+    const logoLightUrl = `${baseUrl}/images/logo/LogoLight.png`;
+    const logoNormalUrl = `${baseUrl}/images/logo/logo.png`;
 
-    // Log request details
-    console.log('Request details:', {
+    // Log full request details
+    console.log('Full request details:', {
       baseUrl,
       logoUrls: { logoLightUrl, logoNormalUrl },
       headers: Object.fromEntries(request.headers.entries()),
       orderId,
-      templateId
+      templateId,
+      customEmail: customEmail ? {
+        hasHtml: !!customEmail.html,
+        hasSubject: !!customEmail.subject,
+        formatOnly: !!customEmail.formatOnly
+      } : null,
+      hasCustomPrompt: !!customPrompt
     });
 
     if (isNaN(orderId)) {
@@ -254,32 +277,41 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
       `;
 
       try {
-        // Use absolute URL for send-email
-        const sendEmailUrl = 'https://wayofglory.com/api/admin/send-email';
+        const sendEmailUrl = `${baseUrl}/api/admin/send-email`;
         console.log('Sending email using URL:', sendEmailUrl);
+
+        const emailPayload = { 
+          email: order.email, 
+          subject: subject, 
+          html: emailContent, 
+          text: customEmail.content 
+        };
+
+        console.log('Email payload preview:', {
+          ...emailPayload,
+          html: emailPayload.html.substring(0, 200) + '...',
+          text: emailPayload.text?.substring(0, 200) + '...'
+        });
 
         const { data: sendResult } = await safeFetch(sendEmailUrl, {
           method: 'POST',
-          body: JSON.stringify({ 
-            email: order.email, 
-            subject: subject, 
-            html: emailContent, 
-            text: customEmail.content 
-          })
+          body: JSON.stringify(emailPayload)
         });
 
         console.log('Email sent successfully:', sendResult);
         return NextResponse.json({ success: true });
       } catch (error: any) {
-        console.error('Error sending email:', {
+        console.error('Detailed error sending email:', {
           error,
           message: error.message,
-          stack: error.stack
+          stack: error.stack,
+          type: error.name
         });
         return NextResponse.json({ 
           error: 'Failed to send email', 
           details: error.message,
-          context: 'Error occurred while sending email'
+          context: 'Error occurred while sending email',
+          type: error.name
         }, { status: 500 });
       }
     } else {
@@ -289,20 +321,25 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
       template.variables = { 
         ...template.variables, 
         logoUrl: logoLightUrl,
-        baseUrl: 'https://wayofglory.com'
+        baseUrl
       };
 
       try {
-        // Use absolute URL for generate-email
-        const generateEmailUrl = 'https://wayofglory.com/api/admin/generate-email';
+        const generateEmailUrl = `${baseUrl}/api/admin/generate-email`;
         console.log('Generating email using URL:', generateEmailUrl);
+
+        const generatePayload = { 
+          prompt: prompt, 
+          variables: { 
+            ...template.variables
+          }
+        };
+
+        console.log('Generate email payload:', generatePayload);
 
         const { data } = await safeFetch(generateEmailUrl, {
           method: 'POST',
-          body: JSON.stringify({ 
-            prompt: prompt, 
-            variables: { ...template.variables } 
-          })
+          body: JSON.stringify(generatePayload)
         });
 
         if (!data.html || !data.content) {
@@ -332,29 +369,34 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
           html: formattedHtml 
         });
       } catch (error: any) {
-        console.error('Error generating email:', {
+        console.error('Detailed error generating email:', {
           error,
           message: error.message,
-          stack: error.stack
+          stack: error.stack,
+          type: error.name
         });
         return NextResponse.json({ 
           error: 'Failed to generate email', 
           details: error.message,
-          context: 'Error occurred while generating email'
+          context: 'Error occurred while generating email',
+          type: error.name
         }, { status: 500 });
       }
     }
   } catch (error: any) {
-    console.error('Error in send-template:', {
+    console.error('Detailed error in send-template:', {
       error,
       message: error.message,
       stack: error.stack,
-      type: error.name
+      type: error.name,
+      url: request.url
     });
     return NextResponse.json({ 
       error: 'Failed to process request', 
       details: error.message || 'Unknown error',
-      context: 'Top-level error handler'
+      context: 'Top-level error handler',
+      type: error.name,
+      url: request.url
     }, { status: 500 });
   }
 } 
