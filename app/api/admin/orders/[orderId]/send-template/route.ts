@@ -186,27 +186,33 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
 
   if (customEmail?.html) {
     const subject = customEmail.subject || `Order Update - Way of Glory #${orderId}`;
-    const emailContent = formatEmailContent(customEmail.html, {
-      ...baseVariables,
-      order_items: orderItems,
-      subtotal,
-      tax_amount: taxAmount,
-      installation_price: installationPrice,
-      totalAmount,
-      emailType: (subject || `Order Update - Way of Glory #${orderId}`).replace(' - Way of Glory', '').replace(` #${orderId}`, ''),
-      companyName: 'Way of Glory Media',
-      supportEmail: 'help@wayofglory.com',
-      logoUrl: `${baseUrl}/images/logo/LogoLight.png`,
-      logoLightUrl: `${baseUrl}/images/logo/LogoLight.png`,
-      logoNormalUrl: `${baseUrl}/images/logo/logo.png`,
-      createdAt: order.created_at,
-      status: order.status,
-      installationDate: order.installation_date ? new Date(order.installation_date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : '',
-      installationTime: order.installation_date ? new Date(order.installation_date).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '',
-      includesInstallation: !!order.installation_date || (order.installation_price && Number(order.installation_price) > 0),
-      websiteUrl: 'https://wayofglory.com',
-      year: new Date().getFullYear()
-    });
+    let emailContent;
+    try {
+      emailContent = formatEmailContent(customEmail.html, {
+        ...baseVariables,
+        order_items: orderItems,
+        subtotal,
+        tax_amount: taxAmount,
+        installation_price: installationPrice,
+        totalAmount,
+        emailType: (subject || `Order Update - Way of Glory #${orderId}`).replace(' - Way of Glory', '').replace(` #${orderId}`, ''),
+        companyName: 'Way of Glory Media',
+        supportEmail: 'help@wayofglory.com',
+        logoUrl: `${baseUrl}/images/logo/LogoLight.png`,
+        logoLightUrl: `${baseUrl}/images/logo/LogoLight.png`,
+        logoNormalUrl: `${baseUrl}/images/logo/logo.png`,
+        createdAt: order.created_at,
+        status: order.status,
+        installationDate: order.installation_date ? new Date(order.installation_date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : '',
+        installationTime: order.installation_date ? new Date(order.installation_date).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '',
+        includesInstallation: !!order.installation_date || (order.installation_price && Number(order.installation_price) > 0),
+        websiteUrl: 'https://wayofglory.com',
+        year: new Date().getFullYear()
+      });
+    } catch (e: any) {
+      console.error('Error formatting email content (customEmail):', e);
+      return NextResponse.json({ error: 'Failed to format email content', details: e.message }, { status: 500 });
+    }
 
     // Log the email with timeout
     await Promise.race([
@@ -237,7 +243,6 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
           details: 'The request took too long to complete. Please try again.'
         }, { status: 504 });
       }
-      
       return NextResponse.json({ 
         error: 'Failed to send email',
         details: error.message
@@ -265,17 +270,22 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
         }, { status: 500 });
       }
       
-      const formattedHtml = formatEmailContent(data.content, {
-        ...template.variables,
-        order_items: orderItems,
-        subtotal,
-        tax_amount: taxAmount,
-        installation_price: installationPrice,
-        totalAmount,
-        emailType: template.variables.emailType || 'Order Update',
-        logoUrl: `${baseUrl}/images/logo/LogoLight.png`,
-        baseUrl
-      });
+      let formattedHtml;
+      try {
+        formattedHtml = formatEmailContent(data.content, {
+          ...template.variables,
+          order_items: orderItems,
+          subtotal,
+          tax_amount: taxAmount,
+          installation_price: installationPrice,
+          totalAmount,
+          emailType: template.variables.emailType || 'Order Update',
+          logoUrl: `${baseUrl}/images/logo/LogoLight.png`
+        });
+      } catch (e: any) {
+        console.error('Error formatting email content:', e);
+        return NextResponse.json({ error: 'Failed to format email content', details: e.message }, { status: 500 });
+      }
       
       // Instead of returning the generated email, send it via the send-email API
       await safeFetch(`${baseUrl}/api/admin/send-email`, {
