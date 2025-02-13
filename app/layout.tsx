@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { inter } from './fonts'
 import './globals.css'
 import { Analytics } from '@vercel/analytics/react'
 import { SpeedInsights } from '@vercel/speed-insights/next'
@@ -8,14 +8,6 @@ import { headers } from 'next/headers'
 import { Toaster } from "@/components/ui/toaster"
 import { SidebarProvider } from '@/contexts/SidebarContext'
 import { PWARegister } from './pwa'
-
-const inter = Inter({
-  subsets: ['latin'],
-  display: 'swap',
-  preload: true,
-  adjustFontFallback: true,
-  variable: '--font-inter'
-})
 
 export const metadata: Metadata = {
   title: 'Way of Glory Media',
@@ -56,7 +48,7 @@ export default async function RootLayout({
   const version = Date.now() // Add a version to force cache busting
 
   return (
-    <html lang="en" className={`light scroll-smooth ${inter.variable}`}>
+    <html lang="en" className={`${inter.variable}`}>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />

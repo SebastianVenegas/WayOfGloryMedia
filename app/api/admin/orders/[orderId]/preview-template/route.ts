@@ -17,10 +17,14 @@ interface OrderItem {
 }
 
 interface RouteContext {
-  params: { [key: string]: string };
+  params: { orderId: string };
+  searchParams?: { [key: string]: string | string[] | undefined };
 }
 
-export async function GET(request: NextRequest, { params }: { params: { orderId: string } }): Promise<NextResponse> {
+export async function GET(
+  request: NextRequest,
+  context: RouteContext
+): Promise<NextResponse> {
   const searchParams = request.nextUrl.searchParams;
 
   try {
@@ -29,7 +33,7 @@ export async function GET(request: NextRequest, { params }: { params: { orderId:
     const logoLightUrl = '/images/logo/LogoLight.png';
     const logoNormalUrl = '/images/logo/logo.png';
 
-    const { orderId } = params;
+    const { orderId } = context.params;
     if (!orderId) {
       console.error('Missing orderId in params');
       return NextResponse.json({ error: 'Order ID is required' }, { status: 400 });
