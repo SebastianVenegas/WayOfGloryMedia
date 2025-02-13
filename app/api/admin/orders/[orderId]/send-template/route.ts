@@ -36,28 +36,18 @@ async function safeJsonParse(text: string) {
 }
 
 function getBaseUrl(request: NextRequest): string {
-  // Try to get the base URL from different sources
-  const envUrl = process.env.NEXT_PUBLIC_BASE_URL;
-  const origin = request.headers.get('origin');
-  const host = request.headers.get('host');
-  const protocol = request.headers.get('x-forwarded-proto') || 'https';
-
-  // For production, construct URL from headers if needed
+  // In production, always use the deployed domain
   if (process.env.VERCEL_ENV === 'production') {
-    if (host) {
-      return `${protocol}://${host}`;
-    }
+    return 'https://wayofglory.com';
   }
-
-  // Fallback chain
-  return envUrl || origin || `${protocol}://${host}` || 'http://localhost:3000';
+  
+  // For development
+  const host = request.headers.get('host');
+  return `http://${host}`;
 }
 
 async function safeFetch(url: string, options: RequestInit) {
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 50000); // Increased timeout to 50 seconds
-
     console.log('Making request to:', url, {
       method: options.method,
       headers: options.headers
@@ -65,28 +55,28 @@ async function safeFetch(url: string, options: RequestInit) {
 
     const response = await fetch(url, {
       ...options,
-      signal: controller.signal,
       headers: {
         ...options.headers,
         'Accept': 'application/json',
         'Content-Type': 'application/json'
-      }
+      },
+      next: { revalidate: 0 } // Disable caching
     });
-
-    clearTimeout(timeoutId);
 
     const text = await response.text();
     console.log('Response text:', text.substring(0, 200) + '...');
 
-    const data = await safeJsonParse(text);
-    console.log('Parsed response:', data);
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (parseError) {
+      console.error('JSON Parse Error:', parseError);
+      console.error('Raw text:', text);
+      throw new Error('Failed to parse response as JSON');
+    }
 
     if (!response.ok) {
       throw new Error(data?.error || data?.details || response.statusText || 'Request failed');
-    }
-
-    if (!data) {
-      throw new Error('Invalid JSON response');
     }
 
     return { ok: true, data };
@@ -97,10 +87,6 @@ async function safeFetch(url: string, options: RequestInit) {
       name: error.name,
       url
     });
-
-    if (error.name === 'AbortError') {
-      throw new Error('Request timed out after 50 seconds');
-    }
     throw error;
   }
 }
@@ -116,8 +102,9 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
     const baseUrl = getBaseUrl(request);
     console.log('Using base URL:', baseUrl);
 
-    const logoLightUrl = `${baseUrl}/images/logo/LogoLight.png`;
-    const logoNormalUrl = `${baseUrl}/images/logo/logo.png`;
+    // Use absolute URLs for logos
+    const logoLightUrl = 'https://wayofglory.com/images/logo/LogoLight.png';
+    const logoNormalUrl = 'https://wayofglory.com/images/logo/logo.png';
 
     // Log request details
     console.log('Request details:', {
@@ -266,10 +253,11 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
         VALUES (${orderId}, ${subject}, ${emailContent}, ${templateId})
       `;
 
-      const sendEmailUrl = new URL('/api/admin/send-email', baseUrl).toString();
-      console.log('Sending email using URL:', sendEmailUrl);
-
       try {
+        // Use absolute URL for send-email
+        const sendEmailUrl = 'https://wayofglory.com/api/admin/send-email';
+        console.log('Sending email using URL:', sendEmailUrl);
+
         const { data: sendResult } = await safeFetch(sendEmailUrl, {
           method: 'POST',
           body: JSON.stringify({ 
@@ -283,22 +271,32 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
         console.log('Email sent successfully:', sendResult);
         return NextResponse.json({ success: true });
       } catch (error: any) {
-        console.error('Error sending email:', error);
+        console.error('Error sending email:', {
+          error,
+          message: error.message,
+          stack: error.stack
+        });
         return NextResponse.json({ 
           error: 'Failed to send email', 
-          details: error.message 
+          details: error.message,
+          context: 'Error occurred while sending email'
         }, { status: 500 });
       }
     } else {
       console.log('Generating email content from template');
       const template = getEmailTemplate(templateId, order);
       const prompt = customPrompt || template.prompt;
-      template.variables = { ...template.variables, logoUrl: logoLightUrl };
-
-      const generateEmailUrl = new URL('/api/admin/generate-email', baseUrl).toString();
-      console.log('Generating email using URL:', generateEmailUrl);
+      template.variables = { 
+        ...template.variables, 
+        logoUrl: logoLightUrl,
+        baseUrl: 'https://wayofglory.com'
+      };
 
       try {
+        // Use absolute URL for generate-email
+        const generateEmailUrl = 'https://wayofglory.com/api/admin/generate-email';
+        console.log('Generating email using URL:', generateEmailUrl);
+
         const { data } = await safeFetch(generateEmailUrl, {
           method: 'POST',
           body: JSON.stringify({ 
@@ -311,7 +309,8 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
           console.error('Invalid response from generate-email:', data);
           return NextResponse.json({ 
             error: 'Generate email returned invalid content', 
-            details: 'Missing html or content in response' 
+            details: 'Missing html or content in response',
+            context: 'Response validation failed'
           }, { status: 500 });
         }
 
@@ -323,7 +322,8 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
           installation_price: installationPrice,
           totalAmount,
           emailType: template.variables.emailType || 'Order Update',
-          logoUrl: logoLightUrl
+          logoUrl: logoLightUrl,
+          baseUrl: 'https://wayofglory.com'
         });
 
         return NextResponse.json({ 
@@ -332,10 +332,15 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
           html: formattedHtml 
         });
       } catch (error: any) {
-        console.error('Error generating email:', error);
+        console.error('Error generating email:', {
+          error,
+          message: error.message,
+          stack: error.stack
+        });
         return NextResponse.json({ 
           error: 'Failed to generate email', 
-          details: error.message 
+          details: error.message,
+          context: 'Error occurred while generating email'
         }, { status: 500 });
       }
     }
@@ -348,7 +353,8 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
     });
     return NextResponse.json({ 
       error: 'Failed to process request', 
-      details: error.message || 'Unknown error'
+      details: error.message || 'Unknown error',
+      context: 'Top-level error handler'
     }, { status: 500 });
   }
 } 
