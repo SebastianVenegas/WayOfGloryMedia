@@ -253,8 +253,7 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
         body: JSON.stringify({ 
           prompt: customPrompt || template.prompt,
           variables: { 
-            ...template.variables,
-            baseUrl
+            ...template.variables
           }
         })
       });
