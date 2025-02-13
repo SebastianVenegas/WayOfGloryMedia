@@ -40,8 +40,14 @@ async function safeJsonParse(text: string) {
 }
 
 function getBaseUrl(request: NextRequest): string {
-  const host = request.headers.get('host');
-  const protocol = request.headers.get('x-forwarded-proto') || 'https';
+  if (process.env.NEXT_PUBLIC_BASE_URL) {
+    return process.env.NEXT_PUBLIC_BASE_URL;
+  }
+  if (process.env.NODE_ENV === 'production') {
+    return 'https://way-of-glory-media.vercel.app';
+  }
+  const host = request.headers.get('host') || 'localhost:3000';
+  const protocol = request.headers.get('x-forwarded-proto') || 'http';
   return `${protocol}://${host}`;
 }
 
@@ -57,7 +63,6 @@ async function safeFetch(url: string, options: RequestInit) {
 
   try {
     console.log('Making request to:', url);
-
     const response = await fetch(url, {
       ...options,
       signal: controller.signal,
@@ -66,20 +71,23 @@ async function safeFetch(url: string, options: RequestInit) {
         'Accept': 'application/json',
         'Content-Type': 'application/json'
       },
+      cache: 'no-store',
       next: { revalidate: 0 }
     });
 
     clearTimeout(timeoutId);
-
+    console.log('Response content-type:', response.headers.get('content-type'));
     const text = await response.text();
     console.log('Response status:', response.status);
     const trimmed = text.trim();
-    const contentType = response.headers.get('content-type') || '';
-    if (!contentType.includes('application/json') && !(trimmed.startsWith('{') || trimmed.startsWith('['))) {
-      console.error('Expected JSON response but received:', text);
-      throw new Error(text);
+    if (!(trimmed.startsWith('{') || trimmed.startsWith('['))) {
+      console.error('Response does not start with a JSON object or array. Response text:', text);
+      if (trimmed.startsWith('<')) {
+        throw new Error('HTML response received. Possible misconfiguration. Response snippet: ' + text.slice(0,200));
+      }
+      throw new Error('Non-JSON response received: ' + text.slice(0,200));
     }
-
+    
     let data;
     try {
       data = JSON.parse(text);
@@ -95,7 +103,7 @@ async function safeFetch(url: string, options: RequestInit) {
     return { ok: true, data };
   } catch (error: any) {
     clearTimeout(timeoutId);
-    
+    console.error(`Error in safeFetch for url ${url}:`, error);
     if (error.name === 'AbortError') {
       throw new Error('Request timed out after 8 seconds');
     }
@@ -112,6 +120,7 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
   const orderId = parseInt(orderIdStr);
 
   const baseUrl = getBaseUrl(request);
+  console.log('Using baseUrl:', baseUrl);
   
   // Validate inputs early
   if (!orderIdStr || isNaN(orderId)) {
