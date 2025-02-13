@@ -9,7 +9,13 @@ import { Toaster } from "@/components/ui/toaster"
 import { SidebarProvider } from '@/contexts/SidebarContext'
 import { PWARegister } from './pwa'
 
-const inter = Inter({ subsets: ['latin'] })
+const inter = Inter({
+  subsets: ['latin'],
+  display: 'swap',
+  preload: true,
+  adjustFontFallback: true,
+  variable: '--font-inter'
+})
 
 export const metadata: Metadata = {
   title: 'Way of Glory Media',
@@ -50,7 +56,7 @@ export default async function RootLayout({
   const version = Date.now() // Add a version to force cache busting
 
   return (
-    <html lang="en" className="light scroll-smooth">
+    <html lang="en" className={`light scroll-smooth ${inter.variable}`}>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -67,7 +73,7 @@ export default async function RootLayout({
           crossOrigin="anonymous" 
         />
       </head>
-      <body className={`${inter.className} antialiased w-full`} suppressHydrationWarning>
+      <body className="antialiased w-full" suppressHydrationWarning>
         <SidebarProvider>
           <div className="flex flex-col min-h-screen w-full relative">
             {children}
