@@ -19,12 +19,18 @@ export async function safeFetch(url: string, options: RequestInit): Promise<{ ok
     const text = await response.text();
     console.log('Response status:', response.status);
 
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      console.error('Expected JSON response but received:', text);
+      throw new Error(text);
+    }
+
     let data;
     try {
       data = JSON.parse(text);
     } catch (error) {
-      console.error('Failed to parse response:', text);
-      throw new Error('Invalid JSON response from server');
+      console.error('Failed to parse JSON response:', text);
+      throw new Error('Invalid JSON response from server: ' + text);
     }
 
     if (!response.ok) {
