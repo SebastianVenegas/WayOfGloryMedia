@@ -5,6 +5,7 @@ import { Order } from '@/lib/email-templates';
 import { formatEmailContent } from '@/lib/email-templates';
 import fs from 'fs/promises';
 import path from 'path';
+import { safeFetch } from '@/lib/safeFetch';
 
 interface Product {
   title?: string;
@@ -44,7 +45,7 @@ function getBaseUrl(request: NextRequest): string {
     return process.env.NEXT_PUBLIC_BASE_URL;
   }
   if (process.env.NODE_ENV === 'production') {
-    return 'https://way-of-glory-media.vercel.app';
+    return 'https://wayofglory.com';
   }
   const host = request.headers.get('host') || 'localhost:3000';
   const protocol = request.headers.get('x-forwarded-proto') || 'http';
@@ -57,65 +58,17 @@ function timeout(ms: number) {
   );
 }
 
-async function safeFetch(url: string, options: RequestInit) {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
-
-  try {
-    console.log('Making request to:', url);
-    const response = await fetch(url, {
-      ...options,
-      signal: controller.signal,
-      headers: {
-        ...options.headers,
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      },
-      cache: 'no-store',
-      next: { revalidate: 0 }
-    });
-
-    clearTimeout(timeoutId);
-    console.log('Response content-type:', response.headers.get('content-type'));
-    const text = await response.text();
-    console.log('Response status:', response.status);
-    const trimmed = text.trim();
-    if (!(trimmed.startsWith('{') || trimmed.startsWith('['))) {
-      console.error('Response does not start with a JSON object or array. Response text:', text);
-      if (trimmed.startsWith('<')) {
-        throw new Error('HTML response received. Possible misconfiguration. Response snippet: ' + text.slice(0,200));
-      }
-      throw new Error('Non-JSON response received: ' + text.slice(0,200));
-    }
-    
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch (error) {
-      console.error('Failed to parse JSON response:', text);
-      throw new Error('Invalid JSON response from server. Possibly received HTML error page. Response snippet: ' + text.slice(0, 200));
-    }
-
-    if (!response.ok) {
-      throw new Error(data?.error || data?.details || response.statusText || 'Request failed');
-    }
-
-    return { ok: true, data };
-  } catch (error: any) {
-    clearTimeout(timeoutId);
-    console.error(`Error in safeFetch for url ${url}:`, error);
-    if (error.name === 'AbortError') {
-      throw new Error('Request timed out after 8 seconds');
-    }
-    
-    throw error;
-  }
-}
-
 export async function POST(request: NextRequest, context: any): Promise<NextResponse> {
   const { params } = context;
   console.log('Starting send-template process...');
-  const { templateId, customEmail, customPrompt } = await request.json();
+  let body;
+  try {
+    body = await request.json();
+  } catch (error: any) {
+    console.error('Failed to parse request body as JSON:', error);
+    return NextResponse.json({ error: 'Invalid JSON in request body', details: error.message }, { status: 400 });
+  }
+  const { templateId, customEmail, customPrompt } = body;
   const orderIdStr = params.orderId;
   const orderId = parseInt(orderIdStr);
 
