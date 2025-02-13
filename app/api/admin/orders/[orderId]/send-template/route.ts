@@ -98,7 +98,8 @@ async function safeFetch(url: string, options: RequestInit) {
   }
 }
 
-export async function POST(request: NextRequest, { params }: { params: { orderId: string } }) {
+export async function POST(request: NextRequest, context: any): Promise<NextResponse> {
+  const { params } = context;
   console.log('Starting send-template process...');
   const { templateId, customEmail, customPrompt } = await request.json();
   const orderIdStr = params.orderId;
