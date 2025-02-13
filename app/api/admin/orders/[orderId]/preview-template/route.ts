@@ -1,5 +1,4 @@
-import { NextRequest } from 'next/server';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@vercel/postgres';
 import { getEmailTemplate, formatEmailContent, type Order } from '@/lib/email-templates';
 import fs from 'fs/promises';
@@ -17,20 +16,20 @@ interface OrderItem {
 }
 
 export async function GET(
-  request: NextRequest,
-  context: { params: { orderId: string } }
+  request: NextRequest
 ): Promise<NextResponse> {
   const searchParams = request.nextUrl.searchParams;
-
+  // Extract orderId from the pathname (assuming the URL structure: /api/admin/orders/[orderId]/preview-template)
+  const orderId = request.nextUrl.pathname.split('/')[4];
+  
   try {
     // Use absolute URLs for logos
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
     const logoLightUrl = '/images/logo/LogoLight.png';
     const logoNormalUrl = '/images/logo/logo.png';
 
-    const orderId = context.params.orderId;
     if (!orderId) {
-      console.error('Missing orderId in params');
+      console.error('Missing orderId in URL');
       return NextResponse.json({ error: 'Order ID is required' }, { status: 400 });
     }
     const orderId_int = parseInt(orderId);
@@ -80,7 +79,13 @@ export async function GET(
     const orderData = result.rows[0];
 
     // Calculate order totals
-    const orderItems = orderData.order_items?.map((item: OrderItem) => ({
+    const orderItems = orderData.order_items?.map((item: {
+      quantity: number;
+      price_at_time: number;
+      title?: string;
+      pricePerUnit?: number;
+      product?: { title?: string; category?: string };
+    }) => ({
       title: item.product?.title || 'Product',
       quantity: Number(item.quantity),
       price: Number(item.price_at_time) * Number(item.quantity),
@@ -94,7 +99,7 @@ export async function GET(
     const totalAmount = subtotal + taxAmount + installationPrice;
 
     // Cast the database result to Order type
-    const order: Order = {
+    const order: any = {
       id: orderData.id,
       first_name: orderData.first_name,
       last_name: orderData.last_name,
@@ -172,9 +177,7 @@ export async function GET(
 
     const generateResponse = await fetch(generateUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
         prompt: prompt,
         variables: {
