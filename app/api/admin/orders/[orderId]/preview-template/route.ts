@@ -3,6 +3,7 @@ import { sql } from '@vercel/postgres';
 import { getEmailTemplate, formatEmailContent, type Order } from '@/lib/email-templates';
 import fs from 'fs/promises';
 import path from 'path';
+import { safeFetch } from '@/lib/safeFetch';
 
 interface OrderItem {
   quantity: number;
@@ -13,6 +14,13 @@ interface OrderItem {
     title?: string;
     category?: string;
   };
+}
+
+// Add the getBaseUrl helper to dynamically compute the base URL
+function getBaseUrl(request: NextRequest): string {
+  const host = request.headers.get('host');
+  const protocol = request.headers.get('x-forwarded-proto') || 'https';
+  return `${protocol}://${host}`;
 }
 
 export async function GET(
@@ -159,8 +167,9 @@ export async function GET(
       prompt = template.prompt;
     }
 
-    // Generate content using the generate-email endpoint
-    const generateUrl = new URL('/api/admin/generate-email', process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000').toString();
+    // Generate content using the generate-email endpoint using safeFetch
+    const baseUrlForGenerate = getBaseUrl(request);
+    const generateUrl = new URL('/api/admin/generate-email', baseUrlForGenerate).toString();
     
     console.log('Generating email with:', {
       templateId,
@@ -175,37 +184,33 @@ export async function GET(
       }
     });
 
-    const generateResponse = await fetch(generateUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        prompt: prompt,
-        variables: {
-          ...template.variables,
-          order_items: orderItems,
-          subtotal,
-          tax_amount: taxAmount,
-          installation_price: installationPrice,
-          totalAmount
-        }
-      })
-    });
+    const generatePayload = {
+      prompt: prompt,
+      variables: {
+        ...template.variables,
+        order_items: orderItems,
+        subtotal,
+        tax_amount: taxAmount,
+        installation_price: installationPrice,
+        totalAmount
+      }
+    };
 
-    if (!generateResponse.ok) {
-      const errorData = await generateResponse.json().catch(() => ({}));
-      console.error('Generate email failed:', {
-        status: generateResponse.status,
-        statusText: generateResponse.statusText,
-        error: errorData
+    let data;
+    try {
+      const response = await safeFetch(generateUrl, {
+        method: 'POST',
+        body: JSON.stringify(generatePayload)
       });
+      data = response.data;
+    } catch (err) {
+      console.error('Error calling generate-email:', err);
       return NextResponse.json({ 
         error: 'Failed to generate email content',
-        details: errorData.error || errorData.details || generateResponse.statusText
-      }, { status: generateResponse.status });
+        details: err instanceof Error ? err.message : 'Unknown error'
+      }, { status: 500 });
     }
 
-    const data = await generateResponse.json();
-    
     if (!data.html || !data.content) {
       console.error('Invalid response from generate-email:', data);
       return NextResponse.json({ 
@@ -233,10 +238,12 @@ export async function GET(
     });
 
   } catch (error) {
-    console.error('Error in preview-template:', error);
+    const err = error instanceof Error ? error : new Error(String(error));
+    console.error('Error in preview-template:', err.message);
+    console.error('Stack trace:', err.stack);
     return NextResponse.json({ 
       error: 'Failed to generate email preview',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: err.message
     }, { status: 500 });
   }
 }
