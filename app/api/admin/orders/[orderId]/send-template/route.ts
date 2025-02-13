@@ -25,6 +25,11 @@ interface OrderItem {
   product?: Product;
 }
 
+// Increase the response timeout for Vercel
+export const maxDuration = 300; // 5 minutes
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
+
 async function safeJsonParse(text: string) {
   try {
     return JSON.parse(text);
@@ -36,59 +41,46 @@ async function safeJsonParse(text: string) {
 }
 
 function getBaseUrl(request: NextRequest): string {
-  // For production, use the Vercel deployment URL from environment variable or fallback
-  if (process.env.VERCEL_ENV === 'production') {
-    return process.env.VERCEL_URL ? 
-      `https://${process.env.VERCEL_URL}` : 
-      'https://way-of-glory-media.vercel.app';
-  }
-  
-  // For development
   const host = request.headers.get('host');
-  return `http://${host}`;
+  const protocol = request.headers.get('x-forwarded-proto') || 'https';
+  return `${protocol}://${host}`;
+}
+
+function timeout(ms: number) {
+  return new Promise((_, reject) => 
+    setTimeout(() => reject(new Error('Operation timed out')), ms)
+  );
 }
 
 async function safeFetch(url: string, options: RequestInit) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 25000); // 25 second timeout
+
   try {
-    // Log the full request details for debugging
-    console.log('Making request with full details:', {
-      url,
-      method: options.method,
-      headers: options.headers,
-      body: options.body ? JSON.parse(options.body.toString()) : undefined
-    });
+    console.log('Making request to:', url);
 
     const response = await fetch(url, {
       ...options,
+      signal: controller.signal,
       headers: {
         ...options.headers,
         'Accept': 'application/json',
         'Content-Type': 'application/json'
       },
-      next: { revalidate: 0 } // Disable caching
+      next: { revalidate: 0 }
     });
 
-    // Log the full response details
+    clearTimeout(timeoutId);
+
     const text = await response.text();
-    console.log('Full response details:', {
-      status: response.status,
-      statusText: response.statusText,
-      headers: Object.fromEntries(response.headers.entries()),
-      text: text.substring(0, 500) // Log more of the response for debugging
-    });
+    console.log('Response status:', response.status);
 
     let data;
     try {
       data = JSON.parse(text);
     } catch (error) {
-      const parseError = error as Error;
-      console.error('JSON Parse Error:', {
-        error: parseError,
-        text: text,
-        textLength: text.length,
-        textPreview: text.substring(0, 1000)
-      });
-      throw new Error(`Failed to parse response as JSON: ${parseError.message}`);
+      console.error('Failed to parse response:', text);
+      throw new Error('Invalid JSON response from server');
     }
 
     if (!response.ok) {
@@ -97,54 +89,35 @@ async function safeFetch(url: string, options: RequestInit) {
 
     return { ok: true, data };
   } catch (error: any) {
-    console.error('Fetch error with full details:', {
-      error,
-      message: error.message,
-      name: error.name,
-      stack: error.stack,
-      url
-    });
+    clearTimeout(timeoutId);
+    
+    if (error.name === 'AbortError') {
+      throw new Error('Request timed out after 25 seconds');
+    }
+    
     throw error;
   }
 }
 
 export async function POST(request: NextRequest, context: any): Promise<NextResponse> {
   try {
-    console.log('Starting send-template process...');
     const { templateId, customEmail, customPrompt } = await request.json();
-    const orderIdStr = context?.params?.orderId || request.nextUrl.pathname.split('/')[4];
+    const orderIdStr = context?.params?.orderId;
     const orderId = parseInt(orderIdStr);
 
-    // Get base URL using the new function
     const baseUrl = getBaseUrl(request);
-    console.log('Using base URL:', baseUrl);
-
-    // Use dynamic base URL for logos
-    const logoLightUrl = `${baseUrl}/images/logo/LogoLight.png`;
-    const logoNormalUrl = `${baseUrl}/images/logo/logo.png`;
-
-    // Log full request details
-    console.log('Full request details:', {
-      baseUrl,
-      logoUrls: { logoLightUrl, logoNormalUrl },
-      headers: Object.fromEntries(request.headers.entries()),
-      orderId,
-      templateId,
-      customEmail: customEmail ? {
-        hasHtml: !!customEmail.html,
-        hasSubject: !!customEmail.subject,
-        formatOnly: !!customEmail.formatOnly
-      } : null,
-      hasCustomPrompt: !!customPrompt
-    });
-
-    if (isNaN(orderId)) {
-      console.error('Invalid orderId format:', orderIdStr);
+    
+    // Validate inputs early
+    if (!orderIdStr || isNaN(orderId)) {
       return NextResponse.json({ error: 'Invalid Order ID' }, { status: 400 });
     }
 
-    // Get order details
-    const { rows: [orderData] } = await sql`
+    if (!templateId && !customEmail) {
+      return NextResponse.json({ error: 'Template ID or custom email content is required' }, { status: 400 });
+    }
+
+    // Get order details with timeout
+    const orderQuery = sql`
       SELECT o.*,
         COALESCE(json_agg(
           json_build_object(
@@ -171,8 +144,14 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
       GROUP BY o.id
     `;
 
+    const result = await Promise.race([
+      orderQuery,
+      timeout(10000)
+    ]) as { rows: any[] };
+
+    const { rows: [orderData] } = result;
+
     if (!orderData) {
-      console.error('Order not found:', orderId);
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
 
@@ -228,9 +207,9 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
       companyName: 'Way of Glory Media',
       supportEmail: 'help@wayofglory.com',
       websiteUrl: 'https://wayofglory.com',
-      logoUrl: logoLightUrl,
-      logoLightUrl: logoLightUrl,
-      logoNormalUrl: logoNormalUrl,
+      logoUrl: `${baseUrl}/images/logo/LogoLight.png`,
+      logoLightUrl: `${baseUrl}/images/logo/LogoLight.png`,
+      logoNormalUrl: `${baseUrl}/images/logo/logo.png`,
       year: new Date().getFullYear(),
       installationDate: order.installation_date ? new Date(order.installation_date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : '',
       installationTime: order.installation_date ? new Date(order.installation_date).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '',
@@ -238,13 +217,7 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
     };
 
     if (customEmail?.html) {
-      console.log('Using custom email content');
-      if (!customEmail.html) {
-        console.error('Missing content in custom email');
-        throw new Error('Custom email content is missing');
-      }
-
-      const subject = customEmail.subject || `Order Update - Way of Glory #${order.id}`;
+      const subject = customEmail.subject || `Order Update - Way of Glory #${orderId}`;
       const emailContent = formatEmailContent(customEmail.html, {
         ...baseVariables,
         order_items: orderItems,
@@ -252,12 +225,12 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
         tax_amount: taxAmount,
         installation_price: installationPrice,
         totalAmount,
-        emailType: (subject || `Order Update - Way of Glory #${order.id}`).replace(' - Way of Glory', '').replace(` #${order.id}`, ''),
+        emailType: (subject || `Order Update - Way of Glory #${orderId}`).replace(' - Way of Glory', '').replace(` #${orderId}`, ''),
         companyName: 'Way of Glory Media',
         supportEmail: 'help@wayofglory.com',
-        logoUrl: logoLightUrl,
-        logoLightUrl,
-        logoNormalUrl,
+        logoUrl: `${baseUrl}/images/logo/LogoLight.png`,
+        logoLightUrl: `${baseUrl}/images/logo/LogoLight.png`,
+        logoNormalUrl: `${baseUrl}/images/logo/logo.png`,
         createdAt: order.created_at,
         status: order.status,
         installationDate: order.installation_date ? new Date(order.installation_date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : '',
@@ -271,83 +244,61 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
         return NextResponse.json({ html: emailContent, subject: subject });
       }
 
-      await sql`
-        INSERT INTO email_logs (order_id, subject, content, template_id)
-        VALUES (${orderId}, ${subject}, ${emailContent}, ${templateId})
-      `;
+      // Log the email with timeout
+      await Promise.race([
+        sql`
+          INSERT INTO email_logs (order_id, subject, content, template_id)
+          VALUES (${orderId}, ${subject}, ${emailContent}, ${templateId})
+        `,
+        timeout(5000)
+      ]);
 
       try {
         const sendEmailUrl = `${baseUrl}/api/admin/send-email`;
-        console.log('Sending email using URL:', sendEmailUrl);
-
-        const emailPayload = { 
-          email: order.email, 
-          subject: subject, 
-          html: emailContent, 
-          text: customEmail.content 
-        };
-
-        console.log('Email payload preview:', {
-          ...emailPayload,
-          html: emailPayload.html.substring(0, 200) + '...',
-          text: emailPayload.text?.substring(0, 200) + '...'
-        });
-
         const { data: sendResult } = await safeFetch(sendEmailUrl, {
           method: 'POST',
-          body: JSON.stringify(emailPayload)
+          body: JSON.stringify({ 
+            email: order.email, 
+            subject, 
+            html: emailContent,
+            text: customEmail.content 
+          })
         });
 
-        console.log('Email sent successfully:', sendResult);
         return NextResponse.json({ success: true });
       } catch (error: any) {
-        console.error('Detailed error sending email:', {
-          error,
-          message: error.message,
-          stack: error.stack,
-          type: error.name
-        });
+        if (error.message.includes('timed out')) {
+          return NextResponse.json({ 
+            error: 'Email send timeout',
+            details: 'The request took too long to complete. Please try again.'
+          }, { status: 504 });
+        }
+        
         return NextResponse.json({ 
-          error: 'Failed to send email', 
-          details: error.message,
-          context: 'Error occurred while sending email',
-          type: error.name
+          error: 'Failed to send email',
+          details: error.message
         }, { status: 500 });
       }
     } else {
-      console.log('Generating email content from template');
-      const template = getEmailTemplate(templateId, order);
-      const prompt = customPrompt || template.prompt;
-      template.variables = { 
-        ...template.variables, 
-        logoUrl: logoLightUrl,
-        baseUrl
-      };
-
       try {
+        const template = getEmailTemplate(templateId, order);
         const generateEmailUrl = `${baseUrl}/api/admin/generate-email`;
-        console.log('Generating email using URL:', generateEmailUrl);
-
-        const generatePayload = { 
-          prompt: prompt, 
-          variables: { 
-            ...template.variables
-          }
-        };
-
-        console.log('Generate email payload:', generatePayload);
-
+        
         const { data } = await safeFetch(generateEmailUrl, {
           method: 'POST',
-          body: JSON.stringify(generatePayload)
+          body: JSON.stringify({ 
+            prompt: customPrompt || template.prompt,
+            variables: { 
+              ...template.variables,
+              baseUrl
+            }
+          })
         });
 
         if (!data.html || !data.content) {
-          console.error('Invalid response from generate-email:', data);
           return NextResponse.json({ 
-            error: 'Generate email returned invalid content', 
-            details: 'Missing html or content in response',
-            context: 'Response validation failed'
+            error: 'Invalid response from email generator',
+            details: 'Missing required content in response'
           }, { status: 500 });
         }
 
@@ -359,8 +310,8 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
           installation_price: installationPrice,
           totalAmount,
           emailType: template.variables.emailType || 'Order Update',
-          logoUrl: logoLightUrl,
-          baseUrl: 'https://wayofglory.com'
+          logoUrl: `${baseUrl}/images/logo/LogoLight.png`,
+          baseUrl
         });
 
         return NextResponse.json({ 
@@ -369,34 +320,32 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
           html: formattedHtml 
         });
       } catch (error: any) {
-        console.error('Detailed error generating email:', {
-          error,
-          message: error.message,
-          stack: error.stack,
-          type: error.name
-        });
+        if (error.message.includes('timed out')) {
+          return NextResponse.json({ 
+            error: 'Email generation timeout',
+            details: 'The request took too long to complete. Please try again.'
+          }, { status: 504 });
+        }
+        
         return NextResponse.json({ 
-          error: 'Failed to generate email', 
-          details: error.message,
-          context: 'Error occurred while generating email',
-          type: error.name
+          error: 'Failed to generate email',
+          details: error.message
         }, { status: 500 });
       }
     }
   } catch (error: any) {
-    console.error('Detailed error in send-template:', {
-      error,
-      message: error.message,
-      stack: error.stack,
-      type: error.name,
-      url: request.url
-    });
+    console.error('Error processing request:', error);
+    
+    if (error.message.includes('timed out')) {
+      return NextResponse.json({ 
+        error: 'Request timeout',
+        details: 'The request took too long to complete. Please try again.'
+      }, { status: 504 });
+    }
+    
     return NextResponse.json({ 
-      error: 'Failed to process request', 
-      details: error.message || 'Unknown error',
-      context: 'Top-level error handler',
-      type: error.name,
-      url: request.url
+      error: 'Internal server error',
+      details: error.message
     }, { status: 500 });
   }
 } 
