@@ -262,14 +262,14 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
           }
         })
       });
-
+      
       if (!data.html || !data.content) {
         return NextResponse.json({ 
           error: 'Invalid response from email generator',
           details: 'Missing required content in response'
         }, { status: 500 });
       }
-
+      
       const formattedHtml = formatEmailContent(data.content, {
         ...template.variables,
         order_items: orderItems,
@@ -281,12 +281,19 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
         logoUrl: `${baseUrl}/images/logo/LogoLight.png`,
         baseUrl
       });
-
-      return NextResponse.json({ 
-        subject: template.subject, 
-        content: data.content, 
-        html: formattedHtml 
+      
+      // Instead of returning the generated email, send it via the send-email API
+      await safeFetch(`${baseUrl}/api/admin/send-email`, {
+        method: 'POST',
+        body: JSON.stringify({ 
+          email: order.email, 
+          subject: template.subject, 
+          html: formattedHtml,
+          text: data.content 
+        })
       });
+      
+      return NextResponse.json({ success: true });
     } catch (error: any) {
       if (error.message.includes('timed out')) {
         return NextResponse.json({ 
