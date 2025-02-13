@@ -187,63 +187,137 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
       VALUES (${orderId}, ${subject}, ${emailContent}, ${templateId})
     `;
 
-    const sendResponse = await fetch('http://localhost:3000/api/admin/send-email', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: order.email, subject: subject, html: emailContent, text: customEmail.content })
-    });
+    // Get the base URL from environment or request origin
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || request.headers.get('origin') || 'http://localhost:3000';
 
-    const sendResult = await sendResponse.json();
-    if (!sendResponse.ok) {
-      console.error('Send email failed:', {
-        status: sendResponse.status,
-        statusText: sendResponse.statusText,
-        error: sendResult
+    try {
+      const sendResponse = await fetch(`${baseUrl}/api/admin/send-email`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({ 
+          email: order.email, 
+          subject: subject, 
+          html: emailContent, 
+          text: customEmail.content 
+        })
       });
-      throw new Error(`Failed to send email: ${sendResult.error || sendResponse.statusText}`);
-    }
 
-    console.log('Email sent successfully:', sendResult);
-    return NextResponse.json({ success: true });
+      let sendResult;
+      try {
+        const textResponse = await sendResponse.text();
+        try {
+          sendResult = JSON.parse(textResponse);
+        } catch (parseError) {
+          console.error('Failed to parse response as JSON:', textResponse);
+          throw new Error(`Invalid JSON response: ${textResponse}`);
+        }
+      } catch (error) {
+        console.error('Error reading response:', error);
+        throw new Error('Failed to read response from send-email endpoint');
+      }
+
+      if (!sendResponse.ok) {
+        console.error('Send email failed:', {
+          status: sendResponse.status,
+          statusText: sendResponse.statusText,
+          error: sendResult
+        });
+        return NextResponse.json({ 
+          error: 'Failed to send email', 
+          details: sendResult?.error || sendResponse.statusText 
+        }, { status: sendResponse.status });
+      }
+
+      console.log('Email sent successfully:', sendResult);
+      return NextResponse.json({ success: true });
+    } catch (error) {
+      console.error('Error sending email:', error);
+      return NextResponse.json({ 
+        error: 'Failed to send email', 
+        details: error instanceof Error ? error.message : 'Unknown error' 
+      }, { status: 500 });
+    }
   } else {
     console.log('Generating email content from template');
     const template = getEmailTemplate(templateId, order);
     const prompt = customPrompt || template.prompt;
     template.variables = { ...template.variables, logoUrl: logoLightUrl };
 
-    const generateResponse = await fetch('http://localhost:3000/api/admin/generate-email', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt: prompt, variables: { ...template.variables } })
-    });
+    // Get the base URL from environment or request origin
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || request.headers.get('origin') || 'http://localhost:3000';
 
-    if (!generateResponse.ok) {
-      const errorData = await generateResponse.json().catch(() => ({}));
-      console.error('Generate email failed:', {
-        status: generateResponse.status,
-        statusText: generateResponse.statusText,
-        error: errorData
+    try {
+      const generateResponse = await fetch(`${baseUrl}/api/admin/generate-email`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({ 
+          prompt: prompt, 
+          variables: { ...template.variables } 
+        })
       });
-      return NextResponse.json({ error: 'Failed to generate email content', details: errorData.error || errorData.details || generateResponse.statusText }, { status: generateResponse.status });
+
+      let data;
+      try {
+        const textResponse = await generateResponse.text();
+        try {
+          data = JSON.parse(textResponse);
+        } catch (parseError) {
+          console.error('Failed to parse response as JSON:', textResponse);
+          throw new Error(`Invalid JSON response: ${textResponse}`);
+        }
+      } catch (error) {
+        console.error('Error reading response:', error);
+        throw new Error('Failed to read response from generate-email endpoint');
+      }
+
+      if (!generateResponse.ok) {
+        console.error('Generate email failed:', {
+          status: generateResponse.status,
+          statusText: generateResponse.statusText,
+          error: data
+        });
+        return NextResponse.json({ 
+          error: 'Failed to generate email content', 
+          details: data?.error || data?.details || generateResponse.statusText 
+        }, { status: generateResponse.status });
+      }
+
+      if (!data.html || !data.content) {
+        console.error('Invalid response from generate-email:', data);
+        return NextResponse.json({ 
+          error: 'Generate email returned invalid content', 
+          details: 'Missing html or content in response' 
+        }, { status: 500 });
+      }
+
+      const formattedHtml = formatEmailContent(data.content, {
+        ...template.variables,
+        order_items: orderItems,
+        subtotal,
+        tax_amount: taxAmount,
+        installation_price: installationPrice,
+        totalAmount,
+        emailType: template.variables.emailType || 'Order Update',
+        logoUrl: logoLightUrl
+      });
+
+      return NextResponse.json({ 
+        subject: template.subject, 
+        content: data.content, 
+        html: formattedHtml 
+      });
+    } catch (error) {
+      console.error('Error generating email:', error);
+      return NextResponse.json({ 
+        error: 'Failed to generate email', 
+        details: error instanceof Error ? error.message : 'Unknown error' 
+      }, { status: 500 });
     }
-
-    const data = await generateResponse.json();
-    if (!data.html || !data.content) {
-      console.error('Invalid response from generate-email:', data);
-      return NextResponse.json({ error: 'Generate email returned invalid content', details: 'Missing html or content in response' }, { status: 500 });
-    }
-
-    const formattedHtml = formatEmailContent(data.content, {
-      ...template.variables,
-      order_items: orderItems,
-      subtotal,
-      tax_amount: taxAmount,
-      installation_price: installationPrice,
-      totalAmount,
-      emailType: template.variables.emailType || 'Order Update',
-      logoUrl: logoLightUrl
-    });
-
-    return NextResponse.json({ subject: template.subject, content: data.content, html: formattedHtml });
   }
 } 
