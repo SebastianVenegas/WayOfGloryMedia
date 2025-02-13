@@ -1,6 +1,6 @@
 export async function safeFetch(url: string, options: RequestInit): Promise<{ ok: boolean, data: any }> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
+  const timeoutId = setTimeout(() => controller.abort(), 25000); // 25 second timeout
 
   try {
     console.log('Making request to:', url);
@@ -35,7 +35,7 @@ export async function safeFetch(url: string, options: RequestInit): Promise<{ ok
   } catch (error: any) {
     clearTimeout(timeoutId);
     if (error.name === 'AbortError') {
-      throw new Error('Request timed out after 8 seconds');
+      throw new Error('Request timed out after 25 seconds');
     }
     throw error;
   }
