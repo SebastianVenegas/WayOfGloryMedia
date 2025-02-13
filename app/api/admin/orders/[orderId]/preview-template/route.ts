@@ -16,14 +16,9 @@ interface OrderItem {
   };
 }
 
-interface RouteContext {
-  params: { orderId: string };
-  searchParams?: { [key: string]: string | string[] | undefined };
-}
-
 export async function GET(
   request: NextRequest,
-  context: RouteContext
+  { params }: { params: { orderId: string } }
 ): Promise<NextResponse> {
   const searchParams = request.nextUrl.searchParams;
 
@@ -33,7 +28,7 @@ export async function GET(
     const logoLightUrl = '/images/logo/LogoLight.png';
     const logoNormalUrl = '/images/logo/logo.png';
 
-    const { orderId } = context.params;
+    const { orderId } = params;
     if (!orderId) {
       console.error('Missing orderId in params');
       return NextResponse.json({ error: 'Order ID is required' }, { status: 400 });
