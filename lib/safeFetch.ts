@@ -1,4 +1,9 @@
-export async function safeFetch(url: string, options: RequestInit): Promise<{ ok: boolean, data: any }> {
+export async function safeFetch(url: string, options: RequestInit): Promise<{ 
+  ok: boolean;
+  data: any;
+  status?: number;
+  headers?: Record<string, string>;
+}> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 25000); // 25 second timeout
 
@@ -10,36 +15,45 @@ export async function safeFetch(url: string, options: RequestInit): Promise<{ ok
       headers: {
         ...options.headers,
         'Accept': 'application/json',
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store'
       },
+      cache: 'no-store',
       next: { revalidate: 0 }
     });
     clearTimeout(timeoutId);
 
     const text = await response.text();
     console.log('Response status:', response.status);
-    const trimmed = text.trim();
-    if (!(trimmed.startsWith('{') || trimmed.startsWith('['))) {
-      console.error('Response does not start with a JSON object or array. Response text:', text);
-      if (trimmed.startsWith('<')) {
-        throw new Error('HTML response received in safeFetch. Response snippet: ' + text.slice(0,200));
-      }
-      throw new Error('Non-JSON response received in safeFetch: ' + text.slice(0,200));
+    console.log('Response text:', text.substring(0, 200)); // Log first 200 chars of response
+
+    // Handle empty responses
+    if (!text.trim()) {
+      console.error('Empty response received');
+      throw new Error('Empty response received from server');
     }
 
+    // Try to parse as JSON
     let data;
     try {
       data = JSON.parse(text);
     } catch (error) {
-      console.error('Failed to parse JSON response:', text);
-      throw new Error('Invalid JSON response from server: ' + text);
+      console.error('Failed to parse response as JSON:', text.substring(0, 200));
+      throw new Error('Invalid JSON response: ' + text.substring(0, 100));
     }
 
+    // Check if response is OK
     if (!response.ok) {
-      throw new Error(data?.error || data?.details || response.statusText || 'Request failed');
+      const errorMessage = data?.error || data?.details || response.statusText || 'Request failed';
+      throw new Error(errorMessage);
     }
 
-    return { ok: true, data };
+    return { 
+      ok: true, 
+      data,
+      status: response.status,
+      headers: Object.fromEntries(response.headers.entries())
+    };
   } catch (error: any) {
     clearTimeout(timeoutId);
     if (error.name === 'AbortError') {
