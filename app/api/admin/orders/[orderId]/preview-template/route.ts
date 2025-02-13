@@ -16,9 +16,15 @@ interface OrderItem {
   };
 }
 
+type Context = {
+  params: {
+    orderId: string;
+  };
+};
+
 export async function GET(
   request: NextRequest,
-  { params }: { params: { orderId: string } }
+  context: Context
 ): Promise<NextResponse> {
   const searchParams = request.nextUrl.searchParams;
 
@@ -28,7 +34,7 @@ export async function GET(
     const logoLightUrl = '/images/logo/LogoLight.png';
     const logoNormalUrl = '/images/logo/logo.png';
 
-    const { orderId } = params;
+    const { orderId } = context.params;
     if (!orderId) {
       console.error('Missing orderId in params');
       return NextResponse.json({ error: 'Order ID is required' }, { status: 400 });
