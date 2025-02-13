@@ -18,7 +18,7 @@ interface OrderItem {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { orderId: string } }
+  { params, searchParams = {} }: { params: { orderId: string }, searchParams?: { [key: string]: string | string[] | undefined } }
 ): Promise<NextResponse> {
   try {
     // Use absolute URLs for logos
@@ -38,7 +38,7 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid Order ID' }, { status: 400 });
     }
 
-    const templateId = request.nextUrl.searchParams.get('templateId');
+    const templateId = Array.isArray(searchParams.templateId) ? searchParams.templateId[0] : searchParams.templateId;
 
     console.log('Preview template request:', {
       orderId: orderId_int,
@@ -115,7 +115,7 @@ export async function GET(
     let prompt;
 
     if (templateId === 'custom') {
-      const customPrompt = request.nextUrl.searchParams.get('prompt');
+      const customPrompt = Array.isArray(searchParams.prompt) ? searchParams.prompt[0] : searchParams.prompt;
       if (!customPrompt) {
         return NextResponse.json({ error: "Custom prompt is required" }, { status: 400 });
       }
