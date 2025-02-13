@@ -25,8 +25,8 @@ interface OrderItem {
   product?: Product;
 }
 
-// Increase the response timeout for Vercel
-export const maxDuration = 300; // 5 minutes
+// Increase the response timeout for Vercel (max 60 seconds for Hobby plan)
+export const maxDuration = 60; // 60 seconds
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
 
@@ -54,7 +54,7 @@ function timeout(ms: number) {
 
 async function safeFetch(url: string, options: RequestInit) {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 25000); // 25 second timeout
+  const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
   try {
     console.log('Making request to:', url);
@@ -92,7 +92,7 @@ async function safeFetch(url: string, options: RequestInit) {
     clearTimeout(timeoutId);
     
     if (error.name === 'AbortError') {
-      throw new Error('Request timed out after 25 seconds');
+      throw new Error('Request timed out after 15 seconds');
     }
     
     throw error;
@@ -146,7 +146,7 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
 
     const result = await Promise.race([
       orderQuery,
-      timeout(10000)
+      timeout(5000)  // 5 second timeout for database query
     ]) as { rows: any[] };
 
     const { rows: [orderData] } = result;
