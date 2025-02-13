@@ -25,7 +25,7 @@ export async function safeFetch(url: string, options: RequestInit): Promise<{
 
     const text = await response.text();
     console.log('Response status:', response.status);
-    console.log('Response text:', text.substring(0, 200)); // Log first 200 chars of response
+    console.log('Response text:', text.substring(0, 200));
 
     // Handle empty responses
     if (!text.trim()) {
@@ -33,13 +33,33 @@ export async function safeFetch(url: string, options: RequestInit): Promise<{
       throw new Error('Empty response received from server');
     }
 
+    // Check if response looks like HTML
+    if (text.trim().toLowerCase().startsWith('<!doctype html') || 
+        text.trim().startsWith('<html') || 
+        text.trim().startsWith('<')) {
+      console.error('HTML response received:', text.substring(0, 200));
+      throw new Error('Received HTML instead of JSON response');
+    }
+
     // Try to parse as JSON
     let data;
     try {
-      data = JSON.parse(text);
+      // Remove any BOM characters that might be present
+      const cleanText = text.replace(/^\uFEFF/, '');
+      data = JSON.parse(cleanText);
     } catch (error) {
-      console.error('Failed to parse response as JSON:', text.substring(0, 200));
-      throw new Error('Invalid JSON response: ' + text.substring(0, 100));
+      console.error('Failed to parse response as JSON:', {
+        text: text.substring(0, 200),
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      
+      // Try to extract error message if it's an error response
+      const errorMatch = text.match(/error occurred|an error occurred: (.*?)(?:\n|$)/i);
+      if (errorMatch) {
+        throw new Error(errorMatch[1] || 'Server error occurred');
+      }
+      
+      throw new Error(`Invalid JSON response: ${text.substring(0, 100)}`);
     }
 
     // Check if response is OK
@@ -59,6 +79,13 @@ export async function safeFetch(url: string, options: RequestInit): Promise<{
     if (error.name === 'AbortError') {
       throw new Error('Request timed out after 25 seconds');
     }
-    throw error;
+    // Enhance error message
+    const errorMessage = error.message || 'Unknown error occurred';
+    console.error('SafeFetch error:', {
+      url,
+      error: errorMessage,
+      stack: error.stack
+    });
+    throw new Error(`Request failed: ${errorMessage}`);
   }
 } 
