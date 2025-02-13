@@ -35,10 +35,33 @@ async function safeJsonParse(text: string) {
   }
 }
 
+function getBaseUrl(request: NextRequest): string {
+  // Try to get the base URL from different sources
+  const envUrl = process.env.NEXT_PUBLIC_BASE_URL;
+  const origin = request.headers.get('origin');
+  const host = request.headers.get('host');
+  const protocol = request.headers.get('x-forwarded-proto') || 'https';
+
+  // For production, construct URL from headers if needed
+  if (process.env.VERCEL_ENV === 'production') {
+    if (host) {
+      return `${protocol}://${host}`;
+    }
+  }
+
+  // Fallback chain
+  return envUrl || origin || `${protocol}://${host}` || 'http://localhost:3000';
+}
+
 async function safeFetch(url: string, options: RequestInit) {
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 50000); // Increased timeout to 50 seconds
+
+    console.log('Making request to:', url, {
+      method: options.method,
+      headers: options.headers
+    });
 
     const response = await fetch(url, {
       ...options,
@@ -53,10 +76,13 @@ async function safeFetch(url: string, options: RequestInit) {
     clearTimeout(timeoutId);
 
     const text = await response.text();
+    console.log('Response text:', text.substring(0, 200) + '...');
+
     const data = await safeJsonParse(text);
+    console.log('Parsed response:', data);
 
     if (!response.ok) {
-      throw new Error(data?.error || data?.details || response.statusText);
+      throw new Error(data?.error || data?.details || response.statusText || 'Request failed');
     }
 
     if (!data) {
@@ -65,8 +91,15 @@ async function safeFetch(url: string, options: RequestInit) {
 
     return { ok: true, data };
   } catch (error: any) {
+    console.error('Fetch error:', {
+      error,
+      message: error.message,
+      name: error.name,
+      url
+    });
+
     if (error.name === 'AbortError') {
-      throw new Error('Request timed out');
+      throw new Error('Request timed out after 50 seconds');
     }
     throw error;
   }
@@ -79,13 +112,21 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
     const orderIdStr = context?.params?.orderId || request.nextUrl.pathname.split('/')[4];
     const orderId = parseInt(orderIdStr);
 
-    // Use absolute URLs for logos
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || request.headers.get('origin') || 'http://localhost:3000';
+    // Get base URL using the new function
+    const baseUrl = getBaseUrl(request);
+    console.log('Using base URL:', baseUrl);
+
     const logoLightUrl = `${baseUrl}/images/logo/LogoLight.png`;
     const logoNormalUrl = `${baseUrl}/images/logo/logo.png`;
 
-    // Log logo URLs for debugging
-    console.log('Logo URLs:', { baseUrl, logoLightUrl, logoNormalUrl });
+    // Log request details
+    console.log('Request details:', {
+      baseUrl,
+      logoUrls: { logoLightUrl, logoNormalUrl },
+      headers: Object.fromEntries(request.headers.entries()),
+      orderId,
+      templateId
+    });
 
     if (isNaN(orderId)) {
       console.error('Invalid orderId format:', orderIdStr);
@@ -225,8 +266,11 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
         VALUES (${orderId}, ${subject}, ${emailContent}, ${templateId})
       `;
 
+      const sendEmailUrl = new URL('/api/admin/send-email', baseUrl).toString();
+      console.log('Sending email using URL:', sendEmailUrl);
+
       try {
-        const { data: sendResult } = await safeFetch(`${baseUrl}/api/admin/send-email`, {
+        const { data: sendResult } = await safeFetch(sendEmailUrl, {
           method: 'POST',
           body: JSON.stringify({ 
             email: order.email, 
@@ -251,8 +295,11 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
       const prompt = customPrompt || template.prompt;
       template.variables = { ...template.variables, logoUrl: logoLightUrl };
 
+      const generateEmailUrl = new URL('/api/admin/generate-email', baseUrl).toString();
+      console.log('Generating email using URL:', generateEmailUrl);
+
       try {
-        const { data } = await safeFetch(`${baseUrl}/api/admin/generate-email`, {
+        const { data } = await safeFetch(generateEmailUrl, {
           method: 'POST',
           body: JSON.stringify({ 
             prompt: prompt, 
@@ -292,11 +339,16 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
         }, { status: 500 });
       }
     }
-  } catch (error) {
-    console.error('Error in send-template:', error);
+  } catch (error: any) {
+    console.error('Error in send-template:', {
+      error,
+      message: error.message,
+      stack: error.stack,
+      type: error.name
+    });
     return NextResponse.json({ 
       error: 'Failed to process request', 
-      details: error instanceof Error ? error.message : 'Unknown error' 
+      details: error.message || 'Unknown error'
     }, { status: 500 });
   }
 } 
