@@ -16,10 +16,13 @@ interface OrderItem {
   };
 }
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { orderId: string } }
-): Promise<NextResponse> {
+interface RouteContext {
+  params: { [key: string]: string };
+}
+
+export async function GET(request: NextRequest, { params }: { params: { orderId: string } }): Promise<NextResponse> {
+  const searchParams = request.nextUrl.searchParams;
+
   try {
     // Use absolute URLs for logos
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
@@ -31,28 +34,22 @@ export async function GET(
       console.error('Missing orderId in params');
       return NextResponse.json({ error: 'Order ID is required' }, { status: 400 });
     }
-
     const orderId_int = parseInt(orderId);
     if (isNaN(orderId_int)) {
       console.error('Invalid orderId format:', orderId);
       return NextResponse.json({ error: 'Invalid Order ID' }, { status: 400 });
     }
 
-    const searchParams = request.nextUrl.searchParams;
     const templateId = searchParams.get('templateId');
+    if (!templateId) {
+      console.error('Missing templateId in query params');
+      return NextResponse.json({ error: 'Template ID is required' }, { status: 400 });
+    }
 
     console.log('Preview template request:', {
       orderId: orderId_int,
-      templateId,
+      templateId
     });
-
-    if (!templateId) {
-      console.error('Missing templateId in query params');
-      return NextResponse.json(
-        { error: 'Template ID is required' },
-        { status: 400 }
-      );
-    }
 
     // Fetch order details with order items
     const result = await sql`
@@ -151,7 +148,6 @@ export async function GET(
         console.error('Template not found:', templateId);
         return NextResponse.json({ error: "Invalid template ID" }, { status: 400 });
       }
-      // Update template variables to include the logo URL
       template.variables = {
         ...template.variables,
         logoUrl: logoLightUrl
