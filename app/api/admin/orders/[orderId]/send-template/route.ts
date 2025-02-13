@@ -25,6 +25,53 @@ interface OrderItem {
   product?: Product;
 }
 
+async function safeJsonParse(text: string) {
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    console.error('JSON Parse Error:', error);
+    console.error('Raw text:', text);
+    return null;
+  }
+}
+
+async function safeFetch(url: string, options: RequestInit) {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+      headers: {
+        ...options.headers,
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      }
+    });
+
+    clearTimeout(timeoutId);
+
+    const text = await response.text();
+    const data = await safeJsonParse(text);
+
+    if (!response.ok) {
+      throw new Error(data?.error || data?.details || response.statusText);
+    }
+
+    if (!data) {
+      throw new Error('Invalid JSON response');
+    }
+
+    return { ok: true, data };
+  } catch (error: any) {
+    if (error.name === 'AbortError') {
+      throw new Error('Request timed out');
+    }
+    throw error;
+  }
+}
+
 export async function POST(request: NextRequest, context: any): Promise<NextResponse> {
   try {
     console.log('Starting send-template process...');
@@ -179,12 +226,8 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
       `;
 
       try {
-        const sendResponse = await fetch(`${baseUrl}/api/admin/send-email`, {
+        const { data: sendResult } = await safeFetch(`${baseUrl}/api/admin/send-email`, {
           method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
           body: JSON.stringify({ 
             email: order.email, 
             subject: subject, 
@@ -193,34 +236,13 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
           })
         });
 
-        const textResponse = await sendResponse.text();
-        let sendResult;
-        try {
-          sendResult = JSON.parse(textResponse);
-        } catch (parseError) {
-          console.error('Failed to parse response as JSON:', textResponse);
-          throw new Error(`Invalid JSON response: ${textResponse}`);
-        }
-
-        if (!sendResponse.ok) {
-          console.error('Send email failed:', {
-            status: sendResponse.status,
-            statusText: sendResponse.statusText,
-            error: sendResult
-          });
-          return NextResponse.json({ 
-            error: 'Failed to send email', 
-            details: sendResult?.error || sendResponse.statusText 
-          }, { status: sendResponse.status });
-        }
-
         console.log('Email sent successfully:', sendResult);
         return NextResponse.json({ success: true });
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error sending email:', error);
         return NextResponse.json({ 
           error: 'Failed to send email', 
-          details: error instanceof Error ? error.message : 'Unknown error' 
+          details: error.message 
         }, { status: 500 });
       }
     } else {
@@ -230,38 +252,13 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
       template.variables = { ...template.variables, logoUrl: logoLightUrl };
 
       try {
-        const generateResponse = await fetch(`${baseUrl}/api/admin/generate-email`, {
+        const { data } = await safeFetch(`${baseUrl}/api/admin/generate-email`, {
           method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
           body: JSON.stringify({ 
             prompt: prompt, 
             variables: { ...template.variables } 
           })
         });
-
-        const textResponse = await generateResponse.text();
-        let data;
-        try {
-          data = JSON.parse(textResponse);
-        } catch (parseError) {
-          console.error('Failed to parse response as JSON:', textResponse);
-          throw new Error(`Invalid JSON response: ${textResponse}`);
-        }
-
-        if (!generateResponse.ok) {
-          console.error('Generate email failed:', {
-            status: generateResponse.status,
-            statusText: generateResponse.statusText,
-            error: data
-          });
-          return NextResponse.json({ 
-            error: 'Failed to generate email content', 
-            details: data?.error || data?.details || generateResponse.statusText 
-          }, { status: generateResponse.status });
-        }
 
         if (!data.html || !data.content) {
           console.error('Invalid response from generate-email:', data);
@@ -287,11 +284,11 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
           content: data.content, 
           html: formattedHtml 
         });
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error generating email:', error);
         return NextResponse.json({ 
           error: 'Failed to generate email', 
-          details: error instanceof Error ? error.message : 'Unknown error' 
+          details: error.message 
         }, { status: 500 });
       }
     }
