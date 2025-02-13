@@ -25,10 +25,9 @@ interface OrderItem {
   product?: Product;
 }
 
-// Increase the response timeout for Vercel (max 60 seconds for Hobby plan)
-export const maxDuration = 60; // 60 seconds
+// Use Edge Runtime instead of Node.js runtime
+export const runtime = 'edge';
 export const dynamic = 'force-dynamic';
-export const fetchCache = 'force-no-store';
 
 async function safeJsonParse(text: string) {
   try {
