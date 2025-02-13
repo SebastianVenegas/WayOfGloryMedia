@@ -2,11 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@vercel/postgres';
 
 export async function GET(
-  request: NextRequest,
-  context: { params: { orderId: string } }
-) {
+  request: NextRequest
+): Promise<NextResponse> {
   try {
-    const orderId = context.params.orderId;
+    const orderId = request.nextUrl.pathname.split('/')[4]; // Get orderId from URL path
     const orderIdInt = parseInt(orderId);
 
     if (isNaN(orderIdInt)) {
