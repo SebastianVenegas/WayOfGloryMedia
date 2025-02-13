@@ -20,7 +20,7 @@ import {
 import { useEffect } from 'react'
 import { Separator } from './separator'
 
-const MenuBar = ({ editor }: { editor: TipTapEditor | null }) => {
+const MenuBar = ({ editor, disabled }: { editor: TipTapEditor | null, disabled: boolean }) => {
   if (!editor) {
     return null
   }
@@ -31,7 +31,7 @@ const MenuBar = ({ editor }: { editor: TipTapEditor | null }) => {
         variant="ghost"
         size="sm"
         onClick={() => editor.chain().focus().toggleBold().run()}
-        disabled={!editor.can().chain().focus().toggleBold().run()}
+        disabled={!editor.can().chain().focus().toggleBold().run() || disabled}
         className={`${editor.isActive('bold') ? 'bg-gray-200/75' : 'hover:bg-gray-200/50'} transition-colors`}
       >
         <Bold className="h-4 w-4" />
@@ -40,7 +40,7 @@ const MenuBar = ({ editor }: { editor: TipTapEditor | null }) => {
         variant="ghost"
         size="sm"
         onClick={() => editor.chain().focus().toggleItalic().run()}
-        disabled={!editor.can().chain().focus().toggleItalic().run()}
+        disabled={!editor.can().chain().focus().toggleItalic().run() || disabled}
         className={`${editor.isActive('italic') ? 'bg-gray-200/75' : 'hover:bg-gray-200/50'} transition-colors`}
       >
         <Italic className="h-4 w-4" />
@@ -92,7 +92,7 @@ const MenuBar = ({ editor }: { editor: TipTapEditor | null }) => {
         variant="ghost"
         size="sm"
         onClick={() => editor.chain().focus().toggleCode().run()}
-        disabled={!editor.can().chain().focus().toggleCode().run()}
+        disabled={!editor.can().chain().focus().toggleCode().run() || disabled}
         className={`${editor.isActive('code') ? 'bg-gray-200/75' : 'hover:bg-gray-200/50'} transition-colors`}
       >
         <Code className="h-4 w-4" />
@@ -115,7 +115,7 @@ const MenuBar = ({ editor }: { editor: TipTapEditor | null }) => {
         variant="ghost"
         size="sm"
         onClick={() => editor.chain().focus().undo().run()}
-        disabled={!editor.can().chain().focus().undo().run()}
+        disabled={!editor.can().chain().focus().undo().run() || disabled}
         className="hover:bg-gray-200/50 transition-colors"
       >
         <Undo className="h-4 w-4" />
@@ -124,7 +124,7 @@ const MenuBar = ({ editor }: { editor: TipTapEditor | null }) => {
         variant="ghost"
         size="sm"
         onClick={() => editor.chain().focus().redo().run()}
-        disabled={!editor.can().chain().focus().redo().run()}
+        disabled={!editor.can().chain().focus().redo().run() || disabled}
         className="hover:bg-gray-200/50 transition-colors"
       >
         <Redo className="h-4 w-4" />
@@ -137,10 +137,12 @@ export default function Editor({
   value,
   onChange,
   className = '',
+  disabled = false,
 }: {
   value: string
   onChange: (value: string) => void
   className?: string
+  disabled?: boolean
 }) {
   const editor = useEditor({
     extensions: [
@@ -156,10 +158,11 @@ export default function Editor({
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML())
     },
+    editable: !disabled,
     editorProps: {
       attributes: {
         class: 'prose prose-gray max-w-none focus:outline-none px-4 py-3',
-      },
+      }
     },
   })
 
@@ -170,8 +173,8 @@ export default function Editor({
   }, [value, editor])
 
   return (
-    <div className={`bg-white rounded-lg ${className}`}>
-      <MenuBar editor={editor} />
+    <div className={`bg-white rounded-lg ${disabled ? 'opacity-60' : ''} ${className}`}>
+      <MenuBar editor={editor} disabled={disabled} />
       <EditorContent editor={editor} />
     </div>
   )

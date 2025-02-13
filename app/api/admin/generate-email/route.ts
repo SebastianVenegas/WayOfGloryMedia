@@ -17,9 +17,10 @@ const formatEmailContent = (content: string, variables: Record<string, any>) => 
   // Split content into paragraphs and wrap them in styled divs
   const formattedContent = content
     .split('\n')
-    .filter(paragraph => paragraph.trim() !== '')
-    .map(paragraph => `<div style="margin-bottom: 16px; color: #334155; line-height: 1.6;">${paragraph}</div>`)
-    .join('');
+    .map(line => line.trim())
+    .filter(line => line)
+    .map(line => line.startsWith('<p>') ? line : `<p style="margin: 0 0 16px 0; line-height: 1.6;">${line}</p>`)
+    .join('\n');
 
   // Get the base URL from environment or default to localhost
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
@@ -41,127 +42,159 @@ const formatEmailContent = (content: string, variables: Record<string, any>) => 
   // Calculate total amount if not provided
   const totalAmount = Number(variables.total_amount || variables.totalAmount || (subtotal + taxAmount + installationPrice));
 
-  // Format order items section
-  const orderItemsHtml = variables.order_items?.length ? `
-    <div style="margin-bottom: 32px;">
-      <h2 style="margin: 0 0 16px 0; color: #0f172a; font-size: 18px; font-weight: 600;">Order Details</h2>
-      <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse;">
-        <tr style="background-color: #f8fafc;">
-          <th style="text-align: left; padding: 12px; border-bottom: 2px solid #e2e8f0; color: #0f172a; font-size: 14px;">Item</th>
-          <th style="text-align: center; padding: 12px; border-bottom: 2px solid #e2e8f0; color: #0f172a; font-size: 14px;">Quantity</th>
-          <th style="text-align: right; padding: 12px; border-bottom: 2px solid #e2e8f0; color: #0f172a; font-size: 14px;">Price</th>
-        </tr>
-        ${variables.order_items.map((item: OrderItem) => {
-          const title = item.product?.title || item.title || 'Product';
-          const quantity = Number(item.quantity);
-          const pricePerUnit = Number(item.price_at_time || item.pricePerUnit);
-          const totalPrice = pricePerUnit * quantity;
-          
-          return `
-            <tr>
-              <td style="text-align: left; padding: 16px 12px; border-bottom: 1px solid #e2e8f0; color: #334155;">
-                <div style="font-weight: 500;">${title}</div>
-                <div style="font-size: 12px; color: #64748b; margin-top: 4px;">$${pricePerUnit.toFixed(2)} each</div>
-              </td>
-              <td style="text-align: center; padding: 16px 12px; border-bottom: 1px solid #e2e8f0; color: #334155;">${quantity}</td>
-              <td style="text-align: right; padding: 16px 12px; border-bottom: 1px solid #e2e8f0; color: #334155;">$${totalPrice.toFixed(2)}</td>
-            </tr>
-          `;
-        }).join('')}
-        
-        <!-- Installation Service -->
-        ${installationPrice > 0 ? `
-        <tr>
-          <td style="text-align: left; padding: 16px 12px; border-bottom: 1px solid #e2e8f0; color: #334155;">
-            <div style="font-weight: 500;">Professional Installation Service</div>
-          </td>
-          <td style="text-align: center; padding: 16px 12px; border-bottom: 1px solid #e2e8f0; color: #334155;">1</td>
-          <td style="text-align: right; padding: 16px 12px; border-bottom: 1px solid #e2e8f0; color: #334155;">$${installationPrice.toFixed(2)}</td>
-        </tr>
-        ` : ''}
-
-        <!-- Subtotal -->
-        <tr>
-          <td colspan="2" style="text-align: right; padding: 16px 12px; font-weight: 600; color: #0f172a;">Products Subtotal:</td>
-          <td style="text-align: right; padding: 16px 12px; color: #0f172a;">$${subtotal.toFixed(2)}</td>
-        </tr>
-
-        <!-- Tax -->
-        ${taxAmount > 0 ? `
-        <tr>
-          <td colspan="2" style="text-align: right; padding: 16px 12px; font-weight: 600; color: #0f172a;">Tax:</td>
-          <td style="text-align: right; padding: 16px 12px; color: #0f172a;">$${taxAmount.toFixed(2)}</td>
-        </tr>
-        ` : ''}
-
-        <!-- Total -->
-        <tr>
-          <td colspan="2" style="text-align: right; padding: 16px 12px; font-weight: 600; color: #0f172a; font-size: 18px;">Total:</td>
-          <td style="text-align: right; padding: 16px 12px; color: #2563eb; font-weight: 600; font-size: 18px;">$${totalAmount.toFixed(2)}</td>
-        </tr>
-      </table>
-    </div>
-  ` : '';
-
   return `
-  <!DOCTYPE html>
-  <html>
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${variables.companyName} - Order Update</title>
-  </head>
-      <body style="margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; line-height: 1.6; background-color: #f8fafc;">
-        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f8fafc;">
-          <tr>
-            <td align="center" style="padding: 20px 0;">
-              <!-- Container -->
-              <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                <!-- Header -->
-                <tr>
-                  <td style="background-color: #0f172a; padding: 32px 24px; text-align: center;">
-                    <img src="${logoFullUrl}" alt="${variables.companyName}" style="height: 40px; margin-bottom: 24px;" />
-                    <h1 style="color: #ffffff; font-size: 28px; font-weight: 600; margin: 0 0 8px 0;">${variables.emailType || 'Order Update'}</h1>
-                    <p style="color: #e2e8f0; margin: 0; font-size: 16px;">Order #${variables.orderId}</p>
-                  </td>
-                </tr>
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+          body {
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f5;
+            -webkit-font-smoothing: antialiased;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+          }
+          .wrapper {
+            width: 100%;
+            background-color: #f4f4f5;
+            padding: 40px 0;
+          }
+          .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+          }
+          .header {
+            background: linear-gradient(to right, #2563eb, #3b82f6);
+            padding: 32px 40px;
+            color: white;
+          }
+          .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+          }
+          .content-wrapper {
+            padding: 40px;
+          }
+          .content {
+            color: #374151;
+            font-size: 16px;
+            line-height: 1.6;
+          }
+          .content p {
+            margin: 0 0 16px 0;
+          }
+          .order-details {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 24px 0;
+          }
+          .order-details h3 {
+            color: #1e293b;
+            font-size: 16px;
+            font-weight: 600;
+            margin: 0 0 12px 0;
+          }
+          .order-detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #e2e8f0;
+          }
+          .order-detail-row:last-child {
+            border-bottom: none;
+          }
+          .detail-label {
+            color: #64748b;
+            font-size: 14px;
+          }
+          .detail-value {
+            color: #0f172a;
+            font-size: 14px;
+            font-weight: 500;
+          }
+          .signature {
+            margin-top: 32px;
+            padding-top: 24px;
+            border-top: 1px solid #e5e7eb;
+          }
+          .signature-name {
+            color: #1e293b;
+            font-weight: 600;
+            margin: 0 0 4px 0;
+          }
+          .signature-title {
+            color: #64748b;
+            font-size: 14px;
+            margin: 0 0 16px 0;
+          }
+          .footer {
+            background-color: #f8fafc;
+            padding: 24px 40px;
+            border-top: 1px solid #e2e8f0;
+          }
+          .footer p {
+            color: #64748b;
+            font-size: 14px;
+            margin: 0;
+            text-align: center;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="wrapper">
+          <div class="email-container">
+            <div class="header">
+              <h1>Dear ${variables.firstName},</h1>
+            </div>
+            
+            <div class="content-wrapper">
+              <div class="content">
+                ${formattedContent}
+              </div>
 
-                <!-- Content -->
-                <tr>
-                  <td style="padding: 32px 24px;">
-                    ${formattedContent}
-                    ${orderItemsHtml}
-                  </td>
-                </tr>
+              <div class="order-details">
+                <h3>Order Details</h3>
+                <div class="order-detail-row">
+                  <span class="detail-label">Order Number</span>
+                  <span class="detail-value">#${variables.orderId}</span>
+                </div>
+                <div class="order-detail-row">
+                  <span class="detail-label">Total Amount</span>
+                  <span class="detail-value">$${totalAmount.toFixed(2)}</span>
+                </div>
+                ${installationPrice > 0 ? `
+                <div class="order-detail-row">
+                  <span class="detail-label">Installation Price</span>
+                  <span class="detail-value">$${installationPrice.toFixed(2)}</span>
+                </div>
+                ` : ''}
+              </div>
 
-                <!-- Call to Action -->
-                <tr>
-                  <td style="padding: 0 24px 32px 24px;">
-                    <table width="100%" cellpadding="0" cellspacing="0">
-                      <tr>
-                        <td style="background-color: #f8fafc; padding: 24px; border-radius: 8px; text-align: center;">
-                          <p style="margin: 0 0 16px 0; color: #334155;">Need assistance with your order?</p>
-                          <a href="mailto:${variables.supportEmail}" style="display: inline-block; background-color: #2563eb; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 500;">Contact Support</a>
-                        </td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
+              <div class="signature">
+                <p class="signature-name">Way of Glory Team</p>
+                <p class="signature-title">Customer Success Team</p>
+                <div style="margin-top: 16px;">
+                  <img src="${logoFullUrl}" alt="Way of Glory" style="height: 40px;" />
+                </div>
+              </div>
+            </div>
 
-                <!-- Footer -->
-                <tr>
-                  <td style="background-color: #f8fafc; padding: 32px 24px; text-align: center; border-top: 1px solid #e2e8f0;">
-                    <img src="${logoFullUrl}" alt="${variables.companyName}" style="height: 32px; margin-bottom: 24px;" />
-                    <p style="color: #94a3b8; font-size: 14px; margin: 0 0 8px 0;">${variables.companyName}, Inc.</p>
-                    <p style="color: #94a3b8; font-size: 14px; margin: 0;">© ${variables.year || new Date().getFullYear()} ${variables.companyName}. All rights reserved.</p>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-        </table>
+            <div class="footer">
+              <p>If you have any questions, please don't hesitate to contact us at ${variables.supportEmail}</p>
+            </div>
+          </div>
+        </div>
       </body>
-  </html>
+    </html>
   `;
 };
 
@@ -198,33 +231,81 @@ export async function POST(req: Request) {
 
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-    // Use AI configuration from variables if available, otherwise use defaults
-    const aiConfig = variables.ai_config || {
+    const AI_EMAIL_CONFIG = {
       model: "gpt-4",
       temperature: 0.7,
       max_tokens: 2000,
-      system_prompt: "You are a professional email composer."
+      system_prompt: `You are the email composer for Way of Glory Media, a professional audio and visual solutions company. 
+      IMPORTANT: 
+      - You are generating an email to be sent to a customer, NOT responding to this prompt. Write the email directly.
+      - NEVER use placeholders like [Name], [Your Name], [Address], etc. Always use the actual provided variables.
+      - Write the email as if it's ready to be sent immediately.
+
+      TONE & STYLE:
+      - Professional yet warm and approachable
+      - Clear and concise
+      - Enthusiastic about enhancing worship experiences
+      - Confident but humble
+      - Solution-oriented and helpful
+
+      FORMATTING:
+      - Use proper paragraph breaks for readability
+      - Keep paragraphs short (2-4 sentences)
+      - Use bullet points for lists or steps
+      - Include clear section breaks
+
+      CONTENT RULES:
+      1. NEVER use placeholder text - use the actual provided variables
+      2. NEVER mention or reference any physical office location
+      3. Only use these payment methods:
+         - Direct bank transfer (Account details provided separately)
+         - Check payments (Payable to "Way of Glory Media")
+      4. Only use these contact methods:
+         - Email: help@wayofglory.com
+         - Phone: (310) 872-9781
+      5. Always include order number in communications
+      6. Never mention specific employee names
+      7. Always refer to "our team" or "the Way of Glory team"
+      8. Focus on digital communication and remote support
+      9. For installations, emphasize coordination with customer
+      10. Use accurate pricing from provided variables
+      11. Don't make assumptions about delivery times
+      12. Don't say anything that you are not sure about
+
+      STRUCTURE:
+      1. Opening: Warm, personal greeting using customer's actual first name
+      2. Purpose: Clear statement of email's purpose
+      3. Details: Relevant information, clearly organized
+      4. Next Steps: Clear action items or expectations
+      5. Support: Contact information
+      6. Closing: Warm, professional sign-off
+
+      BRANDING:
+      - Company Name: Way of Glory Media
+      - Mission: Enhancing worship experiences
+      - Values: Excellence, Professionalism, Service
+      - Voice: Modern, Professional, Ministry-Focused`
     };
 
     console.log('Using AI config:', {
-      model: aiConfig.model,
-      temperature: aiConfig.temperature,
-      max_tokens: aiConfig.max_tokens
+      model: AI_EMAIL_CONFIG.model,
+      temperature: AI_EMAIL_CONFIG.temperature,
+      max_tokens: AI_EMAIL_CONFIG.max_tokens
     });
 
     // Generate content using AI with specific instructions
     const completion = await openai.chat.completions.create({
-      model: aiConfig.model,
-      temperature: aiConfig.temperature,
-      max_tokens: aiConfig.max_tokens,
+      model: AI_EMAIL_CONFIG.model,
+      temperature: AI_EMAIL_CONFIG.temperature,
+      max_tokens: AI_EMAIL_CONFIG.max_tokens,
       messages: [
         {
           role: "system",
-          content: aiConfig.system_prompt
+          content: AI_EMAIL_CONFIG.system_prompt
         },
         {
           role: "user",
-          content: `${aiConfig.additional_context || ''}\n\n${prompt}`
+          content: prompt
         }
       ]
     }).catch(error => {

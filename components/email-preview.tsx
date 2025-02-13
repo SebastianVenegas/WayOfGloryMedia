@@ -12,7 +12,7 @@ const EmailPreview: React.FC<EmailPreviewProps> = ({ html, height = '600px', wid
       srcDoc={html}
       style={{ height, width, border: 'none' }}
       sandbox="allow-same-origin allow-scripts"
-      title="Email Preview"
+      title="Email  Preview"
     ></iframe>
   );
 };

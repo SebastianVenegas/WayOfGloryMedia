@@ -1,0 +1,32 @@
+.checkmark {
+  transform-origin: center;
+  animation: scale-in 0.5s ease-in-out forwards;
+}
+
+.successText {
+  animation: fade-in 0.3s ease-in-out;
+}
+
+@keyframes scale-in {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+} 

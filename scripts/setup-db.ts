@@ -20,6 +20,23 @@ async function setupDatabase() {
     `
     console.log('✅ Admin users table created')
 
+    console.log('Creating email_logs table...')
+    
+    // Create email_logs table if it doesn't exist
+    await sql`
+      CREATE TABLE IF NOT EXISTS email_logs (
+        id SERIAL PRIMARY KEY,
+        order_id INTEGER NOT NULL REFERENCES orders(id),
+        subject VARCHAR(255) NOT NULL,
+        content TEXT NOT NULL,
+        sent_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        template_id VARCHAR(50),
+        status VARCHAR(50) DEFAULT 'sent',
+        FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
+      )
+    `
+    console.log('✅ Email logs table created')
+
     console.log('Checking for existing admin user...')
     
     // Check if default admin exists

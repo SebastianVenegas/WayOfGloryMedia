@@ -2,183 +2,48 @@ import { NextResponse } from 'next/server';
 import { getEmailTemplate } from '@/lib/email-templates';
 import { sql } from '@vercel/postgres';
 import { Order } from '@/lib/email-templates';
+import { formatEmailContent } from '@/lib/email-templates';
+import fs from 'fs/promises';
+import path from 'path';
+
+interface Product {
+  title?: string;
+  description?: string;
+  category?: string;
+  features?: string[];
+  technical_details?: Record<string, string>;
+  included_items?: string[];
+  warranty_info?: string;
+  installation_available?: boolean;
+}
 
 interface OrderItem {
   quantity: number;
   price_at_time: number;
   title?: string;
   pricePerUnit?: number;
-  product?: {
-    title?: string;
-  };
+  product?: Product;
 }
-
-const formatEmailContent = (content: string, variables: Record<string, any>) => {
-  // Split content into paragraphs and wrap them in styled divs
-  const formattedContent = content
-    .split('\n')
-    .filter(paragraph => paragraph.trim() !== '')
-    .map(paragraph => `<div style="margin-bottom: 16px; color: #334155; line-height: 1.6;">${paragraph}</div>`)
-    .join('');
-
-  // Get the base URL from environment or default to localhost
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-  const logoFullUrl = `${baseUrl}${variables.logoUrl}`;
-
-  // Calculate subtotal from order items if not provided
-  const subtotal = variables.subtotal ?? (variables.order_items?.reduce((sum: number, item: OrderItem) => {
-    const price = Number(item.price_at_time || item.pricePerUnit || 0);
-    const quantity = Number(item.quantity || 0);
-    return sum + (price * quantity);
-  }, 0) || 0);
-
-  // Calculate tax amount if not provided
-  const taxAmount = Number(variables.tax_amount || 0);
-
-  // Calculate installation price if not provided
-  const installationPrice = Number(variables.installation_price || 0);
-
-  // Calculate total amount
-  const totalAmount = subtotal + taxAmount + installationPrice;
-
-  // Format order items section
-  const orderItemsHtml = variables.order_items?.length ? `
-    <div style="margin-bottom: 32px;">
-      <h2 style="margin: 0 0 16px 0; color: #0f172a; font-size: 18px; font-weight: 600;">Order Details</h2>
-      <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse;">
-        <tr style="background-color: #f8fafc;">
-          <th style="text-align: left; padding: 12px; border-bottom: 2px solid #e2e8f0; color: #0f172a; font-size: 14px;">Item</th>
-          <th style="text-align: center; padding: 12px; border-bottom: 2px solid #e2e8f0; color: #0f172a; font-size: 14px;">Quantity</th>
-          <th style="text-align: right; padding: 12px; border-bottom: 2px solid #e2e8f0; color: #0f172a; font-size: 14px;">Price</th>
-        </tr>
-        ${variables.order_items.map((item: OrderItem) => {
-          const title = item.product?.title || item.title || 'Product';
-          const quantity = Number(item.quantity);
-          const pricePerUnit = Number(item.price_at_time || item.pricePerUnit);
-          const totalPrice = pricePerUnit * quantity;
-          
-          return `
-            <tr>
-              <td style="text-align: left; padding: 16px 12px; border-bottom: 1px solid #e2e8f0; color: #334155;">
-                <div style="font-weight: 500;">${title}</div>
-                <div style="font-size: 12px; color: #64748b; margin-top: 4px;">$${pricePerUnit.toFixed(2)} each</div>
-              </td>
-              <td style="text-align: center; padding: 16px 12px; border-bottom: 1px solid #e2e8f0; color: #334155;">${quantity}</td>
-              <td style="text-align: right; padding: 16px 12px; border-bottom: 1px solid #e2e8f0; color: #334155;">$${totalPrice.toFixed(2)}</td>
-            </tr>
-          `;
-        }).join('')}
-        
-        <!-- Installation Service -->
-        ${installationPrice > 0 ? `
-        <tr>
-          <td style="text-align: left; padding: 16px 12px; border-bottom: 1px solid #e2e8f0; color: #334155;">
-            <div style="font-weight: 500;">Professional Installation Service</div>
-          </td>
-          <td style="text-align: center; padding: 16px 12px; border-bottom: 1px solid #e2e8f0; color: #334155;">1</td>
-          <td style="text-align: right; padding: 16px 12px; border-bottom: 1px solid #e2e8f0; color: #334155;">$${installationPrice.toFixed(2)}</td>
-        </tr>
-        ` : ''}
-
-        <!-- Subtotal -->
-        <tr>
-          <td colspan="2" style="text-align: right; padding: 16px 12px; font-weight: 600; color: #0f172a;">Products Subtotal:</td>
-          <td style="text-align: right; padding: 16px 12px; color: #0f172a;">$${subtotal.toFixed(2)}</td>
-        </tr>
-
-        <!-- Tax -->
-        ${taxAmount > 0 ? `
-        <tr>
-          <td colspan="2" style="text-align: right; padding: 16px 12px; font-weight: 600; color: #0f172a;">Tax:</td>
-          <td style="text-align: right; padding: 16px 12px; color: #0f172a;">$${taxAmount.toFixed(2)}</td>
-        </tr>
-        ` : ''}
-
-        <!-- Total -->
-        <tr>
-          <td colspan="2" style="text-align: right; padding: 16px 12px; font-weight: 600; color: #0f172a; font-size: 18px;">Total:</td>
-          <td style="text-align: right; padding: 16px 12px; color: #2563eb; font-weight: 600; font-size: 18px;">$${totalAmount.toFixed(2)}</td>
-        </tr>
-      </table>
-    </div>
-  ` : '';
-
-  return `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>${variables.companyName} - Order Update</title>
-      </head>
-      <body style="margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; line-height: 1.6; background-color: #f8fafc;">
-        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f8fafc;">
-          <tr>
-            <td align="center" style="padding: 20px 0;">
-              <!-- Container -->
-              <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                <!-- Header -->
-                <tr>
-                  <td style="background-color: #0f172a; padding: 32px 24px; text-align: center;">
-                    <img src="${logoFullUrl}" alt="${variables.companyName}" style="height: 40px; margin-bottom: 24px;" />
-                    <h1 style="color: #ffffff; font-size: 28px; font-weight: 600; margin: 0 0 8px 0;">${variables.emailType || 'Order Update'}</h1>
-                    <p style="color: #e2e8f0; margin: 0; font-size: 16px;">Order #${variables.orderId}</p>
-                  </td>
-                </tr>
-
-                <!-- Content -->
-                <tr>
-                  <td style="padding: 32px 24px;">
-                    ${formattedContent}
-                    ${orderItemsHtml}
-                  </td>
-                </tr>
-
-                <!-- Call to Action -->
-                <tr>
-                  <td style="padding: 0 24px 32px 24px;">
-                    <table width="100%" cellpadding="0" cellspacing="0">
-                      <tr>
-                        <td style="background-color: #f8fafc; padding: 24px; border-radius: 8px; text-align: center;">
-                          <p style="margin: 0 0 16px 0; color: #334155;">Need assistance with your order?</p>
-                          <a href="mailto:${variables.supportEmail}" style="display: inline-block; background-color: #2563eb; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 500;">Contact Support</a>
-                        </td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
-
-                <!-- Footer -->
-                <tr>
-                  <td style="background-color: #f8fafc; padding: 32px 24px; text-align: center; border-top: 1px solid #e2e8f0;">
-                    <img src="${logoFullUrl}" alt="${variables.companyName}" style="height: 32px; margin-bottom: 24px;" />
-                    <p style="color: #94a3b8; font-size: 14px; margin: 0 0 8px 0;">${variables.companyName}, Inc.</p>
-                    <p style="color: #94a3b8; font-size: 14px; margin: 0;">© ${variables.year || new Date().getFullYear()} ${variables.companyName}. All rights reserved.</p>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-        </table>
-      </body>
-    </html>
-  `;
-};
 
 export async function POST(
   request: Request,
-  context: { params: { orderId: string } }
+  { params }: { params: { orderId: string } }
 ) {
   try {
     console.log('Starting send-template process...');
     const { templateId, customEmail, customPrompt } = await request.json();
-    const orderId = parseInt(context.params.orderId);
+    const orderId = parseInt(params.orderId);
 
-    console.log('Request details:', {
-      templateId,
-      hasCustomEmail: !!customEmail,
-      hasCustomPrompt: !!customPrompt,
-      orderId
+    // Use absolute URLs for logos
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const logoLightUrl = `${baseUrl}/images/logo/LogoLight.png`;
+    const logoNormalUrl = `${baseUrl}/images/logo/logo.png`;
+
+    // Log logo URLs for debugging
+    console.log('Logo URLs:', {
+      baseUrl,
+      logoLightUrl,
+      logoNormalUrl
     });
 
     // Get order details
@@ -186,14 +51,21 @@ export async function POST(
       SELECT o.*,
         COALESCE(json_agg(
           json_build_object(
+            'id', oi.id,
             'quantity', oi.quantity,
             'price_at_time', oi.price_at_time,
             'product', json_build_object(
+              'id', p.id,
               'title', p.title,
               'description', p.description,
-              'category', p.category
+              'category', p.category,
+              'features', p.features,
+              'technical_details', p.technical_details,
+              'included_items', p.included_items,
+              'warranty_info', p.warranty_info,
+              'installation_available', p.installation_available
             )
-          )
+          ) ORDER BY oi.id
         ) FILTER (WHERE oi.id IS NOT NULL), '[]') as order_items
       FROM orders o
       LEFT JOIN order_items oi ON o.id = oi.order_id
@@ -207,12 +79,8 @@ export async function POST(
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
 
-    console.log('Found order:', {
-      id: orderData.id,
-      email: orderData.email,
-      name: `${orderData.first_name} ${orderData.last_name}`,
-      items: orderData.order_items
-    });
+    // Log the order items for debugging
+    console.log('Order items:', orderData.order_items);
 
     // Cast the database result to Order type
     const order: Order = {
@@ -231,17 +99,33 @@ export async function POST(
 
     let emailContent;
     let subject;
+    let plainTextContent;
     
     // Calculate order items and totals
-    const orderItems = order.order_items?.map((item: OrderItem) => ({
-      title: item.product?.title || 'Product',
-      quantity: Number(item.quantity),
-      price: Number(item.price_at_time) * Number(item.quantity),
-      pricePerUnit: Number(item.price_at_time),
-      product: item.product
-    })) || [];
+    const orderItems = order.order_items?.map((item: OrderItem) => {
+      const quantity = Number(item.quantity) || 0;
+      const priceAtTime = Number(item.price_at_time) || 0;
+      const price = priceAtTime * quantity;
+      
+      // Only include items with valid prices and quantities
+      if (price > 0 && quantity > 0) {
+        return {
+          title: item.product?.title || 'Product',
+          quantity: quantity,
+          price: price,
+          pricePerUnit: priceAtTime,
+          product: {
+            title: item.product?.title || 'Product'
+          }
+        };
+      }
+      return null;
+    }).filter(item => item !== null) || [];
 
-    const subtotal = orderItems.reduce((sum, item) => sum + item.price, 0);
+    // Log the processed order items for debugging
+    console.log('Processed order items:', orderItems);
+
+    const subtotal = orderItems.reduce((sum, item) => sum + (item.price || 0), 0);
     const taxAmount = Number(orderData.tax_amount || 0);
     const installationPrice = Number(orderData.installation_price || 0);
     const totalAmount = subtotal + taxAmount + installationPrice;
@@ -261,23 +145,101 @@ export async function POST(
       companyName: 'Way of Glory Media',
       supportEmail: 'help@wayofglory.com',
       websiteUrl: 'https://wayofglory.com',
-      logoUrl: '/images/logo/LogoLight.png',
-      year: new Date().getFullYear()
+      logoUrl: logoLightUrl,
+      logoLightUrl: logoLightUrl,
+      logoNormalUrl: logoNormalUrl,
+      year: new Date().getFullYear(),
+      installationDate: order.installation_date ? new Date(order.installation_date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : '',
+      installationTime: order.installation_date ? new Date(order.installation_date).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '',
+      includesInstallation: !!order.installation_date || (installationPrice > 0)
     };
 
     if (customEmail?.html) {
       console.log('Using custom email content');
-      emailContent = formatEmailContent(customEmail.html, baseVariables);
-      subject = customEmail.subject;
+      
+      if (!customEmail.html) {
+        console.error('Missing content in custom email');
+        throw new Error('Custom email content is missing');
+      }
+
+      subject = customEmail.subject || `Order Update - Way of Glory #${order.id}`;
+      
+      // Format the HTML content with our template to include product details
+      emailContent = formatEmailContent(customEmail.html, {
+        ...baseVariables,
+        order_items: orderItems,
+        subtotal,
+        tax_amount: taxAmount,
+        installation_price: installationPrice,
+        totalAmount,
+        emailType: (subject || `Order Update - Way of Glory #${order.id}`).replace(' - Way of Glory', '').replace(` #${order.id}`, ''),
+        companyName: 'Way of Glory Media',
+        supportEmail: 'help@wayofglory.com',
+        logoUrl: logoLightUrl,
+        logoLightUrl,
+        logoNormalUrl,
+        createdAt: order.created_at,
+        status: order.status,
+        installationDate: order.installation_date ? new Date(order.installation_date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : '',
+        installationTime: order.installation_date ? new Date(order.installation_date).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '',
+        includesInstallation: !!order.installation_date || (order.installation_price && Number(order.installation_price) > 0),
+        websiteUrl: 'https://wayofglory.com',
+        year: new Date().getFullYear()
+      });
+
+      // If this is just a format request (no need to send or store), return the formatted content
+      if (customEmail.formatOnly) {
+        return NextResponse.json({ 
+          html: emailContent,
+          subject: subject
+        });
+      }
+
+      // Store the HTML content with footer
+      await sql`
+        INSERT INTO email_logs (order_id, subject, content, template_id)
+        VALUES (${orderId}, ${subject}, ${emailContent}, ${templateId})
+      `;
+
+      // Send email using the send-email endpoint
+      const sendResponse = await fetch('http://localhost:3000/api/admin/send-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: order.email,
+          subject: subject,
+          html: emailContent,
+          text: customEmail.content
+        })
+      });
+
+      const sendResult = await sendResponse.json();
+
+      if (!sendResponse.ok) {
+        console.error('Send email failed:', {
+          status: sendResponse.status,
+          statusText: sendResponse.statusText,
+          error: sendResult
+        });
+        throw new Error(`Failed to send email: ${sendResult.error || sendResponse.statusText}`);
+      }
+
+      console.log('Email sent successfully:', sendResult);
+      return NextResponse.json({ success: true });
     } else {
       console.log('Generating email content from template');
       const template = getEmailTemplate(templateId, order);
       const prompt = customPrompt || template.prompt;
       
-      const generateUrl = new URL('/api/admin/generate-email', process.env.NEXT_PUBLIC_BASE_URL).toString();
-      console.log('Sending request to generate-email:', generateUrl);
+      // Update template variables with logo
+      template.variables = {
+        ...template.variables,
+        logoUrl: logoLightUrl
+      };
       
-      const response = await fetch(generateUrl, {
+      const generateResponse = await fetch('http://localhost:3000/api/admin/generate-email', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -290,64 +252,94 @@ export async function POST(
             subtotal: subtotal,
             tax_amount: taxAmount,
             installation_price: installationPrice,
-            totalAmount: totalAmount
+            totalAmount: totalAmount,
+            logoUrl: logoLightUrl
           }
         })
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+      if (!generateResponse.ok) {
+        const errorData = await generateResponse.json().catch(() => ({}));
         console.error('Generate email failed:', {
-          status: response.status,
-          statusText: response.statusText,
+          status: generateResponse.status,
+          statusText: generateResponse.statusText,
           error: errorData
         });
-        throw new Error(`Failed to generate email content: ${errorData.error || response.statusText}`);
+        throw new Error(`Failed to generate email content: ${errorData.error || generateResponse.statusText}`);
       }
 
-      const data = await response.json();
-      emailContent = formatEmailContent(data.content, {
+      const generatedData = await generateResponse.json();
+      
+      // Format the generated content with our template
+      emailContent = formatEmailContent(generatedData.content, {
         ...template.variables,
-        emailType: template.variables.emailType || 'Order Update'
+        ...baseVariables,
+        order_items: orderItems,
+        subtotal: subtotal,
+        tax_amount: taxAmount,
+        installation_price: installationPrice,
+        totalAmount: totalAmount,
+        emailType: template.variables.emailType || 'Order Update',
+        logoUrl: logoLightUrl
       });
+      
       subject = template.subject;
-    }
+      plainTextContent = generatedData.content;
 
-    // Validate email content
-    if (!emailContent) {
-      console.error('Missing email content');
-      throw new Error('Email content is empty');
-    }
-
-    // Send email using the send-email endpoint
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
-    const sendUrl = new URL('/api/admin/send-email', baseUrl).toString();
-    
-    const sendResponse = await fetch(sendUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        email: order.email,
-        subject: subject,
-        emailContent: emailContent
-      })
-    });
-
-    const sendResult = await sendResponse.json();
-
-    if (!sendResponse.ok) {
-      console.error('Send email failed:', {
-        status: sendResponse.status,
-        statusText: sendResponse.statusText,
-        error: sendResult
+      console.log('Generated email content lengths:', {
+        html: emailContent?.length || 0,
+        text: plainTextContent?.length || 0,
+        subject: subject?.length || 0,
+        logoDataUrlLength: logoLightUrl.length
       });
-      throw new Error(`Failed to send email: ${sendResult.error || sendResponse.statusText}`);
-    }
 
-    console.log('Email sent successfully:', sendResult);
-    return NextResponse.json({ success: true });
+      // Validate email content
+      if (!emailContent) {
+        console.error('Missing email content');
+        throw new Error('Email content is empty');
+      }
+
+      // Add additional logging for logo verification
+      console.log('Verifying logo in email content:', {
+        hasLogoInContent: emailContent.includes(logoLightUrl),
+        logoUrlLength: logoLightUrl.length,
+        contentLength: emailContent.length
+      });
+
+      // Log the sent email - store the fully formatted HTML content
+      await sql`
+        INSERT INTO email_logs (order_id, subject, content, template_id)
+        VALUES (${orderId}, ${subject}, ${emailContent}, ${templateId})
+      `;
+
+      // Send email using the send-email endpoint
+      const sendResponse = await fetch('http://localhost:3000/api/admin/send-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: order.email,
+          subject: subject,
+          html: emailContent,
+          text: plainTextContent
+        })
+      });
+
+      const sendResult = await sendResponse.json();
+
+      if (!sendResponse.ok) {
+        console.error('Send email failed:', {
+          status: sendResponse.status,
+          statusText: sendResponse.statusText,
+          error: sendResult
+        });
+        throw new Error(`Failed to send email: ${sendResult.error || sendResponse.statusText}`);
+      }
+
+      console.log('Email sent successfully:', sendResult);
+      return NextResponse.json({ success: true });
+    }
   } catch (error) {
     console.error('Error in send-template:', {
       error: error,

@@ -35,6 +35,8 @@ const AI_EMAIL_CONFIG = {
   9. Use accurate pricing from provided variables
   10. Don't make assumptions about delivery times
   11. Don't say anything that you are not sure about
+  12. if the customer did not order a servide such ass "installation" or "training", do not mention it in the email.
+
 
   STRUCTURE:
   1. Opening: Warm, personal greeting using first name
@@ -498,103 +500,176 @@ export const getEmailTemplate = (
   }
 };
 
-const formatEmailContent = (content: string, variables: Record<string, any>): string => {
-  // Split content into paragraphs and wrap them in styled divs
-  const formattedContent = content
-    .split('\n')
-    .filter(paragraph => paragraph.trim() !== '')
-    .map(paragraph => `<div style="margin-bottom: 16px; color: #334155; line-height: 1.6;">${paragraph}</div>`)
+export function formatEmailContent(content: string, variables: any): string {
+  // Base styles for the email with modern design
+  const styles = {
+    container: 'font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; width: 100% !important; max-width: 640px; margin: 0 auto; line-height: 1.6; color: #1a1a1a;',
+    mainWrapper: 'background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);',
+    header: 'text-align: center; padding: 32px 16px; background: linear-gradient(135deg, #2563eb, #1d4ed8); position: relative;',
+    headerOverlay: 'position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: radial-gradient(circle at top right, rgba(255, 255, 255, 0.1) 0%, transparent 60%);',
+    logo: 'width: 180px; max-width: 80%; height: auto; display: block; margin: 0 auto; position: relative; z-index: 1; filter: brightness(0) invert(1);',
+    mainContent: 'padding: 32px 24px; background-color: #ffffff;',
+    paragraph: 'font-size: 15px; line-height: 1.7; margin-bottom: 24px; color: #334155; font-weight: 450; letter-spacing: -0.01em;',
+    orderDetails: 'background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; margin: 24px 0; overflow: hidden;',
+    orderHeader: 'padding: 20px 24px; background: linear-gradient(to right, #f8fafc, #ffffff); border-bottom: 1px solid #e2e8f0;',
+    orderTitle: 'font-size: 18px; font-weight: 600; color: #0f172a; margin: 0; letter-spacing: -0.02em;',
+    orderBody: 'padding: 20px 24px;',
+    orderItem: 'display: flex; justify-content: space-between; align-items: flex-start; padding: 16px 0; border-bottom: 1px solid #f1f5f9;',
+    orderItemTitle: 'font-weight: 500; color: #0f172a; font-size: 15px; letter-spacing: -0.01em; margin-right: 8px;',
+    orderItemQuantity: 'color: #64748b; font-size: 14px; font-weight: 450;',
+    orderItemPrice: 'font-weight: 600; color: #0f172a; font-size: 15px; letter-spacing: -0.01em; white-space: nowrap;',
+    totals: 'margin-top: 24px; padding: 20px; background: #f8fafc; border-radius: 12px;',
+    totalRow: 'display: flex; justify-content: space-between; padding: 8px 0; color: #475569; font-size: 14px; letter-spacing: -0.01em;',
+    totalRowFinal: 'display: flex; justify-content: space-between; margin-top: 16px; padding-top: 16px; border-top: 2px solid #e2e8f0; font-size: 16px; font-weight: 700; color: #0f172a; letter-spacing: -0.02em;',
+    footer: 'text-align: center; padding: 32px 24px; background-color: #f8fafc; border-top: 1px solid #e2e8f0; border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;',
+    footerLogo: 'width: 120px; max-width: 60%; height: auto; margin-bottom: 24px; opacity: 0.9; display: block; margin: 0 auto 24px auto;',
+    footerTitle: 'font-size: 18px; font-weight: 600; color: #0f172a; margin: 0 0 8px 0; letter-spacing: -0.02em;',
+    footerSubtitle: 'font-size: 14px; color: #475569; margin: 0 0 24px 0; line-height: 1.6; letter-spacing: -0.01em;',
+    footerContact: 'margin: 24px 0; font-size: 14px; color: #475569; letter-spacing: -0.01em;',
+    footerLink: 'display: inline-block; color: #2563eb; text-decoration: none; font-weight: 500; letter-spacing: -0.01em; margin: 4px 8px;',
+    footerDivider: 'width: 40px; height: 2px; background: #e2e8f0; margin: 24px auto;',
+    footerCopyright: 'font-size: 13px; color: #64748b; margin: 24px 0 0 0; letter-spacing: -0.01em;',
+  };
+
+  // Clean the content by removing subject lines and format with paragraphs
+  let formattedContent = content
+    .replace(/^(?:subject:|re:|regarding:)\s*.+?\n/i, '') // Remove subject line if present
+    .trim()
+    .split('\n\n')
+    .map(paragraph => paragraph.trim())
+    .filter(paragraph => paragraph)
+    .map(paragraph => `<p style="${styles.paragraph}">${paragraph}</p>`)
     .join('');
 
-  // Format order details section with items, tax, and installation
-  const orderDetailsHtml = variables.order_items?.length ? `
-    <div style="margin-bottom: 32px;">
-      <h2 style="margin: 0 0 16px 0; color: #0f172a; font-size: 18px; font-weight: 600;">Order Details</h2>
-      <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse;">
-        <tr style="background-color: #f8fafc;">
-          <th style="text-align: left; padding: 12px; border-bottom: 2px solid #e2e8f0; color: #0f172a; font-size: 14px;">Item</th>
-          <th style="text-align: center; padding: 12px; border-bottom: 2px solid #e2e8f0; color: #0f172a; font-size: 14px;">Quantity</th>
-          <th style="text-align: right; padding: 12px; border-bottom: 2px solid #e2e8f0; color: #0f172a; font-size: 14px;">Price</th>
-        </tr>
-        ${variables.order_items.map((item: any) => {
-          const title = item.product?.title || item.title || 'Product';
-          const quantity = Number(item.quantity);
-          const pricePerUnit = Number(item.price_at_time);
-          const totalPrice = pricePerUnit * quantity;
-          
-          return `
-            <tr>
-              <td style="text-align: left; padding: 16px 12px; border-bottom: 1px solid #e2e8f0; color: #334155;">
-                <div style="font-weight: 500;">${title}</div>
-                <div style="font-size: 12px; color: #64748b; margin-top: 4px;">$${pricePerUnit.toFixed(2)} each</div>
-              </td>
-              <td style="text-align: center; padding: 16px 12px; border-bottom: 1px solid #e2e8f0; color: #334155;">${quantity}</td>
-              <td style="text-align: right; padding: 16px 12px; border-bottom: 1px solid #e2e8f0; color: #334155;">$${totalPrice.toFixed(2)}</td>
-            </tr>
-          `;
-        }).join('')}
-        ${Number(variables.installationPrice) > 0 ? `
-        <tr>
-          <td style="text-align: left; padding: 16px 12px; border-bottom: 1px solid #e2e8f0; color: #334155;">
-            <div style="font-weight: 500;">Professional Installation Service</div>
-          </td>
-          <td style="text-align: center; padding: 16px 12px; border-bottom: 1px solid #e2e8f0; color: #334155;">1</td>
-          <td style="text-align: right; padding: 16px 12px; border-bottom: 1px solid #e2e8f0; color: #334155;">$${Number(variables.installationPrice).toFixed(2)}</td>
-        </tr>
-        ` : ''}
-        <tr>
-          <td colspan="2" style="text-align: right; padding: 16px 12px; font-weight: 600; color: #0f172a;">Subtotal:</td>
-          <td style="text-align: right; padding: 16px 12px; color: #0f172a;">$${(variables.order_items.reduce((sum: number, item: any) => sum + (Number(item.price_at_time) * item.quantity), 0) + (Number(variables.installationPrice) || 0)).toFixed(2)}</td>
-        </tr>
-        ${Number(variables.taxAmount) > 0 ? `
-        <tr>
-          <td colspan="2" style="text-align: right; padding: 16px 12px; font-weight: 600; color: #0f172a;">Tax:</td>
-          <td style="text-align: right; padding: 16px 12px; color: #0f172a;">$${Number(variables.taxAmount).toFixed(2)}</td>
-        </tr>
-        ` : ''}
-        <tr>
-          <td colspan="2" style="text-align: right; padding: 16px 12px; font-weight: 600; color: #0f172a; font-size: 18px;">Total:</td>
-          <td style="text-align: right; padding: 16px 12px; color: #2563eb; font-weight: 600; font-size: 18px;">$${Number(variables.totalAmount).toFixed(2)}</td>
-        </tr>
-      </table>
-    </div>
-  ` : '';
+  // Create order details section if order items exist
+  let orderDetailsSection = '';
+  if (variables.order_items && variables.order_items.length > 0) {
+    const orderItemsHtml = variables.order_items
+      .map((item: { title?: string; quantity: number; price: number; pricePerUnit: number; product?: { title?: string } }) => {
+        const title = item.product?.title || item.title || 'Product';
+        const quantity = Number(item.quantity);
+        const price = Number(item.price);
+        const pricePerUnit = Number(item.pricePerUnit);
+        
+        return `
+          <div style="${styles.orderItem}">
+            <div style="display: flex; flex-direction: column; flex: 1;">
+              <div style="display: flex; align-items: baseline; justify-content: space-between;">
+                <div>
+                  <span style="${styles.orderItemTitle}">${title}</span>
+                  <span style="${styles.orderItemQuantity}">× ${quantity}</span>
+                </div>
+                <span style="${styles.orderItemPrice}">$${price.toFixed(2)}</span>
+              </div>
+            </div>
+          </div>
+        `;
+      })
+      .join('');
 
-  return `
+    // Calculate totals with safeguards against NaN
+    const subtotal = variables.subtotal || 0;
+    const taxAmount = Number(variables.tax_amount) || 0;
+    const installationPrice = Number(variables.installation_price) || 0;
+    const totalAmount = Number(variables.totalAmount) || (subtotal + taxAmount + installationPrice);
+
+    orderDetailsSection = `
+      <div style="${styles.orderDetails}">
+        <div style="${styles.orderHeader}">
+          <h2 style="${styles.orderTitle}">Order Summary</h2>
+        </div>
+        <div style="${styles.orderBody}">
+          ${orderItemsHtml}
+          <div style="${styles.totals}">
+            <div style="${styles.totalRow}">
+              <span>Subtotal</span>
+              <span style="font-weight: 500;">$${Number(subtotal).toFixed(2)}</span>
+            </div>
+            ${taxAmount > 0 ? `
+              <div style="${styles.totalRow}">
+                <span>Tax</span>
+                <span style="font-weight: 500;">$${taxAmount.toFixed(2)}</span>
+              </div>
+            ` : ''}
+            ${installationPrice > 0 ? `
+              <div style="${styles.totalRow}">
+                <span>Installation</span>
+                <span style="font-weight: 500;">$${installationPrice.toFixed(2)}</span>
+              </div>
+            ` : ''}
+            <div style="${styles.totalRowFinal}">
+              <span>Total</span>
+              <span>$${totalAmount.toFixed(2)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  // Use regular logo for header and light logo for footer
+  const headerLogoUrl = variables.logoNormalUrl || '/images/logo/logo.png';
+  const footerLogoUrl = variables.logoUrl || '/images/logo/LogoLight.png';
+
+  // Combine all sections into the final email
+  const emailHtml = `
     <!DOCTYPE html>
-<html>
-  <head>
-        <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>${variables.companyName} - Order Update</title>
-  </head>
-      <body style="margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; line-height: 1.6; background-color: #f8fafc;">
-        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f8fafc;">
-          <tr>
-            <td align="center" style="padding: 20px 0;">
-              <!-- Container -->
-              <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                <!-- Header -->
-                <tr>
-                  <td style="background-color: #0f172a; padding: 32px 24px; text-align: center;">
-                    <img src="${variables.logoUrl}" alt="${variables.companyName}" style="height: 40px; margin-bottom: 24px;" />
-                    <h1 style="color: #ffffff; font-size: 28px; font-weight: 600; margin: 0 0 8px 0;">${variables.emailType || 'Order Update'}</h1>
-                    <p style="color: #e2e8f0; margin: 0; font-size: 16px;">Order #${variables.orderId}</p>
-                  </td>
-                </tr>
-
-                <!-- Content -->
-                <tr>
-                  <td style="padding: 32px 24px;">
-                    ${formattedContent}
-                    ${orderDetailsHtml}
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-        </table>
-  </body>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="color-scheme" content="light">
+      <meta name="supported-color-schemes" content="light">
+      <style>
+        body { margin: 0; padding: 16px; background-color: #f8fafc; }
+        table { border-spacing: 0; }
+        td { padding: 0; }
+        img { border: 0; }
+        @media only screen and (max-width: 640px) {
+          .container {
+            width: 100% !important;
+            padding: 0 !important;
+          }
+        }
+      </style>
+    </head>
+    <body>
+      <div style="max-width: 640px; margin: 0 auto; background-color: #f8fafc; padding: 16px;">
+        <div style="${styles.mainWrapper}">
+          <div style="${styles.header}">
+            <div style="${styles.headerOverlay}"></div>
+            <img src="${headerLogoUrl}" alt="${variables.companyName}" style="${styles.logo}">
+          </div>
+          <div style="${styles.mainContent}">
+            ${formattedContent}
+            ${orderDetailsSection}
+          </div>
+          <div style="${styles.footer}">
+            <img src="${footerLogoUrl}" alt="${variables.companyName}" style="${styles.footerLogo}">
+            <h3 style="${styles.footerTitle}">Enhancing Worship Experiences</h3>
+            <p style="${styles.footerSubtitle}">Professional Audio and Visual Solutions for Your Ministry</p>
+            <div style="${styles.footerDivider}"></div>
+            <div style="${styles.footerContact}">
+              <p style="margin: 0 0 16px 0;">
+                Questions? Contact our support team:
+              </p>
+              <p style="margin: 0;">
+                <a href="mailto:${variables.supportEmail}" style="${styles.footerLink}">${variables.supportEmail}</a>
+                <a href="tel:+13108729781" style="${styles.footerLink}">(310) 872-9781</a>
+                <a href="${variables.websiteUrl}" style="${styles.footerLink}" target="_blank">Visit our website</a>
+              </p>
+            </div>
+            <div style="${styles.footerDivider}"></div>
+            <p style="${styles.footerCopyright}">
+              &copy; ${new Date().getFullYear()} ${variables.companyName}. All rights reserved.<br>
+              <span style="font-size: 12px; color: #94a3b8;">Dedicated to serving churches and ministries with excellence</span>
+            </p>
+          </div>
+        </div>
+      </div>
+    </body>
     </html>
   `;
-}; 
+
+  return emailHtml;
+} 
