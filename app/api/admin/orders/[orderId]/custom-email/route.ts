@@ -72,9 +72,11 @@ interface OrderItem {
 
 export async function POST(
   request: NextRequest,
-  context: { params: { orderId: string } }
-) {
+  { params }: { params: { orderId: string } }
+): Promise<NextResponse> {
   try {
+    const orderIdInt = parseInt(params.orderId);
+
     // Validate OpenAI API key
     if (!process.env.OPENAI_API_KEY) {
       console.error('OpenAI API key is missing');
@@ -82,7 +84,7 @@ export async function POST(
     }
 
     // Parse request body
-    const body = await request.json().catch(error => {
+    const body = await request.json().catch((error: any) => {
       console.error('Failed to parse request body:', error);
       return null;
     });
@@ -92,7 +94,6 @@ export async function POST(
     }
 
     const { prompt, variables } = body;
-    const orderId = parseInt(context.params.orderId);
 
     // Validate required fields
     if (!prompt || typeof prompt !== 'string' || prompt.trim() === '') {
@@ -107,7 +108,7 @@ export async function POST(
 
     // Log request details
     console.log('Generating custom email with:', {
-      orderId,
+      orderId: orderIdInt,
       promptLength: prompt.length,
       promptPreview: prompt.substring(0, 100) + '...',
       customerName: `${variables.firstName} ${variables.lastName}`,
@@ -156,7 +157,7 @@ export async function POST(
     }
 
     // Process the content
-    let subject = `Order Update - Way of Glory #${orderId}`;
+    let subject = `Order Update - Way of Glory #${orderIdInt}`;
     let content = emailContent.trim();
 
     // Extract subject if present
