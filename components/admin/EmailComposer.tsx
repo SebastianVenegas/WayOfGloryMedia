@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import Editor from '@/components/ui/editor'
@@ -304,7 +304,7 @@ export default function EmailComposer({
     }
   };
 
-  const fetchEmailLogs = async () => {
+  const fetchEmailLogs = useCallback(async () => {
     try {
       setIsLoadingLogs(true)
       const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
@@ -325,11 +325,11 @@ export default function EmailComposer({
     } finally {
       setIsLoadingLogs(false)
     }
-  }
+  }, [orderId, toast])
 
   useEffect(() => {
     fetchEmailLogs()
-  }, [orderId])
+  }, [orderId, fetchEmailLogs])
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString('en-US', {
@@ -344,43 +344,37 @@ export default function EmailComposer({
 
   const handleEmailLogClick = (log: EmailLog) => {
     setSubject(log.subject);
-    
     // Ensure we're using the fully formatted HTML content
-    let htmlContent = log.content;
+    const htmlContent = log.content;
     
     // If the content doesn't have the order details section, fetch and format it
-    if (!htmlContent.includes('Order Summary')) {
-      fetch(`/api/admin/orders/${orderId}/send-template`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          templateId: 'custom',
-          customEmail: {
-            subject: log.subject,
-            html: log.content,
-            formatOnly: true
-          }
-        }),
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.html) {
-          setContent(data.html);
-          if (onContentChange) onContentChange(data.html);
+    fetch(`/api/admin/orders/${orderId}/send-template`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        templateId: 'custom',
+        customEmail: {
+          subject: log.subject,
+          html: log.content,
+          formatOnly: true
         }
-      })
-      .catch(error => {
-        console.error('Error formatting email:', error);
-        // Fallback to original content if formatting fails
-        setContent(htmlContent);
-        if (onContentChange) onContentChange(htmlContent);
-      });
-    } else {
+      }),
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.html) {
+        setContent(data.html);
+        if (onContentChange) onContentChange(data.html);
+      }
+    })
+    .catch(error => {
+      console.error('Error formatting email:', error);
+      // Fallback to original content if formatting fails
       setContent(htmlContent);
       if (onContentChange) onContentChange(htmlContent);
-    }
+    });
     
     if (onSubjectChange) onSubjectChange(log.subject);
     if (onTabChange) onTabChange('content');

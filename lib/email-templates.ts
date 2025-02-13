@@ -532,7 +532,7 @@ export function formatEmailContent(content: string, variables: any): string {
   };
 
   // Clean the content by removing subject lines and format with paragraphs
-  let formattedContent = content
+  const formattedContent = content
     .replace(/^(?:subject:|re:|regarding:)\s*.+?\n/i, '') // Remove subject line if present
     .trim()
     .split('\n\n')
