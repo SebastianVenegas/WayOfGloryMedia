@@ -176,16 +176,18 @@ export default function EmailComposer({
         throw new Error('Email content cannot be empty');
       }
 
+      const isPWA = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
+
       const response = await fetch('/api/admin/generate-email', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(isPWA ? { 'x-pwa-request': 'true' } : {}),
         },
         body: JSON.stringify({
           orderId,
           content: sanitizedContent,
-          // Add PWA identifier to handle specific validation
-          isPWA: typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches
+          isPWA
         }),
       });
 
@@ -234,22 +236,25 @@ export default function EmailComposer({
         throw new Error('Email content cannot be empty');
       }
 
+      // Enhanced sanitization for PWA mode
       const isPWA = typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches;
-      let sanitizedContent = content.trim();
+      let sanitizedContent = content
+        .trim()
+        .replace(/[\u200B-\u200D\uFEFF]/g, '') // Remove zero-width spaces
+        .replace(/\s+/g, ' '); // Normalize whitespace
 
-      if (!isPWA) {
-        // For non-PWA: remove zero-width characters and normalize whitespace
-        sanitizedContent = sanitizedContent.replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/\s+/g, ' ');
-      } else {
-        // For PWA: remove zero-width characters but retain whitespace for proper HTML structure
-        sanitizedContent = sanitizedContent.replace(/[\u200B-\u200D\uFEFF]/g, '');
-        // Additional PWA-specific sanitization
-        sanitizedContent = sanitizedContent.replace(/&nbsp;/g, ' ').replace(/<p><br><\/p>/g, '<p></p>');
+      // Additional PWA-specific sanitization
+      if (isPWA) {
+        sanitizedContent = sanitizedContent
+          .replace(/&nbsp;/g, ' ')
+          .replace(/<p><br><\/p>/g, '<p></p>')
+          .replace(/<p><\/p>/g, '<br>')
+          .replace(/\r?\n|\r/g, '');
       }
 
       // Validate content structure
-      if (!/<[a-z][^>]*>/i.test(sanitizedContent)) {
-        console.warn('Warning: Email content does not appear to contain HTML tags.');
+      if (!/^[\s\S]*<[^>]+>[\s\S]*$/.test(sanitizedContent)) {
+        throw new Error('Invalid email content structure');
       }
 
       const response = await fetch(`/api/admin/orders/${orderId}/send-template`, {
@@ -491,6 +496,11 @@ export default function EmailComposer({
                 className="min-h-[400px] prose max-w-none focus:outline-none"
                 disabled={isGenerating || isLoading || isTemplateLoading}
               />
+              <div className="mt-4 flex justify-end">
+                <Button type="button" onClick={handleGenerateEmail} disabled={isGenerating || isTemplateLoading}>
+                  {isGenerating ? "Generating..." : "Generate with AI"}
+                </Button>
+              </div>
             </div>
           ) : (
             <EmailPreview html={content} height="600px" width="100%" />
