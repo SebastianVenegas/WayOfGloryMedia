@@ -110,7 +110,7 @@ export async function safeFetch(url: string, options: RequestInit): Promise<{
       });
       
       // Fallback: attempt to extract valid JSON substring using regex
-      let jsonMatch = cleanText.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
+      const jsonMatch = cleanText.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
       if (jsonMatch) {
         try {
           const extractedData = JSON.parse(jsonMatch[0]);
@@ -127,8 +127,8 @@ export async function safeFetch(url: string, options: RequestInit): Promise<{
       }
       
       // Fallback: locate first '{' or '[' manually
-      let idxBrace = cleanText.indexOf('{');
-      let idxBracket = cleanText.indexOf('[');
+      const idxBrace = cleanText.indexOf('{');
+      const idxBracket = cleanText.indexOf('[');
       let idx = -1;
       if (idxBrace !== -1 && idxBracket !== -1) {
         idx = Math.min(idxBrace, idxBracket);
