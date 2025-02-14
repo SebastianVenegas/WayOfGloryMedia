@@ -56,7 +56,7 @@ export async function safeFetch(url: string, options: RequestInit): Promise<{
     console.log('Clean response text:', cleanText.substring(0, 200));
 
     // If the response text appears to be an error message, return it without attempting JSON.parse
-    if (cleanText.toLowerCase().startsWith('an error') || cleanText.toLowerCase().startsWith('application error')) {
+    if (cleanText.slice(0,150).toLowerCase().includes('an error') || cleanText.slice(0,150).toLowerCase().includes('application error')) {
       console.error('Response appears to be an error message rather than valid JSON:', cleanText.substring(0, 100));
       return {
         ok: false,
