@@ -531,8 +531,32 @@ export default function EmailComposer({
                 disabled={isGenerating || isLoading || isTemplateLoading}
               />
               <div className="mt-4 flex justify-end">
-                <Button type="button" onClick={handleGenerateEmail} disabled={isGenerating || isTemplateLoading}>
-                  {isGenerating ? "Generating..." : "Generate with AI"}
+                <Button 
+                  type="button" 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleGenerateEmail(e);
+                    return false;
+                  }} 
+                  disabled={isGenerating || isTemplateLoading}
+                  className="relative"
+                >
+                  <span className={isGenerating ? 'opacity-0' : 'opacity-100'}>
+                    Generate with AI
+                  </span>
+                  {isGenerating && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="flex items-center gap-2">
+                        <span>Generating</span>
+                        <div className="flex space-x-1">
+                          <div className="w-2 h-2 rounded-full bg-white animate-bounce" />
+                          <div className="w-2 h-2 rounded-full bg-white animate-bounce [animation-delay:0.2s]" />
+                          <div className="w-2 h-2 rounded-full bg-white animate-bounce [animation-delay:0.4s]" />
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </Button>
               </div>
             </div>
