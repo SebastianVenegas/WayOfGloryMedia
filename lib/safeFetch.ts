@@ -27,6 +27,20 @@ export async function safeFetch(url: string, options: RequestInit): Promise<{
     console.log('Response status:', response.status);
     console.log('Response text:', text.substring(0, 200));
 
+    // Check if the response Content-Type indicates JSON
+    const contentType = response.headers.get('content-type') || "";
+    if (!contentType.includes('application/json')) {
+      console.error('Expected JSON response but got:', contentType, text.substring(0, 200));
+      return {
+        ok: false,
+        data: { 
+          error: 'Invalid server response',
+          details: `Expected JSON response but received content-type: ${contentType}. Response: ${text.substring(0, 200)}`
+        },
+        status: response.status
+      };
+    }
+
     // Handle empty responses
     if (!text.trim()) {
       console.error('Empty response received');
