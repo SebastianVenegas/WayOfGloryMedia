@@ -25,7 +25,8 @@ export async function safeFetch(url: string, options: RequestInit): Promise<{
 
     const text = await response.text();
     console.log('Response status:', response.status);
-    
+    console.log('Response text:', text.substring(0, 200));
+
     // Handle empty responses
     if (!text.trim()) {
       console.error('Empty response received');
@@ -38,21 +39,49 @@ export async function safeFetch(url: string, options: RequestInit): Promise<{
 
     // Try to parse as JSON first
     try {
+      // Remove any BOM characters and whitespace
       const cleanText = text.replace(/^\uFEFF/, '').trim();
+      
+      // Handle case where response is just a string error message
+      if (cleanText.startsWith('"') && cleanText.endsWith('"')) {
+        const errorMessage = JSON.parse(cleanText);
+        return {
+          ok: false,
+          data: { 
+            error: errorMessage,
+            details: 'Server returned error message'
+          },
+          status: response.status
+        };
+      }
+
       const data = JSON.parse(cleanText);
       
-      // Even if we can parse JSON, check if it's an error response
+      // Check if the response is an error object
+      if (data && typeof data === 'object' && ('error' in data || 'details' in data)) {
+        return {
+          ok: false,
+          data: {
+            error: data.error || data.details || 'Unknown error',
+            details: data.details || data.error || 'No additional details'
+          },
+          status: response.status
+        };
+      }
+
+      // If response is not OK but we got JSON, format it as an error
       if (!response.ok) {
         return {
           ok: false,
           data: {
-            error: data?.error || data?.details || response.statusText || 'Request failed',
+            error: data?.error || data?.message || response.statusText || 'Request failed',
             details: data?.details || data?.error || response.statusText
           },
           status: response.status
         };
       }
 
+      // Success case
       return { 
         ok: true, 
         data,
@@ -60,16 +89,20 @@ export async function safeFetch(url: string, options: RequestInit): Promise<{
         headers: Object.fromEntries(response.headers.entries())
       };
     } catch (parseError) {
-      // If JSON parsing fails, check if it's HTML
+      console.error('Failed to parse response:', {
+        text: text.substring(0, 200),
+        error: parseError instanceof Error ? parseError.message : 'Unknown parse error'
+      });
+
+      // If it looks like HTML, return specific error
       if (text.trim().toLowerCase().startsWith('<!doctype html') || 
           text.trim().startsWith('<html') || 
           text.trim().startsWith('<')) {
-        console.error('HTML response received instead of JSON');
         return {
           ok: false,
           data: { 
             error: 'Received HTML instead of JSON response',
-            details: text.substring(0, 100)
+            details: 'The server returned an HTML page instead of JSON data'
           },
           status: response.status
         };
@@ -81,8 +114,8 @@ export async function safeFetch(url: string, options: RequestInit): Promise<{
         return {
           ok: false,
           data: { 
-            error: errorMatch[1] || 'Server error occurred',
-            details: text.substring(0, 100)
+            error: 'Server error',
+            details: errorMatch[1] || text.substring(0, 100)
           },
           status: response.status
         };
@@ -92,21 +125,26 @@ export async function safeFetch(url: string, options: RequestInit): Promise<{
       return {
         ok: false,
         data: { 
-          error: 'Invalid response format',
-          details: text.substring(0, 100)
+          error: 'Invalid server response',
+          details: `Could not parse server response: ${text.substring(0, 100)}`
         },
         status: response.status
       };
     }
   } catch (error: any) {
     clearTimeout(timeoutId);
+    console.error('Network or system error:', {
+      url,
+      error: error.message,
+      stack: error.stack
+    });
     
     // Handle timeout
     if (error.name === 'AbortError') {
       return {
         ok: false,
         data: { 
-          error: 'Request timed out',
+          error: 'Request timeout',
           details: 'The request took too long to complete'
         },
         status: 504
@@ -114,17 +152,11 @@ export async function safeFetch(url: string, options: RequestInit): Promise<{
     }
 
     // Handle network or other errors
-    console.error('SafeFetch error:', {
-      url,
-      error: error.message,
-      stack: error.stack
-    });
-
     return {
       ok: false,
       data: { 
         error: 'Request failed',
-        details: error.message
+        details: error.message || 'A network or system error occurred'
       },
       status: 500
     };

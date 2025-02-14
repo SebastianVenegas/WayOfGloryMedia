@@ -307,24 +307,62 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
         const template = getEmailTemplate(templateId, order);
         const generateEmailUrl = `${baseUrl}/api/admin/generate-email`;
         
+        console.log('Generating email with:', {
+          templateId,
+          baseUrl,
+          prompt: template.prompt.substring(0, 100) + '...',
+          variables: template.variables
+        });
+
         const generateResult = await safeFetch(generateEmailUrl, {
           method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-store'
+          },
           body: JSON.stringify({ 
             prompt: customPrompt || template.prompt,
-            variables: { 
-              ...template.variables
-            },
+            variables: template.variables,
             isPWA
-          })
+          }),
+          cache: 'no-store'
         });
         
         if (!generateResult.ok) {
-          console.error('Failed to generate email:', generateResult.data);
-          throw new Error(generateResult.data?.error || generateResult.data?.details || 'Failed to generate email');
+          console.error('Failed to generate email:', {
+            status: generateResult.status,
+            error: generateResult.data?.error,
+            details: generateResult.data?.details
+          });
+          return new NextResponse(JSON.stringify({
+            error: 'Failed to generate email',
+            details: generateResult.data?.error || generateResult.data?.details || 'Email generation failed',
+            success: false,
+            isPWA
+          }), {
+            status: generateResult.status || 500,
+            headers: {
+              'Content-Type': 'application/json',
+              'Cache-Control': 'no-store'
+            }
+          });
         }
 
-        if (!generateResult.data.html || !generateResult.data.content) {
-          throw new Error('Invalid response from email generator: Missing required content');
+        if (!generateResult.data?.html || !generateResult.data?.content) {
+          console.error('Invalid generator response:', generateResult.data);
+          return new NextResponse(JSON.stringify({
+            error: 'Invalid response from email generator',
+            details: 'Missing required content in response',
+            success: false,
+            isPWA
+          }), {
+            status: 500,
+            headers: {
+              'Content-Type': 'application/json',
+              'Cache-Control': 'no-store'
+            }
+          });
         }
         
         let formattedHtml;
@@ -337,7 +375,8 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
             installation_price: installationPrice,
             totalAmount,
             emailType: template.variables.emailType || 'Order Update',
-            logoUrl: `${baseUrl}/images/logo/LogoLight.png`
+            logoUrl: `${baseUrl}/images/logo/LogoLight.png`,
+            baseUrl // Add baseUrl to variables
           });
         } catch (e: any) {
           console.error('Error formatting email content:', {
@@ -345,23 +384,61 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
             stack: e.stack,
             content: generateResult.data.content.substring(0, 200)
           });
-          throw new Error(`Failed to format email content: ${e.message}`);
+          return new NextResponse(JSON.stringify({
+            error: 'Failed to format email content',
+            details: e.message,
+            success: false,
+            isPWA
+          }), {
+            status: 500,
+            headers: {
+              'Content-Type': 'application/json',
+              'Cache-Control': 'no-store'
+            }
+          });
         }
         
+        console.log('Sending formatted email:', {
+          subject: template.subject,
+          contentLength: formattedHtml.length,
+          baseUrl
+        });
+
         const sendResult = await safeFetch(`${baseUrl}/api/admin/send-email`, {
           method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-store'
+          },
           body: JSON.stringify({ 
             email: order.email, 
             subject: template.subject, 
             html: formattedHtml,
             text: generateResult.data.content,
             isPWA
-          })
+          }),
+          cache: 'no-store'
         });
 
         if (!sendResult.ok) {
-          console.error('Failed to send email:', sendResult.data);
-          throw new Error(sendResult.data?.error || sendResult.data?.details || 'Failed to send email');
+          console.error('Failed to send email:', {
+            status: sendResult.status,
+            error: sendResult.data?.error,
+            details: sendResult.data?.details
+          });
+          return new NextResponse(JSON.stringify({
+            error: 'Failed to send email',
+            details: sendResult.data?.error || sendResult.data?.details || 'Email sending failed',
+            success: false,
+            isPWA
+          }), {
+            status: sendResult.status || 500,
+            headers: {
+              'Content-Type': 'application/json',
+              'Cache-Control': 'no-store'
+            }
+          });
         }
         
         return new NextResponse(JSON.stringify({ 
