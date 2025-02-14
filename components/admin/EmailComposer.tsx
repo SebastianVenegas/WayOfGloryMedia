@@ -234,25 +234,22 @@ export default function EmailComposer({
         throw new Error('Email content cannot be empty');
       }
 
-      // Enhanced sanitization for PWA mode
       const isPWA = typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches;
-      let sanitizedContent = content
-        .trim()
-        .replace(/[\u200B-\u200D\uFEFF]/g, '') // Remove zero-width spaces
-        .replace(/\s+/g, ' '); // Normalize whitespace
+      let sanitizedContent = content.trim();
 
-      // Additional PWA-specific sanitization
-      if (isPWA) {
-        sanitizedContent = sanitizedContent
-          .replace(/&nbsp;/g, ' ')
-          .replace(/<p><br><\/p>/g, '<p></p>')
-          .replace(/<p><\/p>/g, '<br>')
-          .replace(/\r?\n|\r/g, '');
+      if (!isPWA) {
+        // For non-PWA: remove zero-width characters and normalize whitespace
+        sanitizedContent = sanitizedContent.replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/\s+/g, ' ');
+      } else {
+        // For PWA: remove zero-width characters but retain whitespace for proper HTML structure
+        sanitizedContent = sanitizedContent.replace(/[\u200B-\u200D\uFEFF]/g, '');
+        // Additional PWA-specific sanitization
+        sanitizedContent = sanitizedContent.replace(/&nbsp;/g, ' ').replace(/<p><br><\/p>/g, '<p></p>');
       }
 
       // Validate content structure
-      if (!/^[\s\S]*<[^>]+>[\s\S]*$/.test(sanitizedContent)) {
-        throw new Error('Invalid email content structure');
+      if (!/<[a-z][^>]*>/i.test(sanitizedContent)) {
+        console.warn('Warning: Email content does not appear to contain HTML tags.');
       }
 
       const response = await fetch(`/api/admin/orders/${orderId}/send-template`, {
