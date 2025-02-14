@@ -165,9 +165,12 @@ export default function EmailComposer({
     }
   }
 
-  const handleGenerateEmail = async () => {
+  const handleGenerateEmail = async (event?: React.MouseEvent) => {
     try {
       setIsGenerating(true);
+      
+      // Prevent default form submission behavior
+      event?.preventDefault?.();
       
       // Sanitize the content before sending
       const sanitizedContent = content.trim().replace(/\s+/g, ' ');
@@ -178,43 +181,74 @@ export default function EmailComposer({
 
       const isPWA = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
 
-      const response = await fetch('/api/admin/generate-email', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(isPWA ? { 'x-pwa-request': 'true' } : {}),
-        },
-        body: JSON.stringify({
-          orderId,
-          content: sanitizedContent,
-          isPWA
-        }),
-      });
+      // Use AbortController for timeout handling
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to generate email');
-      }
+      try {
+        const response = await fetch('/api/admin/generate-email', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(isPWA ? { 
+              'x-pwa-request': 'true',
+              'Cache-Control': 'no-store',
+              'Pragma': 'no-cache'
+            } : {}),
+          },
+          body: JSON.stringify({
+            orderId,
+            content: sanitizedContent,
+            isPWA
+          }),
+          signal: controller.signal,
+          // Prevent caching in PWA
+          cache: 'no-store',
+        });
 
-      const data = await response.json();
-      
-      // Ensure the response data is properly formatted
-      if (!data.html || typeof data.html !== 'string') {
-        throw new Error('Invalid email template format');
-      }
+        clearTimeout(timeoutId);
 
-      setContent(data.html);
-      if (data.subject) {
-        setSubject(data.subject);
-        if (onSubjectChange) {
-          onSubjectChange(data.subject);
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to generate email');
         }
+
+        const data = await response.json();
+        
+        // Ensure the response data is properly formatted
+        if (!data.html || typeof data.html !== 'string') {
+          throw new Error('Invalid email template format');
+        }
+
+        // Update state in a safe way
+        setContent(prevContent => {
+          const newContent = data.html;
+          if (onContentChange) {
+            onContentChange(newContent);
+          }
+          return newContent;
+        });
+
+        if (data.subject) {
+          setSubject(prevSubject => {
+            const newSubject = data.subject;
+            if (onSubjectChange) {
+              onSubjectChange(newSubject);
+            }
+            return newSubject;
+          });
+        }
+        
+        toast({
+          title: "Email Generated",
+          description: "Your email has been professionally formatted.",
+        });
+      } catch (fetchError: unknown) {
+        if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+          throw new Error('Request timed out. Please try again.');
+        }
+        throw fetchError;
       }
-      
-      toast({
-        title: "Email Generated",
-        description: "Your email has been professionally formatted.",
-      });
     } catch (error) {
       console.error('Error generating email:', error);
       toast({
