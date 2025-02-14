@@ -231,9 +231,8 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
 
     if (customEmail?.html) {
       const subject = customEmail.subject || `Order Update - Way of Glory #${orderId}`;
-      let emailContent;
       try {
-        emailContent = formatEmailContent(customEmail.html, {
+        const emailContent = formatEmailContent(customEmail.html, {
           ...baseVariables,
           order_items: orderItems,
           subtotal,
@@ -268,7 +267,8 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
         });
 
         if (!sendResult.ok) {
-          throw new Error(sendResult.data?.error || 'Failed to send email');
+          console.error('Failed to send email:', sendResult.data);
+          throw new Error(sendResult.data?.error || sendResult.data?.details || 'Failed to send email');
         }
 
         return new NextResponse(JSON.stringify({
@@ -318,8 +318,13 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
           })
         });
         
-        if (!generateResult.ok || !generateResult.data.html || !generateResult.data.content) {
-          throw new Error(generateResult.data?.error || 'Invalid response from email generator');
+        if (!generateResult.ok) {
+          console.error('Failed to generate email:', generateResult.data);
+          throw new Error(generateResult.data?.error || generateResult.data?.details || 'Failed to generate email');
+        }
+
+        if (!generateResult.data.html || !generateResult.data.content) {
+          throw new Error('Invalid response from email generator: Missing required content');
         }
         
         let formattedHtml;
@@ -355,7 +360,8 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
         });
 
         if (!sendResult.ok) {
-          throw new Error(sendResult.data?.error || 'Failed to send email');
+          console.error('Failed to send email:', sendResult.data);
+          throw new Error(sendResult.data?.error || sendResult.data?.details || 'Failed to send email');
         }
         
         return new NextResponse(JSON.stringify({ 

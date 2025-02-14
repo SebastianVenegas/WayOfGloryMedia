@@ -5,7 +5,7 @@ export async function safeFetch(url: string, options: RequestInit): Promise<{
   headers?: Record<string, string>;
 }> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 25000); // 25 second timeout
+  const timeoutId = setTimeout(() => controller.abort(), 25000);
 
   try {
     console.log('Making request to:', url);
@@ -25,67 +25,108 @@ export async function safeFetch(url: string, options: RequestInit): Promise<{
 
     const text = await response.text();
     console.log('Response status:', response.status);
-    console.log('Response text:', text.substring(0, 200));
-
+    
     // Handle empty responses
     if (!text.trim()) {
       console.error('Empty response received');
-      throw new Error('Empty response received from server');
+      return {
+        ok: false,
+        data: { error: 'Empty response received from server' },
+        status: response.status
+      };
     }
 
-    // Check if response looks like HTML
-    if (text.trim().toLowerCase().startsWith('<!doctype html') || 
-        text.trim().startsWith('<html') || 
-        text.trim().startsWith('<')) {
-      console.error('HTML response received:', text.substring(0, 200));
-      throw new Error('Received HTML instead of JSON response');
-    }
-
-    // Try to parse as JSON
-    let data;
+    // Try to parse as JSON first
     try {
-      // Remove any BOM characters that might be present
-      const cleanText = text.replace(/^\uFEFF/, '');
-      data = JSON.parse(cleanText);
-    } catch (error) {
-      console.error('Failed to parse response as JSON:', {
-        text: text.substring(0, 200),
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
+      const cleanText = text.replace(/^\uFEFF/, '').trim();
+      const data = JSON.parse(cleanText);
       
-      // Try to extract error message if it's an error response
+      // Even if we can parse JSON, check if it's an error response
+      if (!response.ok) {
+        return {
+          ok: false,
+          data: {
+            error: data?.error || data?.details || response.statusText || 'Request failed',
+            details: data?.details || data?.error || response.statusText
+          },
+          status: response.status
+        };
+      }
+
+      return { 
+        ok: true, 
+        data,
+        status: response.status,
+        headers: Object.fromEntries(response.headers.entries())
+      };
+    } catch (parseError) {
+      // If JSON parsing fails, check if it's HTML
+      if (text.trim().toLowerCase().startsWith('<!doctype html') || 
+          text.trim().startsWith('<html') || 
+          text.trim().startsWith('<')) {
+        console.error('HTML response received instead of JSON');
+        return {
+          ok: false,
+          data: { 
+            error: 'Received HTML instead of JSON response',
+            details: text.substring(0, 100)
+          },
+          status: response.status
+        };
+      }
+
+      // Try to extract error message from text
       const errorMatch = text.match(/error occurred|an error occurred: (.*?)(?:\n|$)/i);
       if (errorMatch) {
-        throw new Error(errorMatch[1] || 'Server error occurred');
+        return {
+          ok: false,
+          data: { 
+            error: errorMatch[1] || 'Server error occurred',
+            details: text.substring(0, 100)
+          },
+          status: response.status
+        };
       }
-      
-      throw new Error(`Invalid JSON response: ${text.substring(0, 100)}`);
-    }
 
-    // Check if response is OK
-    if (!response.ok) {
-      const errorMessage = data?.error || data?.details || response.statusText || 'Request failed';
-      throw new Error(errorMessage);
+      // Generic error for unparseable response
+      return {
+        ok: false,
+        data: { 
+          error: 'Invalid response format',
+          details: text.substring(0, 100)
+        },
+        status: response.status
+      };
     }
-
-    return { 
-      ok: true, 
-      data,
-      status: response.status,
-      headers: Object.fromEntries(response.headers.entries())
-    };
   } catch (error: any) {
     clearTimeout(timeoutId);
+    
+    // Handle timeout
     if (error.name === 'AbortError') {
-      throw new Error('Request timed out after 25 seconds');
+      return {
+        ok: false,
+        data: { 
+          error: 'Request timed out',
+          details: 'The request took too long to complete'
+        },
+        status: 504
+      };
     }
-    // Enhance error message
-    const errorMessage = error.message || 'Unknown error occurred';
+
+    // Handle network or other errors
     console.error('SafeFetch error:', {
       url,
-      error: errorMessage,
+      error: error.message,
       stack: error.stack
     });
-    throw new Error(`Request failed: ${errorMessage}`);
+
+    return {
+      ok: false,
+      data: { 
+        error: 'Request failed',
+        details: error.message
+      },
+      status: 500
+    };
   }
 } 
