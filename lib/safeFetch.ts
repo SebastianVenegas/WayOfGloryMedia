@@ -56,7 +56,7 @@ export async function safeFetch(url: string, options: RequestInit): Promise<{
     console.log('Clean response text:', cleanText.substring(0, 200));
 
     // If the response text appears to be an error message, return it without attempting JSON.parse
-    if (cleanText.toLowerCase().startsWith('an error occurred') || cleanText.toLowerCase().startsWith('application error')) {
+    if (cleanText.toLowerCase().startsWith('an error') || cleanText.toLowerCase().startsWith('application error')) {
       console.error('Response appears to be an error message rather than valid JSON:', cleanText.substring(0, 100));
       return {
         ok: false,
@@ -71,138 +71,95 @@ export async function safeFetch(url: string, options: RequestInit): Promise<{
     // Check for malformed JSON: if it starts with a quote but does not end with one, consider it malformed
     // Try to parse as JSON first
     try {
-      // Remove any BOM characters and whitespace
-      const cleanText = text.replace(/^\uFEFF/, '').trim();
-      console.log('Clean response text:', cleanText.substring(0, 200));
-
-      // If the response text appears to be an error message, return it without attempting JSON.parse
-      if (cleanText.toLowerCase().startsWith('an error occurred') || cleanText.toLowerCase().startsWith('application error')) {
-        console.error('Response appears to be an error message rather than valid JSON:', cleanText.substring(0, 100));
+      const data = JSON.parse(cleanText);
+      // Check if the response is an error object
+      if (data && typeof data === 'object' && ('error' in data || 'details' in data)) {
         return {
           ok: false,
           data: {
-            error: 'Server error',
-            details: cleanText.substring(0, 300)
+            error: data.error || data.details || 'Unknown error',
+            details: data.details || data.error || 'No additional details'
           },
           status: response.status
         };
       }
 
-      // Use a regex to check that the cleanText starts with a valid JSON opening character ('{', '[' or '"')
-      if (!/^[\{\[\"]/i.test(cleanText)) {
-        console.error('Response does not appear to be valid JSON. Raw response:', cleanText.substring(0, 100));
+      // If response is not OK but we got JSON, format it as an error
+      if (!response.ok) {
         return {
           ok: false,
           data: {
-            error: 'Invalid JSON response',
-            details: `Response does not start with a valid JSON character. Raw response: ${cleanText.substring(0, 100)}`
+            error: data?.error || data?.message || response.statusText || 'Request failed',
+            details: data?.details || data?.error || response.statusText
           },
           status: response.status
         };
       }
 
-      // Handle case where response is just a string error message
-      if (cleanText.startsWith('"') && cleanText.endsWith('"')) {
-        try {
-          const errorMessage = JSON.parse(cleanText);
-          return {
-            ok: false,
-            data: { 
-              error: errorMessage,
-              details: 'Server returned error message'
-            },
-            status: response.status
-          };
-        } catch (e) {
-          console.error('Failed to parse string error message:', e);
-          return {
-            ok: false,
-            data: {
-              error: 'Malformed JSON error message',
-              details: cleanText.substring(0, 300)
-            },
-            status: response.status
-          };
-        }
-      }
-
-      try {
-        const data = JSON.parse(cleanText);
-        // Check if the response is an error object
-        if (data && typeof data === 'object' && ('error' in data || 'details' in data)) {
-          return {
-            ok: false,
-            data: {
-              error: data.error || data.details || 'Unknown error',
-              details: data.details || data.error || 'No additional details'
-            },
-            status: response.status
-          };
-        }
-
-        // If response is not OK but we got JSON, format it as an error
-        if (!response.ok) {
-          return {
-            ok: false,
-            data: {
-              error: data?.error || data?.message || response.statusText || 'Request failed',
-              details: data?.details || data?.error || response.statusText
-            },
-            status: response.status
-          };
-        }
-
-        // Success case
-        return { 
-          ok: true, 
-          data,
-          status: response.status,
-          headers: Object.fromEntries(response.headers.entries())
-        };
-      } catch (parseError) {
-        console.error('Failed to parse JSON response:', {
-          text: text.substring(0, 300),
-          error: parseError instanceof Error ? parseError.message : 'Unknown parse error'
-        });
-        
-        // Fallback: attempt to extract valid JSON substring from the response
-        const jsonMatch = cleanText.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
-        if (jsonMatch) {
-          try {
-            const extractedData = JSON.parse(jsonMatch[0]);
-            console.warn('Extracted valid JSON substring from response.');
-            return { 
-              ok: true, 
-              data: extractedData,
-              status: response.status,
-              headers: Object.fromEntries(response.headers.entries())
-            };
-          } catch (ex) {
-            console.error('Fallback JSON extraction failed:', ex);
-          }
-        }
-        
-        return {
-           ok: false,
-           data: {
-             error: 'Failed to parse JSON response',
-             details: `The response could not be parsed as JSON. Raw response: ${text.substring(0, 300)}`
-           },
-           status: response.status
-        };
-      }
+      // Success case
+      return { 
+        ok: true, 
+        data,
+        status: response.status,
+        headers: Object.fromEntries(response.headers.entries())
+      };
     } catch (parseError) {
       console.error('Failed to parse JSON response:', {
         text: text.substring(0, 300),
         error: parseError instanceof Error ? parseError.message : 'Unknown parse error'
       });
+      
+      // Fallback: attempt to extract valid JSON substring using regex
+      let jsonMatch = cleanText.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
+      if (jsonMatch) {
+        try {
+          const extractedData = JSON.parse(jsonMatch[0]);
+          console.warn('Extracted valid JSON substring from response using regex.');
+          return { 
+            ok: true, 
+            data: extractedData,
+            status: response.status,
+            headers: Object.fromEntries(response.headers.entries())
+          };
+        } catch (ex) {
+          console.error('Fallback JSON extraction using regex failed:', ex);
+        }
+      }
+      
+      // Fallback: locate first '{' or '[' manually
+      let idxBrace = cleanText.indexOf('{');
+      let idxBracket = cleanText.indexOf('[');
+      let idx = -1;
+      if (idxBrace !== -1 && idxBracket !== -1) {
+        idx = Math.min(idxBrace, idxBracket);
+      } else if (idxBrace !== -1) {
+        idx = idxBrace;
+      } else if (idxBracket !== -1) {
+        idx = idxBracket;
+      }
+      if (idx !== -1) {
+        try {
+          const extractedData = JSON.parse(cleanText.slice(idx));
+          console.warn('Extracted valid JSON substring from response using manual index extraction.');
+          return { 
+            ok: true, 
+            data: extractedData,
+            status: response.status,
+            headers: Object.fromEntries(response.headers.entries())
+          };
+        } catch (ex) {
+          console.error('Fallback JSON extraction using manual index failed:', ex);
+        }
+      }
+      
+      // If all fallback attempts fail, return error response
       return {
-         ok: false,
-         data: {
-             error: 'Failed to parse JSON response',
-             details: `The response could not be parsed as JSON. Raw response: ${text.substring(0, 300)}`
-         },
-         status: response.status
+        ok: false,
+        data: {
+          error: 'Failed to parse JSON response',
+          details: `The response could not be parsed as JSON. Raw response: ${text.substring(0, 300)}`
+        },
+        status: response.status
       };
     }
   } catch (error: any) {
