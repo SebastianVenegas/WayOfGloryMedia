@@ -55,21 +55,8 @@ export async function safeFetch(url: string, options: RequestInit): Promise<{
     const cleanText = text.replace(/^\uFEFF/, '').trim();
     console.log('Clean response text:', cleanText.substring(0, 200));
 
-    // Early check: if the cleaned text does not start with '{' or '[', it's not valid JSON
-    if (!cleanText.startsWith('{') && !cleanText.startsWith('[')) {
-      console.error('Clean response text does not start with valid JSON character:', cleanText.substring(0, 200));
-      return {
-        ok: false,
-        data: {
-          error: 'Invalid JSON response',
-          details: `Response does not start with '{' or '['. Raw response: ${cleanText.substring(0,300)}`
-        },
-        status: response.status
-      };
-    }
-
     // If the response text appears to be an error message, return it without attempting JSON.parse
-    if (cleanText.slice(0,150).toLowerCase().includes('an error') || cleanText.slice(0,150).toLowerCase().includes('application error')) {
+    if (cleanText.toLowerCase().startsWith('an error') || cleanText.toLowerCase().startsWith('application error')) {
       console.error('Response appears to be an error message rather than valid JSON:', cleanText.substring(0, 100));
       return {
         ok: false,
@@ -81,7 +68,19 @@ export async function safeFetch(url: string, options: RequestInit): Promise<{
       };
     }
 
-    // Check for malformed JSON: if it starts with a quote but does not end with one, consider it malformed
+    // Additional sanity check: if the cleaned response does not start with '{' or '[', return error
+    if (!cleanText.startsWith('{') && !cleanText.startsWith('[')) {
+      console.error('Response does not begin with a valid JSON character:', cleanText.substring(0, 100));
+      return {
+        ok: false,
+        data: {
+          error: 'Invalid JSON response',
+          details: `Response does not start with a valid JSON character. Raw response: ${cleanText.substring(0, 100)}`
+        },
+        status: response.status
+      };
+    }
+
     // Try to parse as JSON first
     try {
       const data = JSON.parse(cleanText);
