@@ -167,10 +167,13 @@ export default function EmailComposer({
 
   const handleGenerateEmail = async (event?: React.MouseEvent) => {
     try {
-      setIsGenerating(true);
+      // Prevent any form of navigation or submission
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
       
-      // Prevent default form submission behavior
-      event?.preventDefault?.();
+      setIsGenerating(true);
       
       // Sanitize the content before sending
       const sanitizedContent = content.trim().replace(/\s+/g, ' ');
@@ -181,32 +184,31 @@ export default function EmailComposer({
 
       const isPWA = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
 
-      // Use AbortController for timeout handling
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-
       try {
         const response = await fetch('/api/admin/generate-email', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Accept': 'application/json',
             ...(isPWA ? { 
               'x-pwa-request': 'true',
-              'Cache-Control': 'no-store',
+              'Cache-Control': 'no-store, no-cache, must-revalidate',
               'Pragma': 'no-cache'
-            } : {}),
+            } : {})
           },
           body: JSON.stringify({
             orderId,
             content: sanitizedContent,
-            isPWA
+            isPWA,
+            preventRedirect: true
           }),
-          signal: controller.signal,
-          // Prevent caching in PWA
+          // Prevent any redirects
+          redirect: 'manual',
+          // Prevent caching
           cache: 'no-store',
+          credentials: 'same-origin',
+          mode: 'cors'
         });
-
-        clearTimeout(timeoutId);
 
         if (!response.ok) {
           const errorData = await response.json();
@@ -243,14 +245,12 @@ export default function EmailComposer({
           title: "Email Generated",
           description: "Your email has been professionally formatted.",
         });
-      } catch (fetchError: unknown) {
-        if (fetchError instanceof Error && fetchError.name === 'AbortError') {
-          throw new Error('Request timed out. Please try again.');
-        }
-        throw fetchError;
+      } catch (error) {
+        console.error('Error generating email:', error);
+        throw error;
       }
     } catch (error) {
-      console.error('Error generating email:', error);
+      console.error('Error in handleGenerateEmail:', error);
       toast({
         title: "Generation Failed",
         description: error instanceof Error ? error.message : "Failed to generate email",
@@ -536,11 +536,13 @@ export default function EmailComposer({
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
+                    e.nativeEvent.preventDefault();
                     handleGenerateEmail(e);
-                    return false;
                   }} 
                   disabled={isGenerating || isTemplateLoading}
                   className="relative"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onTouchStart={(e) => e.preventDefault()}
                 >
                   <span className={isGenerating ? 'opacity-0' : 'opacity-100'}>
                     Generate with AI
