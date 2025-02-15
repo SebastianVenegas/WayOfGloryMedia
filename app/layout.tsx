@@ -12,6 +12,7 @@ import { PWARegister } from './pwa'
 export const metadata: Metadata = {
   title: 'Way of Glory Media',
   description: 'Professional Audio and Video Services for Churches',
+  manifest: '/admin-manifest.json',
   icons: [
     {
       rel: 'icon',
@@ -53,6 +54,7 @@ export default async function RootLayout({
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#1E3A8A" />
+        <link rel="manifest" href="/admin-manifest.json" />
         
         {/* Preload critical assets */}
         <link 
@@ -71,6 +73,7 @@ export default async function RootLayout({
             {children}
             <Analytics />
             <SpeedInsights />
+            <PWARegister />
           </div>
         </SidebarProvider>
         <TawkToScript />
