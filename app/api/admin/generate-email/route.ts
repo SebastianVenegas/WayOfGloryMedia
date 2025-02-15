@@ -32,8 +32,14 @@ const toNumber = (value: number | string | null | undefined): number => {
 }
 
 export async function POST(request: NextRequest) {
+  // Enhanced PWA detection
+  const isPWA = request.headers.get('x-pwa-request') === 'true' || 
+                request.headers.get('display-mode') === 'standalone' ||
+                request.headers.get('sec-fetch-dest') === 'serviceworker' ||
+                process.env.NEXT_PUBLIC_PWA === 'true';
+
   try {
-    const { orderId, prompt, variables, content, isPWA } = await request.json();
+    const { orderId, prompt, variables, content } = await request.json();
     
     console.log('Received request:', {
       orderId,
@@ -48,7 +54,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ 
         error: 'OpenAI API key is missing',
         success: false,
-        isPWA: isPWA || process.env.NEXT_PUBLIC_PWA === 'true'
+        isPWA
       }, { 
         status: 500,
         headers: {
@@ -70,7 +76,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ 
           error: 'Order not found',
           success: false,
-          isPWA: isPWA || process.env.NEXT_PUBLIC_PWA === 'true'
+          isPWA
         }, { 
           status: 404,
           headers: {
@@ -100,7 +106,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ 
         error: 'Missing or invalid email variables',
         success: false,
-        isPWA: isPWA || process.env.NEXT_PUBLIC_PWA === 'true'
+        isPWA
       }, { 
         status: 400,
         headers: {
@@ -179,7 +185,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ 
         error: 'Failed to generate email content',
         success: false,
-        isPWA: isPWA || process.env.NEXT_PUBLIC_PWA === 'true'
+        isPWA
       }, { 
         status: 500,
         headers: {
@@ -202,7 +208,7 @@ export async function POST(request: NextRequest) {
       content: generatedContent,
       html: formattedHtml,
       success: true,
-      isPWA: isPWA || process.env.NEXT_PUBLIC_PWA === 'true'
+      isPWA
     }, {
       headers: {
         'Content-Type': 'application/json',
@@ -218,7 +224,7 @@ export async function POST(request: NextRequest) {
         error: 'Failed to generate email', 
         details: errorMessage,
         success: false,
-        isPWA: process.env.NEXT_PUBLIC_PWA === 'true'
+        isPWA
       },
       { 
         status: 500,

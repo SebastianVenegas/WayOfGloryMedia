@@ -32,7 +32,10 @@ interface OrderItem {
 
 // Add the getBaseUrl helper to dynamically compute the base URL
 function getBaseUrl(request: NextRequest): string {
-  const host = request.headers.get('host');
+  if (process.env.NEXT_PUBLIC_BASE_URL) {
+    return process.env.NEXT_PUBLIC_BASE_URL;
+  }
+  const host = request.headers.get('host') || 'localhost:3000';
   const protocol = request.headers.get('x-forwarded-proto') || 'https';
   return `${protocol}://${host}`;
 }
@@ -41,18 +44,33 @@ export async function GET(
   request: NextRequest
 ): Promise<NextResponse> {
   const searchParams = request.nextUrl.searchParams;
-  // Extract orderId from the pathname (assuming the URL structure: /api/admin/orders/[orderId]/preview-template)
   const orderId = request.nextUrl.pathname.split('/')[4];
+  
+  // Enhanced PWA detection
+  const isPWA = request.headers.get('x-pwa-request') === 'true' || 
+                request.headers.get('display-mode') === 'standalone' ||
+                request.headers.get('sec-fetch-dest') === 'serviceworker' ||
+                process.env.NEXT_PUBLIC_PWA === 'true';
   
   try {
     // Use absolute URLs for logos
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-    const logoLightUrl = '/images/logo/LogoLight.png';
-    const logoNormalUrl = '/images/logo/logo.png';
+    const baseUrl = getBaseUrl(request);
+    const logoLightUrl = `${baseUrl}/images/logo/LogoLight.png`;
+    const logoNormalUrl = `${baseUrl}/images/logo/logo.png`;
 
     if (!orderId) {
       console.error('Missing orderId in URL');
-      return NextResponse.json({ error: 'Order ID is required' }, { status: 400 });
+      return NextResponse.json({ 
+        error: 'Order ID is required',
+        success: false,
+        isPWA
+      }, { 
+        status: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-store'
+        }
+      });
     }
     const orderId_int = parseInt(orderId);
     if (isNaN(orderId_int)) {
@@ -178,6 +196,7 @@ export async function GET(
       template.variables = {
         ...template.variables,
         logoUrl: logoLightUrl,
+        logoNormalUrl: logoNormalUrl,
         order_items: orderItems,
         subtotal: formatPrice(subtotal),
         tax_amount: formatPrice(taxAmount),
@@ -194,15 +213,21 @@ export async function GET(
       templateId,
       prompt: prompt.substring(0, 100) + '...',
       variables: template.variables,
-      isPWA: process.env.NEXT_PUBLIC_PWA === 'true'
+      isPWA
     });
 
     const generatePayload = {
       prompt: prompt,
       content: prompt,
-      variables: template.variables,
+      variables: {
+        ...template.variables,
+        logoUrl: logoLightUrl,
+        logoNormalUrl: logoNormalUrl,
+        baseUrl,
+        isPWA
+      },
       orderId: orderId_int,
-      isPWA: process.env.NEXT_PUBLIC_PWA === 'true'
+      isPWA
     };
 
     let generateResult;
@@ -212,7 +237,8 @@ export async function GET(
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
-          'Cache-Control': 'no-store'
+          'Cache-Control': 'no-store',
+          'x-pwa-request': isPWA ? 'true' : 'false'
         },
         body: JSON.stringify(generatePayload)
       });
@@ -223,8 +249,14 @@ export async function GET(
         error: 'Failed to generate email content',
         details: err instanceof Error ? err.message : 'Unknown error',
         success: false,
-        isPWA: process.env.NEXT_PUBLIC_PWA === 'true'
-      }, { status: 500 });
+        isPWA
+      }, { 
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-store'
+        }
+      });
     }
 
     if (!generateResult.ok) {
@@ -237,7 +269,7 @@ export async function GET(
         error: 'Failed to generate email',
         details: generateResult.data?.error || generateResult.data?.details || 'Email generation failed',
         success: false,
-        isPWA: process.env.NEXT_PUBLIC_PWA === 'true'
+        isPWA
       }, {
         status: generateResult.status || 500,
         headers: {
@@ -258,7 +290,7 @@ export async function GET(
         error: 'Invalid response from email generator',
         details: 'Missing required content in response',
         success: false,
-        isPWA: process.env.NEXT_PUBLIC_PWA === 'true'
+        isPWA
       }, {
         status: 500,
         headers: {
@@ -274,7 +306,7 @@ export async function GET(
       content: generateResult.data.content,
       html: generateResult.data.html,
       success: true,
-      isPWA: process.env.NEXT_PUBLIC_PWA === 'true'
+      isPWA
     }, {
       headers: {
         'Content-Type': 'application/json',
@@ -288,7 +320,7 @@ export async function GET(
       error: 'Failed to generate email preview',
       details: error instanceof Error ? error.message : 'An unexpected error occurred',
       success: false,
-      isPWA: process.env.NEXT_PUBLIC_PWA === 'true'
+      isPWA
     }, { 
       status: 500,
       headers: {
