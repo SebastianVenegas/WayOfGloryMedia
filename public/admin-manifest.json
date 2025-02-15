@@ -1,6 +1,6 @@
 {
-  "name": "Way of Glory Media Admin",
-  "short_name": "WoG Admin",
+  "name": "WayofGlory",
+  "short_name": "WayofGlory",
   "description": "Way of Glory Media Admin Dashboard",
   "start_url": "/admin/products",
   "id": "/admin",

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'way-of-glory-admin-v1';
+const CACHE_NAME = 'wayofglory-v1';
 
 // Add URLs to cache
 const urlsToCache = [
