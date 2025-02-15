@@ -198,7 +198,9 @@ export async function GET(
 
     const generatePayload = {
       prompt: prompt,
-      variables: template.variables
+      content: prompt,
+      variables: template.variables,
+      orderId: orderId_int
     };
 
     let data;
@@ -224,13 +226,11 @@ export async function GET(
       }, { status: 500 });
     }
 
-    // Format the final content
-    const formattedHtml = formatEmailContent(data.content, template.variables);
-
+    // Return the already formatted content from generate-email
     return NextResponse.json({
       subject: template.subject,
       content: data.content,
-      html: formattedHtml
+      html: data.html  // Use the html directly from generate-email instead of formatting again
     });
 
   } catch (error) {

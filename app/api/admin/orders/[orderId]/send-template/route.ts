@@ -232,20 +232,8 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
     if (customEmail?.html) {
       const subject = customEmail.subject || `Order Update - Way of Glory #${orderId}`;
       try {
-        const emailContent = formatEmailContent(customEmail.html, {
-          ...baseVariables,
-          order_items: orderItems,
-          subtotal,
-          tax_amount: taxAmount,
-          installation_price: installationPrice,
-          totalAmount,
-          emailType: (subject || `Order Update - Way of Glory #${orderId}`).replace(' - Way of Glory', '').replace(` #${orderId}`, ''),
-          companyName: 'Way of Glory Media',
-          supportEmail: 'help@wayofglory.com',
-          logoUrl: `${baseUrl}/images/logo/LogoLight.png`,
-          logoLightUrl: `${baseUrl}/images/logo/LogoLight.png`,
-          logoNormalUrl: `${baseUrl}/images/logo/logo.png`
-        });
+        // Don't format custom emails again - they are already formatted
+        const emailContent = customEmail.html;
 
         // Log the email
         await sql`

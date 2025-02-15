@@ -86,7 +86,7 @@ function AdminContent({ children }: AdminClientProps) {
 
 export default function AdminClient({ children }: AdminClientProps) {
   return (
-    <SidebarProvider initialState={true}>
+    <SidebarProvider initialState={false}>
       <AdminContent>{children}</AdminContent>
     </SidebarProvider>
   )

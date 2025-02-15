@@ -1180,8 +1180,7 @@ export default function OrdersPage() {
     }
 
     try {
-      setIsSendingEmail(true)
-      setSendingTemplateId('sending')
+      setIsSendingEmail(true)  // This will show the loading indicator on the send button
       
       // Use fallback values if email content or subject are missing
       const finalContent = editedContent || '<p>No email content was generated.</p>';
@@ -1210,7 +1209,7 @@ export default function OrdersPage() {
           customEmail: {
             subject: finalSubject,
             content: finalContent,
-            html: finalContent
+            html: previewHtml  // Use the previewHtml which contains the fully formatted content
           },
           isPWA: false
         }),
@@ -1244,8 +1243,7 @@ export default function OrdersPage() {
       console.error('Error in handleSendEmail:', error)
       toast.error(error instanceof Error ? error.message : 'Failed to send email')
     } finally {
-      setSendingTemplateId(null)
-      setIsSendingEmail(false)
+      setIsSendingEmail(false)  // Clear the loading state
     }
   }
 
@@ -2370,12 +2368,12 @@ export default function OrdersPage() {
                 >
                   {isSendingEmail ? (
                     <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-600/30 border-t-gray-600" />
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-600 border-t-transparent" />
                       Sending...
                     </>
                   ) : (
                     <>
-                  <FileText className="h-4 w-4" />
+                      <FileText className="h-4 w-4" />
                       Send Email
                     </>
                   )}
@@ -3024,12 +3022,12 @@ export default function OrdersPage() {
                   </Button>
                     <Button
                       onClick={handleSendEmail}
-                      disabled={isLoading || isGeneratingAI || isTemplateLoading}
+                      disabled={isLoading || isGeneratingAI || isTemplateLoading || isSendingEmail}
                       className="w-[200px] bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-medium flex items-center justify-center gap-2 shadow-sm"
                     >
-                      {isLoading ? (
+                      {isSendingEmail ? (
                         <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white mr-2" />
+                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
                           Sending...
                         </>
                       ) : (

@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState, ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 
 interface SidebarContextType {
   isExpanded: boolean
@@ -15,11 +15,30 @@ interface SidebarProviderProps {
   initialState?: boolean
 }
 
-export function SidebarProvider({ children, initialState = true }: SidebarProviderProps) {
-  const [isExpanded, setIsExpanded] = useState(initialState)
+export function SidebarProvider({ children, initialState = false }: SidebarProviderProps) {
+  // Initialize from localStorage or use default collapsed state
+  const [isExpanded, setIsExpanded] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false
+    try {
+      const saved = localStorage.getItem('sidebarExpanded')
+      return saved ? JSON.parse(saved) === true : false
+    } catch {
+      return false
+    }
+  })
+
+  // Persist state changes to localStorage
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      localStorage.setItem('sidebarExpanded', JSON.stringify(isExpanded))
+    } catch (error) {
+      console.error('Failed to save sidebar state:', error)
+    }
+  }, [isExpanded])
 
   const toggleSidebar = () => {
-    setIsExpanded(prev => !prev)
+    setIsExpanded((prev: boolean) => !prev)
   }
 
   return (

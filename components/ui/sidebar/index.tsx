@@ -74,151 +74,121 @@ interface SidebarProps {
 export function Sidebar({ isExpanded, toggleSidebar, pathname, handleLogout }: SidebarProps) {
   const router = useRouter()
 
-  const handleNavigation = (e: React.MouseEvent | React.TouchEvent, href: string) => {
-    e.preventDefault()
+  const handleNavigation = (href: string) => {
     router.push(href)
+    // Auto collapse sidebar on mobile after navigation
+    if (window.innerWidth < 768) {
+      toggleSidebar()
+    }
   }
 
   return (
-    <motion.div
-      initial={false}
-      animate={{
-        width: isExpanded ? '280px' : '80px',
-        transition: { duration: 0.3 }
+    <div
+      className={cn(
+        "fixed left-0 top-0 bottom-0 z-[40] bg-white border-r border-gray-100 flex flex-col shadow-sm select-none",
+        isExpanded ? "w-[280px]" : "w-[64px] md:w-[80px]"
+      )}
+      style={{ 
+        transition: 'width 100ms ease-in-out',
+        WebkitTapHighlightColor: 'transparent'
       }}
-      className="fixed left-0 top-0 bottom-0 z-[40] bg-white/90 backdrop-blur-md border-r border-gray-100 flex flex-col shadow-sm touch-manipulation"
     >
       {/* Header */}
-      <div className="flex items-center h-20 px-4 border-b border-gray-100 bg-white/80">
+      <div 
+        className="flex items-center h-16 md:h-20 px-3 md:px-4 border-b border-gray-100 bg-white"
+        onClick={toggleSidebar}
+      >
         <div className="flex items-center gap-3 flex-1">
-          <div className="p-2.5 rounded-xl bg-gradient-to-tr from-blue-600 to-blue-700 shadow-sm ring-1 ring-white/20">
-            <Speaker className="h-5 w-5 text-white" />
+          <div className="p-2 md:p-2.5 rounded-xl bg-gradient-to-tr from-blue-600 to-blue-700">
+            <Speaker className="h-4 w-4 md:h-5 md:w-5 text-white" />
           </div>
-          <AnimatePresence mode="wait">
-            {isExpanded && (
-              <motion.span 
-                key="title"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="font-semibold text-gray-900 text-lg tracking-tight"
-              >
-                Way of Glory
-              </motion.span>
-            )}
-          </AnimatePresence>
+          <span className={cn(
+            "font-semibold text-gray-900 text-base md:text-lg tracking-tight transition-opacity duration-100",
+            isExpanded ? "opacity-100" : "opacity-0 hidden"
+          )}>
+            Way of Glory
+          </span>
         </div>
         <Button
           variant="ghost"
           size="icon"
-          onClick={toggleSidebar}
-          className="h-10 w-10 hover:bg-gray-100/80 rounded-xl text-gray-500 touch-manipulation"
+          onClick={(e) => {
+            e.stopPropagation()
+            toggleSidebar()
+          }}
+          className="h-9 w-9 md:h-10 md:w-10 hover:bg-gray-100 rounded-xl text-gray-500 hidden md:flex"
         >
-          {isExpanded ? (
-            <ChevronLeft className="h-5 w-5" />
-          ) : (
-            <ChevronRight className="h-5 w-5" />
-          )}
+          {isExpanded ? <ChevronLeft className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
         </Button>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-3 space-y-1.5 overflow-y-auto scrollbar-none">
+      <nav className="flex-1 p-2 md:p-3 space-y-1 overflow-y-auto">
         {navigation.map((item) => {
           const isActive = pathname === item.href
           return (
-            <button
+            <div
               key={item.name}
-              onClick={(e) => handleNavigation(e, item.href)}
+              onClick={() => handleNavigation(item.href)}
               className={cn(
-                "w-full group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 relative overflow-hidden hover:shadow-sm touch-manipulation",
+                "w-full group flex items-center gap-3 px-2 md:px-3 py-2 md:py-2.5 rounded-xl text-sm font-medium cursor-pointer active:scale-[0.98] transition-transform",
                 isActive 
                   ? "bg-white text-gray-900 shadow-sm" 
-                  : "text-gray-600 hover:text-gray-900 hover:bg-white"
+                  : "text-gray-600 hover:text-gray-900 hover:bg-white active:bg-gray-50"
               )}
             >
               <div className={cn(
-                "relative z-10 p-2 rounded-lg transition-colors duration-200",
+                "p-1.5 md:p-2 rounded-lg",
                 isActive 
-                  ? "bg-blue-50 text-blue-600 shadow-sm ring-1 ring-blue-100/50" 
-                  : "text-gray-500 group-hover:text-blue-600 bg-gray-50/80 group-hover:bg-blue-50/80"
+                  ? "bg-blue-50 text-blue-600" 
+                  : "text-gray-500 group-hover:text-blue-600 bg-gray-50/80 group-hover:bg-blue-50"
               )}>
-                <item.icon className="h-5 w-5" />
+                <item.icon className="h-4 w-4 md:h-5 md:w-5" />
               </div>
-              {!isExpanded && (
-                <div className="fixed left-[70px] px-3 py-2 bg-gray-900 text-xs font-medium text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-lg">
-                  {item.name}
-                </div>
-              )}
-              <AnimatePresence mode="wait">
-                {isExpanded && (
-                  <motion.span 
-                    key={item.name}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -10 }}
-                    className="truncate"
-                  >
-                    {item.name}
-                  </motion.span>
-                )}
-              </AnimatePresence>
+              <span className={cn(
+                "truncate transition-opacity duration-100 text-sm",
+                isExpanded ? "opacity-100" : "opacity-0 hidden"
+              )}>
+                {item.name}
+              </span>
               {isActive && (
-                <motion.div
-                  layoutId="activeNav"
-                  className="absolute inset-0 bg-gradient-to-r from-white to-white/95 -z-10"
-                  transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                />
+                <div className="absolute inset-0 bg-white -z-10" />
               )}
-            </button>
+            </div>
           )
         })}
       </nav>
 
       {/* User Section */}
-      <div className="p-3 border-t border-gray-100 bg-white/80 backdrop-blur-sm">
+      <div className="p-2 md:p-3 border-t border-gray-100 bg-white">
         <div className={cn(
-          "flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white hover:shadow-sm transition-all",
+          "flex items-center gap-3 px-2 md:px-3 py-2 md:py-2.5 rounded-xl hover:bg-gray-50 active:bg-gray-100 cursor-pointer transition-colors",
           isExpanded && "cursor-pointer"
-        )}>
-          <div className="relative w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-blue-700 flex items-center justify-center text-white font-medium shadow-sm ring-1 ring-white/20">
+        )}
+        onClick={toggleSidebar}
+        >
+          <div className="relative w-8 h-8 md:w-10 md:h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-blue-700 flex items-center justify-center text-white font-medium">
             W
           </div>
-          <AnimatePresence mode="wait">
-            {isExpanded && (
-              <motion.div 
-                key="user-info"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="flex-1 min-w-0"
-              >
-                <p className="text-sm font-medium text-gray-900 truncate">Staff Account</p>
-                <p className="text-xs text-gray-500 truncate">staff@wayofglory.com</p>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          <div className={cn(
+            "flex-1 min-w-0 transition-opacity duration-100",
+            isExpanded ? "opacity-100" : "opacity-0 hidden"
+          )}>
+            <p className="text-sm font-medium text-gray-900 truncate">Staff Account</p>
+            <p className="text-xs text-gray-500 truncate">staff@wayofglory.com</p>
+          </div>
         </div>
-        <AnimatePresence mode="wait">
-          {isExpanded && (
-            <motion.div
-              key="logout-button"
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-            >
-              <Button
-                variant="ghost"
-                className="w-full mt-2 text-gray-600 hover:text-gray-900 hover:bg-white justify-start gap-2 rounded-xl h-11 touch-manipulation"
-                onClick={handleLogout}
-              >
-                <LogOut className="h-4 w-4" />
-                Sign out
-              </Button>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {isExpanded && (
+          <Button
+            variant="ghost"
+            className="w-full mt-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 active:bg-gray-100 justify-start gap-2 rounded-xl h-10 md:h-11 text-sm transition-colors"
+            onClick={handleLogout}
+          >
+            <LogOut className="h-4 w-4" />
+            Sign out
+          </Button>
+        )}
       </div>
-    </motion.div>
+    </div>
   )
 } 

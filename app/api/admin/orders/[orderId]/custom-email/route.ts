@@ -25,12 +25,14 @@ const AI_EMAIL_CONFIG = {
   - Solution-oriented and helpful
 
   FORMATTING:
-  - Write in plain text only - NO HTML or styling
-  - Use proper paragraph breaks for readability (use double newlines)
+  - Write in plain text only
+  - Use double line breaks (two newlines) between paragraphs
   - Keep paragraphs short (2-4 sentences)
   - Use simple dashes (-) for lists
-  - DO NOT include order items or pricing - this will be added automatically
-  - DO NOT add any styling or formatting tags
+  - DO NOT include any HTML, styling, or formatting
+  - DO NOT include logos, headers, or footers
+  - DO NOT include order summaries or pricing details
+  - Each paragraph should be separated by a blank line
 
   CONTENT RULES:
   1. NEVER mention or reference any physical office location
@@ -251,20 +253,16 @@ export async function POST(
       );
     }
 
-    // Format the content
+    // Format the content using the same template as other emails
     const formattedContent = formatEmailContent(emailContent, {
       ...variables,
       emailType: subject.replace(' - Way of Glory', '').replace(` #${variables.orderId}`, ''),
       companyName: 'Way of Glory Media',
       supportEmail: 'help@wayofglory.com',
-      logoUrl: '/images/logo/LogoLight.png'
-    });
-
-    // Log success
-    console.log('Successfully generated email:', {
-      subjectLength: subject.length,
-      contentLength: emailContent.length,
-      formattedContentLength: formattedContent.length
+      logoUrl: '/images/logo/LogoLight.png',
+      logoNormalUrl: '/images/logo/logo.png',
+      year: new Date().getFullYear(),
+      baseUrl: process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
     });
 
     // Return the response
