@@ -203,13 +203,13 @@ export async function GET(
       orderId: orderId_int
     };
 
-    let data;
+    let generateResult;
     try {
       const response = await safeFetch(generateUrl, {
         method: 'POST',
         body: JSON.stringify(generatePayload)
       });
-      data = response.data;
+      generateResult = response;
     } catch (err) {
       console.error('Error calling generate-email:', err);
       return NextResponse.json({ 
@@ -218,19 +218,52 @@ export async function GET(
       }, { status: 500 });
     }
 
-    if (!data.html || !data.content) {
-      console.error('Invalid response from generate-email:', data);
-      return NextResponse.json({ 
-        error: 'Generate email returned invalid content',
-        details: 'Missing html or content in response'
-      }, { status: 500 });
+    if (!generateResult.ok) {
+      console.error('Failed to generate email:', {
+        status: generateResult.status,
+        error: generateResult.data?.error,
+        details: generateResult.data?.details
+      });
+      return NextResponse.json({
+        error: 'Failed to generate email',
+        details: generateResult.data?.error || generateResult.data?.details || 'Email generation failed',
+        success: false,
+        isPWA: process.env.NEXT_PUBLIC_PWA === 'true'
+      }, {
+        status: generateResult.status || 500,
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-store'
+        }
+      });
     }
 
-    // Return the already formatted content from generate-email
+    // Log the response for debugging
+    console.log('Response status:', generateResult.status);
+    console.log('Response text:', JSON.stringify(generateResult.data).substring(0, 200));
+    console.log('Clean response text:', JSON.stringify(generateResult.data).substring(0, 200));
+
+    if (!generateResult.data?.content) {
+      console.error('Invalid generator response:', generateResult.data);
+      return NextResponse.json({
+        error: 'Invalid response from email generator',
+        details: 'Missing required content in response',
+        success: false,
+        isPWA: process.env.NEXT_PUBLIC_PWA === 'true'
+      }, {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-store'
+        }
+      });
+    }
+
+    // Return the generated content directly
     return NextResponse.json({
-      subject: template.subject,
-      content: data.content,
-      html: data.html  // Use the html directly from generate-email instead of formatting again
+      subject: generateResult.data.subject || template.subject,
+      content: generateResult.data.content,
+      html: generateResult.data.html
     });
 
   } catch (error) {

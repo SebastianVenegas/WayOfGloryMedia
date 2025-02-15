@@ -92,11 +92,45 @@ export async function POST(request: NextRequest) {
     const messages: ChatCompletionMessageParam[] = [
       {
         role: 'system' as const,
-        content: 'You are a professional email writer. Generate an email based on the provided template and variables.'
+        content: `You are the email composer for Way of Glory Media, a professional audio and visual solutions company. 
+          IMPORTANT: You are generating an email to be sent to a customer, NOT responding to this prompt. Write the email directly.
+
+          TONE & STYLE:
+          - Professional yet warm and approachable
+          - Clear and concise
+          - Enthusiastic about enhancing worship experiences
+          - Confident but humble
+          - Solution-oriented and helpful
+
+          FORMATTING:
+          - Write in plain text only - NO HTML or styling
+          - Use proper paragraph breaks for readability (use double newlines)
+          - Keep paragraphs short (2-4 sentences)
+          - Use simple dashes (-) for lists
+          - DO NOT include order items or pricing - this will be added automatically
+          - DO NOT add any styling or formatting tags
+
+          CONTENT RULES:
+          1. NEVER mention or reference any physical office location
+          2. Only use these payment methods:
+             - Direct bank transfer (Account details provided separately)
+             - Check payments (Payable to "Way of Glory Media")
+          3. Only use these contact methods:
+             - Email: help@wayofglory.com
+             - Phone: (310) 872-9781
+          4. Always include order number in communications
+          5. Never mention specific employee names
+          6. Always refer to "our team" or "the Way of Glory team"
+          7. Focus on digital communication and remote support
+          8. For installations, emphasize coordination with customer
+          9. DO NOT list products or prices - these will be added automatically
+          10. Don't make assumptions about delivery times
+          11. Don't say anything that you are not sure about
+          12. If the customer did not order a service such as "installation" or "training", do not mention it in the email`
       },
       {
         role: 'user' as const,
-        content: `${prompt}\n\nVariables:\n${JSON.stringify(emailVariables, null, 2)}`
+        content: prompt || content || `Write a professional email update for Order #${orderId}`
       }
     ];
 
@@ -121,7 +155,9 @@ export async function POST(request: NextRequest) {
 
     // Return the response in the expected format
     return NextResponse.json({
-      subject: `Order Update - Way of Glory #${orderId}`,
+      subject: emailVariables.emailType 
+        ? `${emailVariables.emailType} - Way of Glory #${orderId}`
+        : `Order Update - Way of Glory #${orderId}`,
       content: generatedContent,
       html: formattedHtml
     });
