@@ -53,7 +53,7 @@ export default async function RootLayout({
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="theme-color" content="#1E3A8A" />
+        <meta name="theme-color" content="#ffffff" />
         <link rel="manifest" href="/admin-manifest.json" />
         
         {/* Preload critical assets */}
