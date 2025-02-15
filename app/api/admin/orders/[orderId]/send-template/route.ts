@@ -7,6 +7,13 @@ import fs from 'fs/promises';
 import path from 'path';
 import { safeFetch } from '@/lib/safeFetch';
 
+// Add price formatting helper
+const formatPrice = (price: number | string | null | undefined): string => {
+  if (price === null || price === undefined) return '0.00';
+  const numericPrice = typeof price === 'string' ? parseFloat(price) : price;
+  return isNaN(numericPrice) ? '0.00' : numericPrice.toFixed(2);
+};
+
 interface Product {
   title?: string;
   description?: string;
@@ -302,6 +309,34 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
           variables: template.variables
         });
 
+        // Prepare all variables needed for the template
+        const templateVariables = {
+          ...baseVariables,
+          ...template.variables,
+          order_items: orderItems,
+          subtotal: formatPrice(subtotal),
+          tax_amount: formatPrice(taxAmount),
+          installation_price: formatPrice(installationPrice),
+          totalAmount: formatPrice(totalAmount),
+          emailType: template.variables.emailType || 'Order Update',
+          logoUrl: `${baseUrl}/images/logo/LogoLight.png`,
+          logoNormalUrl: `${baseUrl}/images/logo/logo.png`,
+          baseUrl,
+          year: new Date().getFullYear(),
+          installationDate: order.installation_date ? new Date(order.installation_date).toLocaleDateString('en-US', { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+          }) : '',
+          installationTime: order.installation_date ? new Date(order.installation_date).toLocaleTimeString('en-US', { 
+            hour: 'numeric', 
+            minute: '2-digit', 
+            hour12: true 
+          }) : '',
+          includesInstallation: !!order.installation_date || (installationPrice > 0)
+        };
+
         const generateResult = await safeFetch(generateEmailUrl, {
           method: 'POST',
           headers: {
@@ -312,17 +347,7 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
           body: JSON.stringify({ 
             orderId,
             prompt: customPrompt || template.prompt,
-            variables: {
-              ...template.variables,
-              order_items: orderItems,
-              subtotal,
-              tax_amount: taxAmount,
-              installation_price: installationPrice,
-              totalAmount,
-              emailType: template.variables.emailType || 'Order Update',
-              logoUrl: `${baseUrl}/images/logo/LogoLight.png`,
-              baseUrl
-            },
+            variables: templateVariables,
             isPWA
           }),
           cache: 'no-store'
@@ -367,13 +392,13 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
         let formattedHtml;
         try {
           formattedHtml = formatEmailContent(generateResult.data.content, {
-            ...template.variables,
+            ...templateVariables,
             order_items: orderItems,
-            subtotal,
-            tax_amount: taxAmount,
-            installation_price: installationPrice,
-            totalAmount,
-            emailType: template.variables.emailType || 'Order Update',
+            subtotal: formatPrice(subtotal),
+            tax_amount: formatPrice(taxAmount),
+            installation_price: formatPrice(installationPrice),
+            totalAmount: formatPrice(totalAmount),
+            emailType: templateVariables.emailType || 'Order Update',
             logoUrl: `${baseUrl}/images/logo/LogoLight.png`,
             baseUrl // Add baseUrl to variables
           });
