@@ -3,9 +3,9 @@ import { sql } from '@vercel/postgres';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Record<string, string> }
-): Promise<Response> {
-  const { orderId } = params;
+  context: { params: { orderId: string } }
+): Promise<NextResponse> {
+  const { orderId } = context.params;
   if (!orderId) {
     return NextResponse.json({ error: 'Order ID is required' }, { status: 400 });
   }
