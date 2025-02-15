@@ -3,6 +3,13 @@ import { sql } from '@vercel/postgres';
 import OpenAI from 'openai';
 import { formatEmailContent } from '@/lib/email-templates';
 
+// Add a price formatting helper
+const formatPrice = (price: number | string | null | undefined): string => {
+  if (price === null || price === undefined) return '0.00';
+  const numericPrice = typeof price === 'string' ? parseFloat(price) : price;
+  return isNaN(numericPrice) ? '0.00' : numericPrice.toFixed(2);
+};
+
 const AI_EMAIL_CONFIG = {
   model: "gpt-4",
   temperature: 0.7,
@@ -63,7 +70,7 @@ interface OrderItem {
   quantity: number;
   price?: number;
   pricePerUnit?: number;
-  price_at_time?: number;
+  price_at_time?: number | string;
   product?: {
     title?: string;
     description?: string;
@@ -74,7 +81,7 @@ export async function POST(
   request: NextRequest
 ): Promise<NextResponse> {
   try {
-    const orderId = request.nextUrl.pathname.split('/')[4]; // Get orderId from URL path
+    const orderId = request.nextUrl.pathname.split('/')[4];
     const orderIdInt = parseInt(orderId);
 
     if (isNaN(orderIdInt)) {
@@ -88,34 +95,97 @@ export async function POST(
       return NextResponse.json({ error: 'Server configuration error', details: 'OpenAI API key is missing' }, { status: 500 });
     }
 
-    // Parse request body
-    const body = await request.json().catch((error: any) => {
-      console.error('Failed to parse request body:', error);
-      return null;
-    });
+    // Parse and validate request body
+    const body = await request.json();
+    const { prompt, content: inputContent } = body;
+    
+    // Use either prompt or content, with prompt taking precedence
+    const userContent = prompt || inputContent || 'Write a professional email update';
 
-    if (!body) {
-      return NextResponse.json({ error: 'Invalid request', details: 'Failed to parse request body' }, { status: 400 });
+    // Fetch order details from database
+    const result = await sql`
+      SELECT 
+        o.*,
+        COALESCE(json_agg(
+          json_build_object(
+            'quantity', oi.quantity,
+            'price_at_time', oi.price_at_time,
+            'product', json_build_object(
+              'title', p.title,
+              'description', p.description,
+              'category', p.category
+            )
+          )
+        ) FILTER (WHERE oi.id IS NOT NULL), '[]') as order_items
+      FROM orders o
+      LEFT JOIN order_items oi ON o.id = oi.order_id
+      LEFT JOIN products p ON oi.product_id = p.id
+      WHERE o.id = ${orderIdInt}
+      GROUP BY o.id;
+    `;
+
+    if (result.rows.length === 0) {
+      console.error('Order not found:', orderIdInt);
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
 
-    const { prompt, variables } = body;
+    const orderData = result.rows[0];
 
-    // Validate required fields
-    if (!prompt || typeof prompt !== 'string' || prompt.trim() === '') {
-      console.error('Invalid or missing prompt:', { prompt });
-      return NextResponse.json({ error: 'Invalid request', details: 'Prompt is required and must be a non-empty string' }, { status: 400 });
-    }
+    // Process order items with proper price formatting
+    const orderItems = orderData.order_items?.map((item: OrderItem) => {
+      const quantity = Number(item.quantity) || 0;
+      const priceAtTime = typeof item.price_at_time === 'string' ? 
+        parseFloat(item.price_at_time) : 
+        Number(item.price_at_time) || 0;
+      const total = quantity * priceAtTime;
+      
+      return {
+        title: item.product?.title || 'Product',
+        quantity,
+        price: formatPrice(total),
+        pricePerUnit: formatPrice(priceAtTime),
+        price_at_time: formatPrice(priceAtTime),
+        product: item.product
+      };
+    }) || [];
 
-    if (!variables || typeof variables !== 'object') {
-      console.error('Missing or invalid variables:', { variables });
-      return NextResponse.json({ error: 'Invalid request', details: 'Email variables are required' }, { status: 400 });
-    }
+    // Calculate totals
+    const subtotal = orderItems.reduce((sum: number, item: { price: string | number }) => {
+      const price = typeof item.price === 'string' ? parseFloat(item.price) : Number(item.price) || 0;
+      return sum + price;
+    }, 0);
+
+    const taxAmount = Number(orderData.tax_amount) || 0;
+    const installationPrice = Number(orderData.installation_price) || 0;
+    const totalAmount = subtotal + taxAmount + installationPrice;
+
+    // Format variables for email template
+    const variables = {
+      orderId: orderIdInt,
+      firstName: orderData.first_name,
+      lastName: orderData.last_name,
+      email: orderData.email,
+      status: orderData.status,
+      installationDate: orderData.installation_date,
+      installationTime: orderData.installation_time,
+      includesInstallation: !!orderData.installation_date,
+      includesTraining: false,
+      order_items: orderItems,
+      subtotal: formatPrice(subtotal),
+      tax_amount: formatPrice(taxAmount),
+      installation_price: formatPrice(installationPrice),
+      totalAmount: formatPrice(totalAmount),
+      createdAt: orderData.created_at,
+      companyName: 'Way of Glory Media',
+      supportEmail: 'help@wayofglory.com',
+      logoUrl: '/images/logo/LogoLight.png'
+    };
 
     // Log request details
     console.log('Generating custom email with:', {
       orderId: orderIdInt,
-      promptLength: prompt.length,
-      promptPreview: prompt.substring(0, 100) + '...',
+      promptLength: userContent?.length || 0,
+      promptPreview: userContent?.substring(0, 100) + '...' || '',
       customerName: `${variables.firstName} ${variables.lastName}`,
       hasInstallation: variables.includesInstallation,
       hasTraining: variables.includesTraining,
@@ -137,7 +207,7 @@ export async function POST(
         },
         {
           role: "user",
-          content: `${prompt}\n\nCustomer Details:
+          content: `${userContent}\n\nCustomer Details:
           Name: ${variables.firstName} ${variables.lastName}
           Order: #${variables.orderId}
           ${variables.includesInstallation ? `Installation Date: ${variables.installationDate}\nInstallation Time: ${variables.installationTime}\n` : ''}Status: ${variables.status}
@@ -150,11 +220,11 @@ export async function POST(
       throw new Error(`OpenAI API error: ${error.message}`);
     });
 
-    const emailContent = completion.choices[0]?.message?.content;
+    const aiResponse = completion.choices[0]?.message?.content;
     
     // Validate OpenAI response
-    if (!emailContent || typeof emailContent !== 'string') {
-      console.error('OpenAI returned invalid content:', { emailContent });
+    if (!aiResponse || typeof aiResponse !== 'string') {
+      console.error('OpenAI returned invalid content:', { aiResponse });
       return NextResponse.json(
         { error: 'Generation failed', details: 'Invalid or empty content returned from AI' },
         { status: 500 }
@@ -163,17 +233,17 @@ export async function POST(
 
     // Process the content
     let subject = `Order Update - Way of Glory #${orderIdInt}`;
-    let content = emailContent.trim();
+    let emailContent = aiResponse.trim();
 
     // Extract subject if present
-    const subjectMatch = content.match(/^(?:subject:|re:|regarding:)\s*(.+?)(?:\n|$)/i);
+    const subjectMatch = emailContent.match(/^(?:subject:|re:|regarding:)\s*(.+?)(?:\n|$)/i);
     if (subjectMatch) {
       subject = subjectMatch[1].trim();
-      content = content.replace(/^(?:subject:|re:|regarding:)\s*.+?\n/, '').trim();
+      emailContent = emailContent.replace(/^(?:subject:|re:|regarding:)\s*.+?\n/, '').trim();
     }
 
     // Validate processed content
-    if (!content) {
+    if (!emailContent) {
       console.error('Empty content after processing');
       return NextResponse.json(
         { error: 'Processing failed', details: 'Email content is empty after processing' },
@@ -182,11 +252,8 @@ export async function POST(
     }
 
     // Format the content
-    const formattedContent = formatEmailContent(content, {
+    const formattedContent = formatEmailContent(emailContent, {
       ...variables,
-      orderId: variables.orderId,
-      firstName: variables.firstName,
-      lastName: variables.lastName,
       emailType: subject.replace(' - Way of Glory', '').replace(` #${variables.orderId}`, ''),
       companyName: 'Way of Glory Media',
       supportEmail: 'help@wayofglory.com',
@@ -196,14 +263,14 @@ export async function POST(
     // Log success
     console.log('Successfully generated email:', {
       subjectLength: subject.length,
-      contentLength: content.length,
+      contentLength: emailContent.length,
       formattedContentLength: formattedContent.length
     });
 
     // Return the response
     return NextResponse.json({
       subject,
-      content,
+      content: emailContent,
       html: formattedContent
     });
 

@@ -129,7 +129,7 @@ const TAX_RATE = 0.0775 // 7.75% for Riverside, CA
 const formatPrice = (price: number | string | null | undefined): string => {
   if (price === null || price === undefined) return '0.00'
   const numericPrice = typeof price === 'string' ? parseFloat(price) : price
-  return numericPrice.toFixed(2)
+  return isNaN(numericPrice) ? '0.00' : numericPrice.toFixed(2)
 }
 
 const calculateTax = (amount: number | string): number => {
@@ -566,7 +566,7 @@ export default function OrdersPage() {
   const [previewHtml, setPreviewHtml] = useState('')
   const [editedSubject, setEditedSubject] = useState('')
   const [editedContent, setEditedContent] = useState('')
-  const [viewMode, setViewMode] = useState<'edit' | 'preview'>('edit')
+  const [viewMode, setViewMode] = useState<'edit' | 'preview' | 'loading' | 'error'>('edit')
   const [templateVars, setTemplateVars] = useState<Record<string, string>>({})
   const [isGeneratingAI, setIsGeneratingAI] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
@@ -1084,59 +1084,50 @@ export default function OrdersPage() {
         toast.error("Please select an order first");
         return;
       }
+      // Just open the AI prompt dialog, don't start generation yet
       setIsAiPromptOpen(true);
+      setIsGeneratingEmail(false); // Ensure we're not in loading state yet
+      setIsGeneratingAI(false);
     } catch (error) {
       console.error('Error in handleGenerateEmail:', error);
       toast.error("Failed to open AI prompt");
     }
   };
 
-  const handleAiPromptSubmit = async () => {
+  const handleAiPromptSubmit = async (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+    e.preventDefault();
+    e.stopPropagation();
     try {
       if (!selectedOrder?.id || !aiPrompt) {
         toast.error('Please provide both an order and a prompt');
         return;
       }
 
-      setIsAiPromptOpen(false);
-      setIsGeneratingEmail(true);
+      // Set loading states before closing the prompt
       setIsGeneratingAI(true);
+      setIsGeneratingEmail(true);
+      setIsTemplateLoading(true);
+      setLoadingTemplateName('Generating Custom Email...');
+      
+      // Close AI prompt and show email composer
+      setIsAiPromptOpen(false);
+      setShowEmailComposer(true);
+
+      // Store current content for fallback
+      const previousContent = content;
 
       // Format order items with proper price calculation
       const formattedOrderItems = selectedOrder.order_items.map(item => ({
         title: item.product?.title || 'Product',
-        quantity: Number(item.quantity),
-        price_at_time: Number(item.price_at_time),
+        quantity: Number(item.quantity) || 0,
+        price_at_time: Number(item.price_at_time) || 0,
         product: item.product
       }));
 
       const response = await fetch(`/api/admin/orders/${selectedOrder.id}/custom-email`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          prompt: aiPrompt,
-          variables: {
-            orderId: selectedOrder.id,
-            firstName: selectedOrder.first_name,
-            lastName: selectedOrder.last_name,
-            email: selectedOrder.email,
-            status: selectedOrder.status,
-            installationDate: selectedOrder.installation_date,
-            installationTime: selectedOrder.installation_time,
-            includesInstallation: !!selectedOrder.installation_date,
-            includesTraining: false,
-            order_items: formattedOrderItems,
-            tax_amount: calculateOrderTax(selectedOrder),
-            installation_price: selectedOrder.installation_price,
-            createdAt: selectedOrder.created_at,
-            totalAmount: calculateOrderTotalWithTax(selectedOrder),
-            subtotal: calculateOrderRevenue(selectedOrder).products + 
-                     calculateOrderRevenue(selectedOrder).services + 
-                     calculateOrderRevenue(selectedOrder).installation
-          }
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: aiPrompt })
       });
 
       const data = await response.json();
@@ -1150,27 +1141,34 @@ export default function OrdersPage() {
         throw new Error(data.details || data.error || `Failed to generate email (${response.status})`);
       }
 
-      // Validate the response data
       if (!data.html || typeof data.html !== 'string') {
         console.error('Invalid response data:', { data });
         throw new Error('Server returned invalid email content');
       }
 
-      // Update UI with the generated email
-      setShowEmailComposer(true);
+      // Add a small delay before setting content to ensure loading state is visible
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
       setEditedContent(data.html);
       setPreviewHtml(data.html);
+      setContent(data.html);
       setEditedSubject(data.subject || `Order Update - Way of Glory #${selectedOrder.id}`);
+      setSubject(data.subject || `Order Update - Way of Glory #${selectedOrder.id}`);
       setViewMode('edit');
       toast.success("Email generated successfully");
-
     } catch (error) {
       console.error('Error generating email:', error);
       toast.error(error instanceof Error ? error.message : "Failed to generate email");
-      setShowEmailComposer(false);
+      setViewMode('edit');
+      setShowEmailComposer(true);
     } finally {
-      setIsGeneratingEmail(false);
-      setIsGeneratingAI(false);
+      // Add a small delay before clearing loading states
+      setTimeout(() => {
+        setIsGeneratingEmail(false);
+        setIsGeneratingAI(false);
+        setIsTemplateLoading(false);
+        setLoadingTemplateName('');
+      }, 500);
     }
   };
 
@@ -1443,39 +1441,36 @@ export default function OrdersPage() {
   const ProductDetails: FC<{ product: OrderItem | null, isFullScreen?: boolean }> = ({ product, isFullScreen }) => {
     if (!product?.product) return null;
     
+    const price = formatPrice(product.price_at_time);
+    const totalPrice = formatPrice(Number(product.price_at_time) * product.quantity);
+    const taxAmount = formatPrice(Number(product.price_at_time) * product.quantity * 0.0775);
+
     return (
-      <div className={`divide-y ${isFullScreen ? 'h-full' : ''}`}>
-        {/* Product Header Section */}
-        <div className={`p-6 bg-gradient-to-br from-blue-50 via-white to-purple-50 ${
-          isFullScreen ? 'sticky top-0 z-10 border-b' : ''
-        }`}>
-          <div className="flex items-start justify-between gap-8">
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-3">
-                <h2 className="text-2xl font-semibold text-gray-900">{product.product.title}</h2>
-                {product.product.is_service ? (
-                  <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200">Service</Badge>
-                ) : (
-                  <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-200">{product.product.category}</Badge>
-                )}
-              </div>
-              <p className="text-gray-600 text-base leading-relaxed">{product.product.description}</p>
+      <div className={`bg-white rounded-xl border shadow-sm overflow-hidden ${isFullScreen ? 'w-full max-w-4xl mx-auto' : ''}`}>
+        {/* Header Section */}
+        <div className="p-6 border-b">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">{product.product.title}</h3>
+              <p className="text-sm text-gray-500 mt-1">
+                {product.product.category || 'No category'}
+              </p>
             </div>
             <div className="text-right">
               <div className="text-3xl font-bold text-gray-900">
-                ${Number(product.price_at_time).toFixed(2)}
+                ${price}
               </div>
               <div className="flex items-center justify-end gap-2 mt-2">
                 <Badge variant="outline" className="text-base bg-white">
                   Quantity: {product.quantity}
                 </Badge>
                 <Badge variant="outline" className="text-base bg-white">
-                  Total: ${(Number(product.price_at_time) * product.quantity).toFixed(2)}
+                  Total: ${totalPrice}
                 </Badge>
               </div>
               {!product.product.is_service && (
                 <div className="text-sm text-gray-500 mt-2">
-                  + ${(Number(product.price_at_time) * product.quantity * 0.0775).toFixed(2)} tax
+                  + ${taxAmount} tax
                 </div>
               )}
             </div>
@@ -1497,7 +1492,7 @@ export default function OrdersPage() {
                 <DollarSign className="h-5 w-5 text-green-600" />
                 <div className="text-green-700 font-medium">Unit Price</div>
               </div>
-              <div className="text-gray-900 font-medium">${Number(product.price_at_time).toFixed(2)}</div>
+              <div className="text-gray-900 font-medium">${price}</div>
             </div>
             <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 shadow-sm">
               <div className="flex items-center gap-2 mb-2">
@@ -1511,7 +1506,7 @@ export default function OrdersPage() {
                 <DollarSign className="h-5 w-5 text-orange-600" />
                 <div className="text-orange-700 font-medium">Total</div>
               </div>
-              <div className="text-gray-900 font-medium">${(Number(product.price_at_time) * product.quantity).toFixed(2)}</div>
+              <div className="text-gray-900 font-medium">${totalPrice}</div>
             </div>
           </div>
         </div>
@@ -2164,7 +2159,7 @@ export default function OrdersPage() {
                   <td className="p-6">
                     <div className="flex flex-col">
                       <span className="text-lg font-bold text-gray-900">
-                        ${Number(order.total_amount).toFixed(2)}
+                        ${formatPrice(order.total_amount)}
                       </span>
                       {isServiceOnlyOrder(order) ? (
                         <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full inline-block w-fit mt-1">
@@ -2172,13 +2167,13 @@ export default function OrdersPage() {
                         </span>
                       ) : (
                         <span className="text-xs text-gray-600 mt-1">
-                          Includes ${calculateOrderTax(order).toFixed(2)} tax
+                          Includes ${formatPrice(calculateOrderTax(order))} tax
                         </span>
                       )}
                       {Number(order.installation_price) > 0 && (
                         <span className="text-xs text-gray-600 mt-1 flex items-center gap-1">
                           <Wrench className="h-3 w-3" />
-                          Installation: ${Number(order.installation_price).toFixed(2)}
+                          Installation: ${formatPrice(order.installation_price)}
                         </span>
                       )}
                     </div>
@@ -2337,7 +2332,7 @@ export default function OrdersPage() {
                     <div className="flex items-center gap-3">
                       <div className="bg-gray-100 px-4 py-2 rounded-lg">
                         <p className="text-sm text-gray-500">Total Amount</p>
-                        <p className="text-lg font-semibold text-gray-900">${Number(selectedOrder.total_amount).toFixed(2)}</p>
+                        <p className="text-lg font-semibold text-gray-900">${formatPrice(selectedOrder.total_amount)}</p>
                       </div>
                     </div>
                   </div>
@@ -2475,8 +2470,8 @@ export default function OrdersPage() {
                           <div className="flex justify-between text-sm">
                             <span className="text-gray-500">Installation</span>
                             <span className="font-medium text-gray-900">${formatPrice(selectedOrder.installation_price)}</span>
-                      </div>
-                    )}
+                          </div>
+                        )}
                         <div className="flex justify-between text-sm">
                           <span className="text-gray-500">Tax (7.75%)</span>
                           <span className="font-medium text-gray-900">${formatPrice(calculateOrderTax(selectedOrder))}</span>
@@ -2559,23 +2554,23 @@ export default function OrdersPage() {
                         </div>
                       <div className="overflow-y-auto flex-1 divide-y divide-gray-100">
                     {selectedOrder.order_items.map((item, index) => (
-                          <button
+                      <button
                         key={index}
                         onClick={() => handleProductClick(item)}
-                            className="w-full text-left p-4 hover:bg-blue-50/50 transition-colors"
-                          >
-                            <div className="flex justify-between items-start gap-4">
-                              <div>
-                                <div className="font-medium text-sm text-gray-900">{item.product?.title}</div>
-                                <div className="text-sm text-gray-500 mt-1">
-                                  Quantity: {item.quantity} × ${formatPrice(item.price_at_time)}
+                        className="w-full text-left p-4 hover:bg-blue-50/50 transition-colors"
+                      >
+                        <div className="flex justify-between items-start gap-4">
+                          <div>
+                            <div className="font-medium text-sm text-gray-900">{item.product?.title}</div>
+                            <div className="text-sm text-gray-500 mt-1">
+                              Quantity: {item.quantity} × ${formatPrice(item.price_at_time)}
                             </div>
                           </div>
-                              <div className="text-sm font-medium text-gray-900">
-                                ${formatPrice(Number(item.price_at_time) * item.quantity)}
+                          <div className="text-sm font-medium text-gray-900">
+                            ${formatPrice(Number(item.price_at_time) * item.quantity)}
                           </div>
                         </div>
-                          </button>
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -2695,6 +2690,14 @@ export default function OrdersPage() {
                       setEditedSubject('');
                       setTemplateVars({});
                       setViewMode('edit');
+                      setIsGeneratingEmail(true);
+                      setLoadingTemplateName('Creating New Email...');
+                      setShowEmailComposer(true);
+                      // Set a timeout to clear the loading state
+                      setTimeout(() => {
+                        setIsGeneratingEmail(false);
+                        setLoadingTemplateName('');
+                      }, 1000);
                     }}
                   >
                     <div className="bg-blue-500/20 rounded-lg p-1">
@@ -3054,43 +3057,42 @@ export default function OrdersPage() {
                 Generate Custom Email
               </DialogTitle>
             </DialogHeader>
-            <div className="space-y-4 px-6 py-4 relative">
-              {isGeneratingAI && (
-                <div className="absolute inset-0 bg-white/90 backdrop-blur-sm flex items-center justify-center z-10">
-                  <div className="flex flex-col items-center gap-4">
-                    <div className="relative">
-                      <div className="w-20 h-20 rounded-full border-4 border-blue-100 animate-[spin_3s_linear_infinite]" />
-                      <div className="w-20 h-20 rounded-full border-4 border-blue-500 border-t-transparent animate-[spin_1.5s_linear_infinite] absolute inset-0" />
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="relative">
-                          <Sparkles className="h-8 w-8 text-blue-500 animate-pulse" />
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-sm font-medium text-gray-900">
-                        <div className="flex flex-col items-center gap-2">
-                          <span>Generating Email</span>
-                          <div className="flex items-center gap-1">
-                            <div className="w-2 h-2 rounded-full bg-blue-600 animate-[bounce_1.4s_infinite]" />
-                            <div className="w-2 h-2 rounded-full bg-blue-600 animate-[bounce_1.4s_infinite_0.2s]" />
-                            <div className="w-2 h-2 rounded-full bg-blue-600 animate-[bounce_1.4s_infinite_0.4s]" />
-                          </div>
-                        </div>
-                      </div>
-                      <p className="text-sm text-gray-500 mt-3">This may take a few moments</p>
-                    </div>
-                  </div>
-                </div>
-              )}
+            <div className="space-y-4 px-6 py-4">
               <div className="space-y-2">
                 <Label>What kind of email would you like to generate?</Label>
-                <Textarea
-                  placeholder="Example: Write a follow-up email asking about their experience with the installation. Make it friendly but professional."
-                  value={aiPrompt}
-                  onChange={(e) => setAiPrompt(e.target.value)}
-                  className="h-32 resize-none bg-white"
-                />
+                {isGeneratingAI ? (
+                  <div className="h-32 bg-white border rounded-lg p-4 flex items-center justify-center">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="relative">
+                        <div className="w-8 h-8 rounded-full border-2 border-blue-100 animate-[spin_3s_linear_infinite]" />
+                        <div className="w-8 h-8 rounded-full border-2 border-blue-500 border-t-transparent animate-[spin_1.5s_linear_infinite] absolute inset-0" />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <Sparkles className="h-4 w-4 text-blue-500 animate-pulse" />
+                        </div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-sm font-medium text-gray-900">
+                          <div className="flex flex-col items-center gap-1">
+                            <span>Generating Email</span>
+                            <div className="flex items-center gap-1">
+                              <div className="w-1 h-1 rounded-full bg-blue-600 animate-[bounce_1.4s_infinite]" />
+                              <div className="w-1 h-1 rounded-full bg-blue-600 animate-[bounce_1.4s_infinite_0.2s]" />
+                              <div className="w-1 h-1 rounded-full bg-blue-600 animate-[bounce_1.4s_infinite_0.4s]" />
+                            </div>
+                          </div>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">This may take a few moments</p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <Textarea
+                    placeholder="Example: Write a follow-up email asking about their experience with the installation. Make it friendly but professional."
+                    value={aiPrompt}
+                    onChange={(e) => setAiPrompt(e.target.value)}
+                    className="h-32 resize-none bg-white"
+                  />
+                )}
               </div>
             </div>
             <DialogFooter className="px-6 pb-6">
@@ -3098,33 +3100,17 @@ export default function OrdersPage() {
                 onClick={() => setIsAiPromptOpen(false)}
                 variant="ghost"
                 className="text-gray-600"
+                disabled={isGeneratingAI}
               >
                 Cancel
               </Button>
               <Button
+                type="button"
                 onClick={handleAiPromptSubmit}
                 disabled={isGeneratingAI}
                 className={`bg-blue-600 hover:bg-blue-700 text-white ${isGeneratingAI ? 'min-w-[100px]' : ''}`}
               >
-                {isGeneratingAI ? (
-                  <div className="flex items-center gap-2">
-                    <div className="relative">
-                      <div className="w-4 h-4 rounded-full border-2 border-white/30 animate-[spin_3s_linear_infinite]" />
-                      <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-[spin_1.5s_linear_infinite] absolute inset-0" />
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="relative">
-                          <Sparkles className="h-2 w-2 text-white animate-pulse" />
-                          <div className="absolute inset-0 animate-ping">
-                            <Sparkles className="h-2 w-2 text-white/30" />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <span>Generating...</span>
-                  </div>
-                ) : (
-                  "Generate"
-                )}
+                {isGeneratingAI ? "Generating..." : "Generate"}
               </Button>
             </DialogFooter>
           </div>
@@ -3373,7 +3359,7 @@ export default function OrdersPage() {
           subject={subject}
           onSubjectChange={setSubject}
           onClose={handleCloseEmailComposer}
-          isTemplateLoading={isGeneratingEmail}
+          isTemplateLoading={isGeneratingEmail || viewMode === 'loading'}
           loadingTemplateName={loadingTemplateName}
           activeTab={activeEmailTab}
           onTabChange={handleEmailTabChange}

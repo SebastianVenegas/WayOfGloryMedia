@@ -130,8 +130,8 @@ export default function EmailComposer({
 }: EmailComposerProps) {
   const [subject, setSubject] = useState(externalSubject || '')
   const [content, setContent] = useState(initialContent)
-  const [isLoading, setIsLoading] = useState(false)
-  const [isGenerating, setIsGenerating] = useState(false)
+  const [isLoading, setIsLoading] = useState(isTemplateLoading)
+  const [isGenerating, setIsGenerating] = useState(isTemplateLoading)
   const [emailLogs, setEmailLogs] = useState<EmailLog[]>([])
   const [isLoadingLogs, setIsLoadingLogs] = useState(false)
   const [previewEmail, setPreviewEmail] = useState<EmailLog | null>(null)
@@ -141,14 +141,27 @@ export default function EmailComposer({
   useEffect(() => {
     if (initialContent !== undefined) {
       setContent(initialContent)
+      // Clear loading state after content is set
+      if (isTemplateLoading) {
+        setTimeout(() => {
+          setIsLoading(false)
+          setIsGenerating(false)
+        }, 500)
+      }
     }
-  }, [initialContent])
+  }, [initialContent, isTemplateLoading])
 
   useEffect(() => {
     if (externalSubject !== undefined) {
       setSubject(externalSubject)
     }
   }, [externalSubject])
+
+  // Update loading states when isTemplateLoading changes
+  useEffect(() => {
+    setIsLoading(isTemplateLoading)
+    setIsGenerating(isTemplateLoading || isLoading)
+  }, [isTemplateLoading, isLoading])
 
   const handleContentChange = (value: string) => {
     const cleanValue = value.replace(/<p><\/p>/g, '<p><br></p>')
@@ -165,15 +178,22 @@ export default function EmailComposer({
     }
   }
 
-  const handleGenerateEmail = async (event?: React.MouseEvent) => {
+  const handleGenerateEmail = async (e: React.MouseEvent<HTMLButtonElement> | React.TouchEvent<HTMLButtonElement>) => {
+    // Prevent all forms of event propagation and default behavior
+    e.preventDefault();
+    e.stopPropagation();
+    if ('touches' in e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+    
     try {
-      // Prevent any form of navigation or submission
-      if (event) {
-        event.preventDefault();
-        event.stopPropagation();
-      }
-      
+      // Set loading states before any operations
       setIsGenerating(true);
+      setIsLoading(true);
+      
+      // Store current content for fallback
+      const previousContent = content;
       
       // Sanitize the content before sending
       const sanitizedContent = content.trim().replace(/\s+/g, ' ');
@@ -182,82 +202,65 @@ export default function EmailComposer({
         throw new Error('Email content cannot be empty');
       }
 
-      const isPWA = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
+      const isPWA = typeof window !== 'undefined' && (
+        window.matchMedia('(display-mode: standalone)').matches ||
+        window.matchMedia('(display-mode: fullscreen)').matches ||
+        // Check for iOS standalone mode
+        ('standalone' in window.navigator && (window.navigator as any).standalone === true)
+      );
 
-      try {
-        const response = await fetch('/api/admin/generate-email', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            ...(isPWA ? { 
-              'x-pwa-request': 'true',
-              'Cache-Control': 'no-store, no-cache, must-revalidate',
-              'Pragma': 'no-cache'
-            } : {})
-          },
-          body: JSON.stringify({
-            orderId,
-            content: sanitizedContent,
-            isPWA,
-            preventRedirect: true
-          }),
-          // Prevent any redirects
-          redirect: 'manual',
-          // Prevent caching
-          cache: 'no-store',
-          credentials: 'same-origin',
-          mode: 'cors'
-        });
+      const response = await fetch(`/api/admin/orders/${orderId}/custom-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(isPWA ? { 'x-pwa-request': 'true' } : {}),
+        },
+        body: JSON.stringify({
+          content: sanitizedContent,
+          isPWA
+        }),
+      });
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to generate email');
-        }
-
-        const data = await response.json();
-        
-        // Ensure the response data is properly formatted
-        if (!data.html || typeof data.html !== 'string') {
-          throw new Error('Invalid email template format');
-        }
-
-        // Update state in a safe way
-        setContent(prevContent => {
-          const newContent = data.html;
-          if (onContentChange) {
-            onContentChange(newContent);
-          }
-          return newContent;
-        });
-
-        if (data.subject) {
-          setSubject(prevSubject => {
-            const newSubject = data.subject;
-            if (onSubjectChange) {
-              onSubjectChange(newSubject);
-            }
-            return newSubject;
-          });
-        }
-        
-        toast({
-          title: "Email Generated",
-          description: "Your email has been professionally formatted.",
-        });
-      } catch (error) {
-        console.error('Error generating email:', error);
-        throw error;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate email');
       }
+
+      const data = await response.json();
+      
+      // Ensure the response data is properly formatted
+      if (!data.html || typeof data.html !== 'string') {
+        throw new Error('Invalid email template format');
+      }
+
+      // Add a small delay before setting content to ensure loading state is visible
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      setContent(data.html);
+      if (data.subject) {
+        setSubject(data.subject);
+        if (onSubjectChange) {
+          onSubjectChange(data.subject);
+        }
+      }
+      
+      toast({
+        title: "Email Generated",
+        description: "Your email has been professionally formatted.",
+      });
     } catch (error) {
-      console.error('Error in handleGenerateEmail:', error);
+      console.error('Error generating email:', error);
       toast({
         title: "Generation Failed",
         description: error instanceof Error ? error.message : "Failed to generate email",
         variant: "destructive",
       });
     } finally {
-      setIsGenerating(false);
+      // Add a small delay before clearing loading state
+      setTimeout(() => {
+        setIsGenerating(false);
+        setIsLoading(false);
+      }, 500);
     }
   };
 
@@ -489,76 +492,103 @@ export default function EmailComposer({
         <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
           {activeTab === 'content' ? (
             <div className="p-6 relative">
-              {(isTemplateLoading || isGenerating || isLoading || isSending) && (
-                <div className="absolute inset-0 bg-white flex items-center justify-center z-50">
-                  <div className="flex flex-col items-center gap-4">
-                    <div className="relative">
-                      <div className="w-20 h-20 rounded-full border-4 border-blue-100 animate-[spin_3s_linear_infinite]" />
-                      <div className="w-20 h-20 rounded-full border-4 border-blue-500 border-t-transparent animate-[spin_1.5s_linear_infinite] absolute inset-0" />
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="relative">
-                          <Sparkles className="h-8 w-8 text-blue-500 animate-pulse" />
-                          <div className="absolute inset-0 animate-ping">
-                            <Sparkles className="h-8 w-8 text-blue-500/30" />
-                          </div>
+              <div className="relative">
+                {(isTemplateLoading || isGenerating || isLoading || isSending) ? (
+                  <div className="min-h-[400px] border rounded-lg bg-white p-6 flex items-center justify-center prose-sm">
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="relative">
+                        <div className="w-10 h-10 rounded-full border-2 border-blue-100 animate-[spin_3s_linear_infinite]" />
+                        <div className="w-10 h-10 rounded-full border-2 border-blue-500 border-t-transparent animate-[spin_1.5s_linear_infinite] absolute inset-0" />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <Sparkles className="h-4 w-4 text-blue-500 animate-pulse" />
                         </div>
                       </div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-sm font-medium text-gray-900">
-                        <div className="flex flex-col items-center gap-2">
-                          <span>
-                            {isSending ? "Sending Email..." : 
-                             isTemplateLoading ? loadingTemplateName : 
-                             "Generating Custom Email"}
-                          </span>
-                          <div className="flex items-center gap-1">
-                            <div className="w-2 h-2 rounded-full bg-blue-600 animate-[bounce_1.4s_infinite]" />
-                            <div className="w-2 h-2 rounded-full bg-blue-600 animate-[bounce_1.4s_infinite_0.2s]" />
-                            <div className="w-2 h-2 rounded-full bg-blue-600 animate-[bounce_1.4s_infinite_0.4s]" />
+                      <div className="text-center">
+                        <div className="text-sm font-medium text-gray-900">
+                          <div className="flex flex-col items-center gap-1">
+                            <span>
+                              {isSending ? "Sending Email..." : 
+                               isTemplateLoading ? loadingTemplateName : 
+                               isGenerating ? "Generating Custom Email" :
+                               "Processing..."}
+                            </span>
+                            <div className="flex items-center gap-1">
+                              <div className="w-1 h-1 rounded-full bg-blue-600 animate-[bounce_1.4s_infinite]" />
+                              <div className="w-1 h-1 rounded-full bg-blue-600 animate-[bounce_1.4s_infinite_0.2s]" />
+                              <div className="w-1 h-1 rounded-full bg-blue-600 animate-[bounce_1.4s_infinite_0.4s]" />
+                            </div>
                           </div>
                         </div>
+                        <p className="text-xs text-gray-500 mt-1">This may take a few moments</p>
                       </div>
-                      <p className="text-sm text-gray-500 mt-3">This may take a few moments</p>
                     </div>
                   </div>
-                </div>
-              )}
-              <Editor
-                value={content}
-                onChange={handleContentChange}
-                className="min-h-[400px] prose max-w-none focus:outline-none"
-                disabled={isGenerating || isLoading || isTemplateLoading}
-              />
-              <div className="mt-4 flex justify-end">
+                ) : (
+                  <Editor
+                    value={content}
+                    onChange={handleContentChange}
+                    className="min-h-[400px] prose max-w-none focus:outline-none"
+                    disabled={isGenerating || isLoading || isTemplateLoading}
+                  />
+                )}
+              </div>
+              <div 
+                className="mt-4 flex justify-end"
+                onClick={(e: React.MouseEvent) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                onTouchStart={(e: React.TouchEvent) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                onTouchEnd={(e: React.TouchEvent) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                onTouchMove={(e: React.TouchEvent) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+              >
                 <Button 
-                  type="button" 
-                  onClick={(e) => {
+                  type="button"
+                  onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    e.nativeEvent.preventDefault();
+                    if (e.nativeEvent) {
+                      e.nativeEvent.preventDefault();
+                      e.nativeEvent.stopPropagation();
+                      e.nativeEvent.stopImmediatePropagation?.();
+                    }
                     handleGenerateEmail(e);
-                  }} 
+                  }}
+                  onTouchStart={(e: React.TouchEvent<HTMLButtonElement>) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (e.nativeEvent) {
+                      e.nativeEvent.preventDefault();
+                      e.nativeEvent.stopPropagation();
+                    }
+                  }}
+                  onTouchEnd={(e: React.TouchEvent<HTMLButtonElement>) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (e.nativeEvent) {
+                      e.nativeEvent.preventDefault();
+                      e.nativeEvent.stopPropagation();
+                    }
+                  }}
+                  onTouchMove={(e: React.TouchEvent<HTMLButtonElement>) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
                   disabled={isGenerating || isTemplateLoading}
-                  className="relative"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onTouchStart={(e) => e.preventDefault()}
+                  className="select-none touch-none pointer-events-auto no-tap-highlight"
+                  data-no-navigation="true"
+                  style={{ WebkitTapHighlightColor: 'transparent' }}
                 >
-                  <span className={isGenerating ? 'opacity-0' : 'opacity-100'}>
-                    Generate with AI
-                  </span>
-                  {isGenerating && (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="flex items-center gap-2">
-                        <span>Generating</span>
-                        <div className="flex space-x-1">
-                          <div className="w-2 h-2 rounded-full bg-white animate-bounce" />
-                          <div className="w-2 h-2 rounded-full bg-white animate-bounce [animation-delay:0.2s]" />
-                          <div className="w-2 h-2 rounded-full bg-white animate-bounce [animation-delay:0.4s]" />
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                  {isGenerating || isLoading ? "Generating..." : "Generate with AI"}
                 </Button>
               </div>
             </div>

@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import OpenAI from 'openai'
+import { formatEmailContent } from '@/lib/email-templates'
+import { sql } from '@vercel/postgres'
 
 interface OrderItem {
   title?: string;
@@ -13,190 +15,19 @@ interface OrderItem {
   };
 }
 
-const formatEmailContent = (content: string, variables: Record<string, any>) => {
-  // Split content into paragraphs and wrap them in styled divs
-  const formattedContent = content
-    .split('\n')
-    .map(line => line.trim())
-    .filter(line => line)
-    .map(line => line.startsWith('<p>') ? line : `<p style="margin: 0 0 16px 0; line-height: 1.6;">${line}</p>`)
-    .join('\n');
+// Add price formatting helper
+const formatPrice = (price: number | string | null | undefined): string => {
+  if (price === null || price === undefined) return '0.00'
+  const numericPrice = typeof price === 'string' ? parseFloat(price) : price
+  return isNaN(numericPrice) ? '0.00' : numericPrice.toFixed(2)
+}
 
-  // Get the base URL from environment or default to localhost
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-  const logoFullUrl = `${baseUrl}${variables.logoUrl}`;
-
-  // Calculate subtotal from order items if not provided
-  const subtotal = variables.subtotal ?? (variables.order_items?.reduce((sum: number, item: OrderItem) => {
-    const price = Number(item.price_at_time || item.pricePerUnit || 0);
-    const quantity = Number(item.quantity || 0);
-    return sum + (price * quantity);
-  }, 0) || 0);
-
-  // Calculate tax amount if not provided
-  const taxAmount = Number(variables.tax_amount || variables.taxAmount || 0);
-
-  // Calculate installation price if not provided
-  const installationPrice = Number(variables.installation_price || variables.installationPrice || 0);
-
-  // Calculate total amount if not provided
-  const totalAmount = Number(variables.total_amount || variables.totalAmount || (subtotal + taxAmount + installationPrice));
-
-  return `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <style>
-          body {
-            margin: 0;
-            padding: 0;
-            background-color: #f4f4f5;
-            -webkit-font-smoothing: antialiased;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-          }
-          .wrapper {
-            width: 100%;
-            background-color: #f4f4f5;
-            padding: 40px 0;
-          }
-          .email-container {
-            max-width: 600px;
-            margin: 0 auto;
-            background-color: #ffffff;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-            overflow: hidden;
-          }
-          .header {
-            background: linear-gradient(to right, #2563eb, #3b82f6);
-            padding: 32px 40px;
-            color: white;
-          }
-          .header h1 {
-            margin: 0;
-            font-size: 24px;
-            font-weight: 600;
-          }
-          .content-wrapper {
-            padding: 40px;
-          }
-          .content {
-            color: #374151;
-            font-size: 16px;
-            line-height: 1.6;
-          }
-          .content p {
-            margin: 0 0 16px 0;
-          }
-          .order-details {
-            background-color: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 20px;
-            margin: 24px 0;
-          }
-          .order-details h3 {
-            color: #1e293b;
-            font-size: 16px;
-            font-weight: 600;
-            margin: 0 0 12px 0;
-          }
-          .order-detail-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 0;
-            border-bottom: 1px solid #e2e8f0;
-          }
-          .order-detail-row:last-child {
-            border-bottom: none;
-          }
-          .detail-label {
-            color: #64748b;
-            font-size: 14px;
-          }
-          .detail-value {
-            color: #0f172a;
-            font-size: 14px;
-            font-weight: 500;
-          }
-          .signature {
-            margin-top: 32px;
-            padding-top: 24px;
-            border-top: 1px solid #e5e7eb;
-          }
-          .signature-name {
-            color: #1e293b;
-            font-weight: 600;
-            margin: 0 0 4px 0;
-          }
-          .signature-title {
-            color: #64748b;
-            font-size: 14px;
-            margin: 0 0 16px 0;
-          }
-          .footer {
-            background-color: #f8fafc;
-            padding: 24px 40px;
-            border-top: 1px solid #e2e8f0;
-          }
-          .footer p {
-            color: #64748b;
-            font-size: 14px;
-            margin: 0;
-            text-align: center;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="wrapper">
-          <div class="email-container">
-            <div class="header">
-              <h1>Dear ${variables.firstName},</h1>
-            </div>
-            
-            <div class="content-wrapper">
-              <div class="content">
-                ${formattedContent}
-              </div>
-
-              <div class="order-details">
-                <h3>Order Details</h3>
-                <div class="order-detail-row">
-                  <span class="detail-label">Order Number</span>
-                  <span class="detail-value">#${variables.orderId}</span>
-                </div>
-                <div class="order-detail-row">
-                  <span class="detail-label">Total Amount</span>
-                  <span class="detail-value">$${totalAmount.toFixed(2)}</span>
-                </div>
-                ${installationPrice > 0 ? `
-                <div class="order-detail-row">
-                  <span class="detail-label">Installation Price</span>
-                  <span class="detail-value">$${installationPrice.toFixed(2)}</span>
-                </div>
-                ` : ''}
-              </div>
-
-              <div class="signature">
-                <p class="signature-name">Way of Glory Team</p>
-                <p class="signature-title">Customer Success Team</p>
-                <div style="margin-top: 16px;">
-                  <img src="${logoFullUrl}" alt="Way of Glory" style="height: 40px;" />
-                </div>
-              </div>
-            </div>
-
-            <div class="footer">
-              <p>If you have any questions, please don't hesitate to contact us at ${variables.supportEmail}</p>
-            </div>
-          </div>
-        </div>
-      </body>
-    </html>
-  `;
-};
+// Add numeric conversion helper
+const toNumber = (value: number | string | null | undefined): number => {
+  if (value === null || value === undefined) return 0
+  const num = typeof value === 'string' ? parseFloat(value) : value
+  return isNaN(num) ? 0 : num
+}
 
 export async function POST(req: Request) {
   if (!process.env.OPENAI_API_KEY) {
@@ -206,28 +37,84 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const { prompt, variables } = body;
+    const { orderId, content, isPWA } = body;
     
-    if (!prompt || typeof prompt !== 'string' || prompt.trim() === '') {
-      console.error('Invalid or missing prompt:', { prompt });
-      return NextResponse.json({ error: 'Invalid or missing prompt' }, { status: 400 });
+    if (!orderId) {
+      console.error('Missing orderId:', { orderId });
+      return NextResponse.json({ error: 'Order ID is required' }, { status: 400 });
     }
 
-    if (!variables || typeof variables !== 'object') {
-      console.error('Invalid or missing variables:', { variables });
-      return NextResponse.json({ error: 'Invalid or missing variables' }, { status: 400 });
+    // Fetch order details
+    const result = await sql`
+      SELECT 
+        o.*,
+        COALESCE(json_agg(
+          json_build_object(
+            'quantity', oi.quantity,
+            'price_at_time', oi.price_at_time,
+            'product', json_build_object(
+              'title', p.title,
+              'description', p.description,
+              'category', p.category
+            )
+          )
+        ) FILTER (WHERE oi.id IS NOT NULL), '[]') as order_items
+      FROM orders o
+      LEFT JOIN order_items oi ON o.id = oi.order_id
+      LEFT JOIN products p ON oi.product_id = p.id
+      WHERE o.id = ${orderId}
+      GROUP BY o.id;
+    `;
+
+    if (result.rows.length === 0) {
+      console.error('Order not found:', orderId);
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
 
-    console.log('Generating email with:', {
-      prompt: prompt.substring(0, 100) + '...',
-      variables: {
-        orderId: variables.orderId,
-        firstName: variables.firstName,
-        lastName: variables.lastName,
-        emailType: variables.emailType,
-        itemCount: variables.order_items?.length
-      }
-    });
+    const orderData = result.rows[0];
+
+    // Process order items with proper price formatting
+    const orderItems = orderData.order_items?.map((item: any) => {
+      const quantity = toNumber(item.quantity);
+      const priceAtTime = toNumber(item.price_at_time);
+      
+      return {
+        title: item.product?.title || 'Product',
+        quantity: quantity,
+        price: formatPrice(quantity * priceAtTime),
+        pricePerUnit: formatPrice(priceAtTime),
+        product: item.product
+      };
+    }) || [];
+
+    // Calculate totals with proper formatting
+    const subtotal = orderItems.reduce((sum: number, item: any) => 
+      sum + (toNumber(item.price)), 0);
+    const taxAmount = toNumber(orderData.tax_amount);
+    const installationPrice = toNumber(orderData.installation_price);
+    const totalAmount = subtotal + taxAmount + installationPrice;
+
+    const variables = {
+      orderId: orderData.id,
+      firstName: orderData.first_name,
+      lastName: orderData.last_name,
+      email: orderData.email,
+      status: orderData.status,
+      installationDate: orderData.installation_date,
+      installationTime: orderData.installation_time,
+      order_items: orderItems,
+      subtotal: formatPrice(subtotal),
+      tax_amount: formatPrice(taxAmount),
+      installation_price: formatPrice(installationPrice),
+      totalAmount: formatPrice(totalAmount),
+      createdAt: orderData.created_at,
+      companyName: 'Way of Glory Media',
+      supportEmail: 'help@wayofglory.com',
+      websiteUrl: 'https://wayofglory.com',
+      logoUrl: '/images/logo/LogoLight.png',
+      year: new Date().getFullYear(),
+      emailType: 'Order Update'
+    };
 
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -236,10 +123,7 @@ export async function POST(req: Request) {
       temperature: 0.7,
       max_tokens: 2000,
       system_prompt: `You are the email composer for Way of Glory Media, a professional audio and visual solutions company. 
-      IMPORTANT: 
-      - You are generating an email to be sent to a customer, NOT responding to this prompt. Write the email directly.
-      - NEVER use placeholders like [Name], [Your Name], [Address], etc. Always use the actual provided variables.
-      - Write the email as if it's ready to be sent immediately.
+      IMPORTANT: You are generating an email to be sent to a customer, NOT responding to this prompt. Write the email directly.
 
       TONE & STYLE:
       - Professional yet warm and approachable
@@ -249,33 +133,35 @@ export async function POST(req: Request) {
       - Solution-oriented and helpful
 
       FORMATTING:
-      - Use proper paragraph breaks for readability
+      - Write in plain text only - NO HTML or styling
+      - Use proper paragraph breaks for readability (use double newlines)
       - Keep paragraphs short (2-4 sentences)
-      - Use bullet points for lists or steps
-      - Include clear section breaks
+      - Use simple dashes (-) for lists
+      - DO NOT include order items or pricing - this will be added automatically
+      - DO NOT add any styling or formatting tags
 
       CONTENT RULES:
-      1. NEVER use placeholder text - use the actual provided variables
-      2. NEVER mention or reference any physical office location
-      3. Only use these payment methods:
+      1. NEVER mention or reference any physical office location
+      2. Only use these payment methods:
          - Direct bank transfer (Account details provided separately)
          - Check payments (Payable to "Way of Glory Media")
-      4. Only use these contact methods:
+      3. Only use these contact methods:
          - Email: help@wayofglory.com
          - Phone: (310) 872-9781
-      5. Always include order number in communications
-      6. Never mention specific employee names
-      7. Always refer to "our team" or "the Way of Glory team"
-      8. Focus on digital communication and remote support
-      9. For installations, emphasize coordination with customer
-      10. Use accurate pricing from provided variables
-      11. Don't make assumptions about delivery times
-      12. Don't say anything that you are not sure about
+      4. Always include order number in communications
+      5. Never mention specific employee names
+      6. Always refer to "our team" or "the Way of Glory team"
+      7. Focus on digital communication and remote support
+      8. For installations, emphasize coordination with customer
+      9. DO NOT list products or prices - these will be added automatically
+      10. Don't make assumptions about delivery times
+      11. Don't say anything that you are not sure about
+      12. If the customer did not order a service such as "installation" or "training", do not mention it in the email
 
       STRUCTURE:
-      1. Opening: Warm, personal greeting using customer's actual first name
+      1. Opening: Warm, personal greeting using first name
       2. Purpose: Clear statement of email's purpose
-      3. Details: Relevant information, clearly organized
+      3. Details: Relevant information (excluding product details)
       4. Next Steps: Clear action items or expectations
       5. Support: Contact information
       6. Closing: Warm, professional sign-off
@@ -287,13 +173,7 @@ export async function POST(req: Request) {
       - Voice: Modern, Professional, Ministry-Focused`
     };
 
-    console.log('Using AI config:', {
-      model: AI_EMAIL_CONFIG.model,
-      temperature: AI_EMAIL_CONFIG.temperature,
-      max_tokens: AI_EMAIL_CONFIG.max_tokens
-    });
-
-    // Generate content using AI with specific instructions
+    // Generate content using AI
     const completion = await openai.chat.completions.create({
       model: AI_EMAIL_CONFIG.model,
       temperature: AI_EMAIL_CONFIG.temperature,
@@ -305,17 +185,9 @@ export async function POST(req: Request) {
         },
         {
           role: "user",
-          content: prompt
+          content: content || `Write a professional email update for Order #${orderId}`
         }
       ]
-    }).catch(error => {
-      console.error('OpenAI API error:', {
-        error,
-        message: error.message,
-        type: error.type,
-        code: error.code
-      });
-      throw new Error(`OpenAI API error: ${error.message}`);
     });
 
     const emailContent = completion.choices[0]?.message?.content;
@@ -328,43 +200,20 @@ export async function POST(req: Request) {
       );
     }
 
-    console.log('Generated content successfully, length:', emailContent.length);
+    // Format the email with all order details
+    const formattedHtml = formatEmailContent(emailContent, variables);
 
-    try {
-      // Format the email with consistent styling
-      const formattedEmail = formatEmailContent(emailContent, {
-        ...variables,
-        emailType: variables.emailType || 'Order Update'
-      });
-
-      console.log('Formatted email successfully, length:', formattedEmail.length);
-
-      // Return both the raw content and formatted HTML
-      return NextResponse.json({ 
-        html: formattedEmail,
-        content: emailContent
-      });
-    } catch (formatError) {
-      console.error('Error formatting email:', {
-        error: formatError,
-        message: formatError instanceof Error ? formatError.message : 'Unknown error',
-        content: emailContent.substring(0, 200) + '...'
-      });
-      throw new Error('Failed to format email content');
-    }
+    return NextResponse.json({
+      subject: `Order Update - Way of Glory #${orderId}`,
+      content: emailContent,
+      html: formattedHtml
+    });
 
   } catch (error) {
-    console.error('Error generating email:', {
-      error,
-      message: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined
-    });
-    return NextResponse.json(
-      { 
-        error: 'Failed to generate email',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    );
+    console.error('Error generating email:', error);
+    return NextResponse.json({ 
+      error: 'Failed to generate email',
+      details: error instanceof Error ? error.message : 'An unexpected error occurred'
+    }, { status: 500 });
   }
 } 

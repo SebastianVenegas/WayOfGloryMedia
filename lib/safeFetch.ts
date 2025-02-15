@@ -55,6 +55,19 @@ export async function safeFetch(url: string, options: RequestInit): Promise<{
     const cleanText = text.replace(/^\uFEFF/, '').trim();
     console.log('Clean response text:', cleanText.substring(0, 200));
 
+    // Additional check: if the first character is not '{' or '[', return error immediately
+    if (cleanText[0] !== '{' && cleanText[0] !== '[') {
+      console.error('Response does not start with a valid JSON delimiter. First character:', cleanText[0], 'Raw response:', cleanText.substring(0, 100));
+      return {
+        ok: false,
+        data: {
+          error: 'Invalid JSON response',
+          details: `Response does not start with a JSON object or array. Raw response: ${cleanText.substring(0, 100)}`
+        },
+        status: response.status
+      };
+    }
+
     // If the response text appears to be an error message, return it without attempting JSON.parse
     if (cleanText.toLowerCase().startsWith('an error') || cleanText.toLowerCase().startsWith('application error')) {
       console.error('Response appears to be an error message rather than valid JSON:', cleanText.substring(0, 100));

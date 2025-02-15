@@ -5,9 +5,23 @@ import fs from 'fs/promises';
 import path from 'path';
 import { safeFetch } from '@/lib/safeFetch';
 
+// Add price formatting helper
+const formatPrice = (price: number | string | null | undefined): string => {
+  if (price === null || price === undefined) return '0.00';
+  const numericPrice = typeof price === 'string' ? parseFloat(price) : price;
+  return isNaN(numericPrice) ? '0.00' : numericPrice.toFixed(2);
+};
+
+// Add numeric conversion helper
+const toNumber = (value: number | string | null | undefined): number => {
+  if (value === null || value === undefined) return 0;
+  const num = typeof value === 'string' ? parseFloat(value) : value;
+  return isNaN(num) ? 0 : num;
+};
+
 interface OrderItem {
   quantity: number;
-  price_at_time: number;
+  price_at_time: number | string;
   title?: string;
   pricePerUnit?: number;
   product?: {
@@ -86,38 +100,39 @@ export async function GET(
 
     const orderData = result.rows[0];
 
-    // Calculate order totals
-    const orderItems = orderData.order_items?.map((item: {
-      quantity: number;
-      price_at_time: number;
-      title?: string;
-      pricePerUnit?: number;
-      product?: { title?: string; category?: string };
-    }) => ({
-      title: item.product?.title || 'Product',
-      quantity: Number(item.quantity),
-      price: Number(item.price_at_time) * Number(item.quantity),
-      pricePerUnit: Number(item.price_at_time),
-      product: item.product
-    })) || [];
+    // Process order items with proper price formatting
+    const orderItems = orderData.order_items?.map((item: OrderItem) => {
+      const quantity = toNumber(item.quantity);
+      const priceAtTime = toNumber(item.price_at_time);
+      
+      return {
+        title: item.product?.title || 'Product',
+        quantity: quantity,
+        price: formatPrice(quantity * priceAtTime),
+        pricePerUnit: formatPrice(priceAtTime),
+        product: item.product
+      };
+    }) || [];
 
-    const subtotal = orderItems.reduce((sum: number, item: { price: number }) => sum + item.price, 0);
-    const taxAmount = Number(orderData.tax_amount || 0);
-    const installationPrice = Number(orderData.installation_price || 0);
+    // Calculate totals with proper formatting
+    const subtotal = orderItems.reduce((sum: number, item: { price: string }) => 
+      sum + toNumber(item.price), 0);
+    const taxAmount = toNumber(orderData.tax_amount);
+    const installationPrice = toNumber(orderData.installation_price);
     const totalAmount = subtotal + taxAmount + installationPrice;
 
-    // Cast the database result to Order type
-    const order: any = {
+    // Format the order data
+    const order: Order = {
       id: orderData.id,
       first_name: orderData.first_name,
       last_name: orderData.last_name,
       email: orderData.email,
-      total_amount: totalAmount,
-      tax_amount: taxAmount,
+      total_amount: formatPrice(totalAmount),
+      tax_amount: formatPrice(taxAmount),
       created_at: orderData.created_at,
       status: orderData.status,
       order_items: orderItems,
-      installation_price: installationPrice,
+      installation_price: formatPrice(installationPrice),
       installation_date: orderData.installation_date
     };
 
@@ -138,13 +153,13 @@ export async function GET(
           firstName: order.first_name,
           lastName: order.last_name,
           email: order.email,
-          totalAmount: totalAmount,
+          totalAmount: formatPrice(totalAmount),
           createdAt: order.created_at,
           status: order.status,
           order_items: orderItems,
-          subtotal: subtotal,
-          tax_amount: taxAmount,
-          installation_price: installationPrice,
+          subtotal: formatPrice(subtotal),
+          tax_amount: formatPrice(taxAmount),
+          installation_price: formatPrice(installationPrice),
           companyName: 'Way of Glory Media',
           supportEmail: 'help@wayofglory.com',
           websiteUrl: 'https://wayofglory.com',
@@ -162,38 +177,28 @@ export async function GET(
       }
       template.variables = {
         ...template.variables,
-        logoUrl: logoLightUrl
+        logoUrl: logoLightUrl,
+        order_items: orderItems,
+        subtotal: formatPrice(subtotal),
+        tax_amount: formatPrice(taxAmount),
+        installation_price: formatPrice(installationPrice),
+        totalAmount: formatPrice(totalAmount)
       };
       prompt = template.prompt;
     }
 
-    // Generate content using the generate-email endpoint using safeFetch
-    const baseUrlForGenerate = getBaseUrl(request);
-    const generateUrl = new URL('/api/admin/generate-email', baseUrlForGenerate).toString();
+    // Generate content using the generate-email endpoint
+    const generateUrl = new URL('/api/admin/generate-email', baseUrl).toString();
     
     console.log('Generating email with:', {
       templateId,
       prompt: prompt.substring(0, 100) + '...',
-      variables: {
-        ...template.variables,
-        order_items: orderItems,
-        subtotal,
-        tax_amount: taxAmount,
-        installation_price: installationPrice,
-        totalAmount
-      }
+      variables: template.variables
     });
 
     const generatePayload = {
       prompt: prompt,
-      variables: {
-        ...template.variables,
-        order_items: orderItems,
-        subtotal,
-        tax_amount: taxAmount,
-        installation_price: installationPrice,
-        totalAmount
-      }
+      variables: template.variables
     };
 
     let data;
@@ -219,17 +224,8 @@ export async function GET(
       }, { status: 500 });
     }
 
-    // Format the email with all order details
-    const formattedHtml = formatEmailContent(data.content, {
-      ...template.variables,
-      order_items: orderItems,
-      subtotal,
-      tax_amount: taxAmount,
-      installation_price: installationPrice,
-      totalAmount,
-      emailType: template.variables.emailType || 'Order Update',
-      logoUrl: logoLightUrl
-    });
+    // Format the final content
+    const formattedHtml = formatEmailContent(data.content, template.variables);
 
     return NextResponse.json({
       subject: template.subject,
@@ -238,12 +234,10 @@ export async function GET(
     });
 
   } catch (error) {
-    const err = error instanceof Error ? error : new Error(String(error));
-    console.error('Error in preview-template:', err.message);
-    console.error('Stack trace:', err.stack);
+    console.error('Error in preview-template:', error);
     return NextResponse.json({ 
       error: 'Failed to generate email preview',
-      details: err.message
+      details: error instanceof Error ? error.message : 'An unexpected error occurred'
     }, { status: 500 });
   }
 }
