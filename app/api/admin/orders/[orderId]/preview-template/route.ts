@@ -272,14 +272,29 @@ export async function GET(
     return NextResponse.json({
       subject: generateResult.data.subject || template.subject,
       content: generateResult.data.content,
-      html: generateResult.data.html
+      html: generateResult.data.html,
+      success: true,
+      isPWA: process.env.NEXT_PUBLIC_PWA === 'true'
+    }, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store'
+      }
     });
 
   } catch (error) {
     console.error('Error in preview-template:', error);
     return NextResponse.json({ 
       error: 'Failed to generate email preview',
-      details: error instanceof Error ? error.message : 'An unexpected error occurred'
-    }, { status: 500 });
+      details: error instanceof Error ? error.message : 'An unexpected error occurred',
+      success: false,
+      isPWA: process.env.NEXT_PUBLIC_PWA === 'true'
+    }, { 
+      status: 500,
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store'
+      }
+    });
   }
 }

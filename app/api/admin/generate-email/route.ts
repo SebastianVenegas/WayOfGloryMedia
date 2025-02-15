@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ 
         error: 'OpenAI API key is missing',
         success: false,
-        isPWA
+        isPWA: isPWA || process.env.NEXT_PUBLIC_PWA === 'true'
       }, { 
         status: 500,
         headers: {
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ 
           error: 'Order not found',
           success: false,
-          isPWA
+          isPWA: isPWA || process.env.NEXT_PUBLIC_PWA === 'true'
         }, { 
           status: 404,
           headers: {
@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ 
         error: 'Missing or invalid email variables',
         success: false,
-        isPWA
+        isPWA: isPWA || process.env.NEXT_PUBLIC_PWA === 'true'
       }, { 
         status: 400,
         headers: {
@@ -112,7 +112,8 @@ export async function POST(request: NextRequest) {
 
     console.log('Processing with variables:', {
       variableCount: Object.keys(emailVariables).length,
-      sampleKeys: Object.keys(emailVariables).slice(0, 5)
+      sampleKeys: Object.keys(emailVariables).slice(0, 5),
+      isPWA
     });
 
     const openai = new OpenAI({
@@ -175,7 +176,17 @@ export async function POST(request: NextRequest) {
 
     if (!generatedContent) {
       console.error('No content generated from OpenAI');
-      return NextResponse.json({ error: 'Failed to generate email content' }, { status: 500 });
+      return NextResponse.json({ 
+        error: 'Failed to generate email content',
+        success: false,
+        isPWA: isPWA || process.env.NEXT_PUBLIC_PWA === 'true'
+      }, { 
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-store'
+        }
+      });
     }
 
     console.log('Generated content length:', generatedContent.length);
@@ -191,7 +202,7 @@ export async function POST(request: NextRequest) {
       content: generatedContent,
       html: formattedHtml,
       success: true,
-      isPWA
+      isPWA: isPWA || process.env.NEXT_PUBLIC_PWA === 'true'
     }, {
       headers: {
         'Content-Type': 'application/json',
