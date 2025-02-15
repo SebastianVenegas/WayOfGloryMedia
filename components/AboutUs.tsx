@@ -63,7 +63,7 @@ export default function AboutUs() {
             <div className="max-w-3xl mx-auto space-y-6 text-center">
               <p className="text-xl text-gray-600">
                 Founded with a vision to revolutionize church technology,
-                we've spent years perfecting the art of church audio and digital solutions.
+                we&apos;ve spent years perfecting the art of church audio and digital solutions.
               </p>
               <p className="text-xl text-gray-600">
                 Our team combines technical expertise with a deep understanding of church needs,
@@ -93,10 +93,10 @@ export default function AboutUs() {
                   <span className="text-blue-400 font-medium">Excellence in Service</span>
                 </div>
                 <h3 className="text-2xl md:text-3xl font-bold text-white mb-4">
-                  Southern California's Premier Church Technology Partner
+                  Southern California&apos;s Premier Church Technology Partner
                 </h3>
                 <p className="text-white/90 text-lg max-w-2xl">
-                  With over a decade of experience, we've helped countless churches transform their 
+                  With over a decade of experience, we&apos;ve helped countless churches transform their 
                   audio and digital presence, making technology work seamlessly for their mission.
                 </p>
               </div>
@@ -127,7 +127,7 @@ export default function AboutUs() {
 
                   {/* Content */}
                   <h3 className="text-2xl font-semibold text-gray-900 mb-4">{value.title}</h3>
-                  <p className="text-gray-600 mb-6 text-lg">{value.description}</p>
+                  <p className="text-gray-600 dark:text-gray-300 mb-6 text-lg">{value.description}</p>
 
                   {/* Highlight Badge */}
                   <div className="inline-flex items-center text-sm text-blue-600 font-medium">
@@ -148,7 +148,10 @@ export default function AboutUs() {
               <div className="max-w-3xl mx-auto text-center text-white">
                 <h3 className="text-2xl sm:text-3xl font-bold mb-4">Ready to Start Your Journey?</h3>
                 <p className="text-white/90 mb-8">
-                  Let's work together to create the perfect audio and digital solution for your church.
+                  Let&apos;s create something amazing together
+                </p>
+                <p className="text-gray-600 dark:text-gray-300">
+                  We&apos;re here to help you succeed
                 </p>
                 <Link 
                   href="/#quote"

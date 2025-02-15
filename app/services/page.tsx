@@ -397,7 +397,7 @@ export default function ServicesPage(): ReactElement {
             </h2>
 
             {/* Description */}
-            <p className="text-xl text-gray-600 leading-relaxed max-w-3xl mx-auto mb-12">
+            <p className="text-gray-600 dark:text-gray-300 leading-relaxed max-w-3xl mx-auto mb-12">
               Professional audio and streaming solutions tailored for your church's unique needs. 
               Our expert team ensures crystal-clear sound and seamless streaming for every service.
             </p>

@@ -301,7 +301,7 @@ export default function VideoServicesPage(): ReactElement {
                   {/* Content */}
                   <div className="p-8">
                     <h3 className="text-2xl font-bold text-gray-900 mb-4">{service.title}</h3>
-                    <p className="text-gray-600 mb-8">{service.description}</p>
+                    <p className="text-gray-600 dark:text-gray-300 mb-8">{service.description}</p>
 
                     {/* Features Preview */}
                     <div className="space-y-4 mb-8">

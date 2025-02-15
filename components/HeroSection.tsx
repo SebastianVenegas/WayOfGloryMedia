@@ -114,9 +114,8 @@ export default function HeroSection() {
             </div>
 
             {/* Enhanced Subheading */}
-            <p className="text-xl md:text-2xl text-white/90 max-w-2xl leading-relaxed">
-              Empowering Southern California churches with professional websites, apps, sound, and streaming solutions. 
-              From modern digital platforms to immersive audio experiences, we help you connect with your congregation both online and in person.
+            <p className="text-gray-600 dark:text-gray-300">
+              Let&apos;s elevate your church&apos;s audio experience
             </p>
 
             {/* CTA Buttons with Enhanced Styling */}

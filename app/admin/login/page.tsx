@@ -131,6 +131,18 @@ export default function LoginPage() {
           <div className="text-center text-sm text-gray-500">
             <p>Protected by World Of Glory Admin</p>
           </div>
+
+          <div className="text-sm">
+            Don&apos;t have an account? <a href="#" className="font-semibold leading-6 text-indigo-600 hover:text-indigo-500">Contact us</a>
+          </div>
+
+          <div className="text-sm">
+            Forgot your password? <a href="#" className="font-semibold leading-6 text-indigo-600 hover:text-indigo-500">Reset it here</a>
+          </div>
+
+          <div className="text-sm">
+            Need help? <a href="#" className="font-semibold leading-6 text-indigo-600 hover:text-indigo-500">Contact support</a>
+          </div>
         </div>
       </div>
 
