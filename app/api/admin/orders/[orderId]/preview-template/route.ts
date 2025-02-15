@@ -193,20 +193,27 @@ export async function GET(
     console.log('Generating email with:', {
       templateId,
       prompt: prompt.substring(0, 100) + '...',
-      variables: template.variables
+      variables: template.variables,
+      isPWA: process.env.NEXT_PUBLIC_PWA === 'true'
     });
 
     const generatePayload = {
       prompt: prompt,
       content: prompt,
       variables: template.variables,
-      orderId: orderId_int
+      orderId: orderId_int,
+      isPWA: process.env.NEXT_PUBLIC_PWA === 'true'
     };
 
     let generateResult;
     try {
       const response = await safeFetch(generateUrl, {
         method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-store'
+        },
         body: JSON.stringify(generatePayload)
       });
       generateResult = response;
@@ -214,7 +221,9 @@ export async function GET(
       console.error('Error calling generate-email:', err);
       return NextResponse.json({ 
         error: 'Failed to generate email content',
-        details: err instanceof Error ? err.message : 'Unknown error'
+        details: err instanceof Error ? err.message : 'Unknown error',
+        success: false,
+        isPWA: process.env.NEXT_PUBLIC_PWA === 'true'
       }, { status: 500 });
     }
 

@@ -45,7 +45,17 @@ export async function POST(request: NextRequest) {
 
     if (!process.env.OPENAI_API_KEY) {
       console.error('OpenAI API key is missing');
-      return NextResponse.json({ error: 'OpenAI API key is missing' }, { status: 500 });
+      return NextResponse.json({ 
+        error: 'OpenAI API key is missing',
+        success: false,
+        isPWA
+      }, { 
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-store'
+        }
+      });
     }
 
     let emailVariables = variables;
@@ -57,7 +67,17 @@ export async function POST(request: NextRequest) {
       `;
 
       if (orderResult.rows.length === 0) {
-        return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+        return NextResponse.json({ 
+          error: 'Order not found',
+          success: false,
+          isPWA
+        }, { 
+          status: 404,
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-store'
+          }
+        });
       }
 
       const order = orderResult.rows[0];
@@ -77,7 +97,17 @@ export async function POST(request: NextRequest) {
     // Ensure all required variables are present
     if (!emailVariables || typeof emailVariables !== 'object') {
       console.error('Missing or invalid email variables');
-      return NextResponse.json({ error: 'Missing or invalid email variables' }, { status: 400 });
+      return NextResponse.json({ 
+        error: 'Missing or invalid email variables',
+        success: false,
+        isPWA
+      }, { 
+        status: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-store'
+        }
+      });
     }
 
     console.log('Processing with variables:', {
@@ -159,15 +189,33 @@ export async function POST(request: NextRequest) {
         ? `${emailVariables.emailType} - Way of Glory #${orderId}`
         : `Order Update - Way of Glory #${orderId}`,
       content: generatedContent,
-      html: formattedHtml
+      html: formattedHtml,
+      success: true,
+      isPWA
+    }, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store'
+      }
     });
 
   } catch (error: unknown) {
     console.error('Error generating email:', error);
     const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
     return NextResponse.json(
-      { error: 'Failed to generate email', details: errorMessage },
-      { status: 500 }
+      { 
+        error: 'Failed to generate email', 
+        details: errorMessage,
+        success: false,
+        isPWA: process.env.NEXT_PUBLIC_PWA === 'true'
+      },
+      { 
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-store'
+        }
+      }
     );
   }
 } 
