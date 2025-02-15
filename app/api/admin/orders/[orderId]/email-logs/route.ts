@@ -1,16 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@vercel/postgres';
+import { ParsedUrlQuery } from 'querystring';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function GET(request: NextRequest, context: any): Promise<NextResponse> {
+export async function GET(request: NextRequest, context: { params: ParsedUrlQuery }): Promise<NextResponse> {
   try {
-    const { params } = context as { params: { orderId: string | string[] } };
-    const orderIdStr = Array.isArray(params.orderId) ? params.orderId[0] : params.orderId;
-    if (!orderIdStr) {
+    const { params } = context;
+    const orderId = params.orderId;
+    if (typeof orderId !== "string" || !orderId) {
       return NextResponse.json({ error: 'Order ID is required' }, { status: 400 });
     }
 
-    const orderIdInt = parseInt(orderIdStr);
+    const orderIdInt = parseInt(orderId);
     if (isNaN(orderIdInt)) {
       return NextResponse.json({ error: 'Invalid Order ID' }, { status: 400 });
     }
