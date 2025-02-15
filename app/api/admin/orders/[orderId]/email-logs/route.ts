@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@vercel/postgres';
 
+type RouteContext = {
+  params: {
+    orderId: string;
+  };
+};
+
 export async function GET(
   request: NextRequest,
-  { params }: { params: { orderId: string } }
+  context: RouteContext
 ): Promise<NextResponse> {
   try {
-    // Get orderId from URL instead of params
-    const orderId = request.nextUrl.pathname.split('/')[4];
+    const orderId = context.params.orderId;
     if (!orderId) {
       return NextResponse.json({ error: 'Order ID is required' }, { status: 400 });
     }
