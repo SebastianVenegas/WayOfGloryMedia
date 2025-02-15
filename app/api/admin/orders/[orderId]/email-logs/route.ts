@@ -1,16 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@vercel/postgres';
 
-export async function GET(
-  request: NextRequest,
-  context: { params: { orderId: string } }
-): Promise<NextResponse> {
-  const { orderId } = context.params;
-  if (!orderId) {
+export async function GET(request: NextRequest, context): Promise<NextResponse> {
+  const { params } = context;
+  const { orderId } = params;
+  const orderIdStr = Array.isArray(orderId) ? orderId[0] : orderId;
+  if (!orderIdStr) {
     return NextResponse.json({ error: 'Order ID is required' }, { status: 400 });
   }
 
-  const orderIdInt = parseInt(orderId);
+  const orderIdInt = parseInt(orderIdStr);
   if (isNaN(orderIdInt)) {
     return NextResponse.json({ error: 'Invalid Order ID' }, { status: 400 });
   }
