@@ -3347,23 +3347,6 @@ export default function OrdersPage() {
           </div>
         </DialogContent>
       </Dialog>
-
-      {showEmailComposer && selectedOrder && (
-        <EmailComposer
-          orderId={selectedOrder.id.toString()}
-          onEmailSent={handleEmailSent}
-          initialContent={content}
-          onContentChange={setContent}
-          subject={subject}
-          onSubjectChange={setSubject}
-          onClose={handleCloseEmailComposer}
-          isTemplateLoading={isGeneratingEmail || viewMode === 'loading'}
-          loadingTemplateName={loadingTemplateName}
-          activeTab={activeEmailTab}
-          onTabChange={handleEmailTabChange}
-          isSending={isSendingEmail}
-        />
-      )}
     </div>
   ) // End of return
 } // End of OrdersPage

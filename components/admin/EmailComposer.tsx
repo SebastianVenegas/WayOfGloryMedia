@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import Editor from '@/components/ui/editor'
 import { useToast } from '@/components/ui/use-toast'
-import { Clock, Mail, Send, Eye, X, Sparkles } from 'lucide-react'
+import { Clock, Mail, Send, Eye, X, Sparkles, Loader2 } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import EmailPreview from '@/components/email-preview'
 
@@ -128,15 +128,17 @@ export default function EmailComposer({
   onTabChange,
   isSending = false
 }: EmailComposerProps) {
-  const [subject, setSubject] = useState(externalSubject || '')
   const [content, setContent] = useState(initialContent)
-  const [isLoading, setIsLoading] = useState(isTemplateLoading)
-  const [isGenerating, setIsGenerating] = useState(isTemplateLoading)
+  const [subject, setSubject] = useState(externalSubject || '')
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [isSendingEmail, setIsSendingEmail] = useState(false)
+  const [error, setError] = useState('')
+  const [prompt, setPrompt] = useState('')
+  const { toast } = useToast()
   const [emailLogs, setEmailLogs] = useState<EmailLog[]>([])
   const [isLoadingLogs, setIsLoadingLogs] = useState(false)
   const [previewEmail, setPreviewEmail] = useState<EmailLog | null>(null)
   const [sendStatus, setSendStatus] = useState<SendStatus>('idle')
-  const { toast } = useToast()
 
   useEffect(() => {
     if (initialContent !== undefined) {
@@ -144,7 +146,6 @@ export default function EmailComposer({
       // Clear loading state after content is set
       if (isTemplateLoading) {
         setTimeout(() => {
-          setIsLoading(false)
           setIsGenerating(false)
         }, 500)
       }
@@ -159,9 +160,8 @@ export default function EmailComposer({
 
   // Update loading states when isTemplateLoading changes
   useEffect(() => {
-    setIsLoading(isTemplateLoading)
-    setIsGenerating(isTemplateLoading || isLoading)
-  }, [isTemplateLoading, isLoading])
+    setIsGenerating(isTemplateLoading)
+  }, [isTemplateLoading])
 
   const handleContentChange = (value: string) => {
     const cleanValue = value.replace(/<p><\/p>/g, '<p><br></p>')
@@ -179,167 +179,110 @@ export default function EmailComposer({
   }
 
   const handleGenerateEmail = async (e: React.MouseEvent<HTMLButtonElement> | React.TouchEvent<HTMLButtonElement>) => {
-    // Prevent all forms of event propagation and default behavior
     e.preventDefault();
     e.stopPropagation();
-    if ('touches' in e) {
-      e.stopPropagation();
-      e.preventDefault();
+
+    if (!prompt.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a prompt",
+        variant: "destructive"
+      });
+      return;
     }
-    
+
+    setIsGenerating(true);
+    setError('');
+
     try {
-      // Set loading states before any operations
-      setIsGenerating(true);
-      setIsLoading(true);
-      
-      // Store current content for fallback
-      const previousContent = content;
-      
-      // Sanitize the content before sending
-      const sanitizedContent = content.trim().replace(/\s+/g, ' ');
-      
-      if (!sanitizedContent) {
-        throw new Error('Email content cannot be empty');
-      }
-
-      const isPWA = typeof window !== 'undefined' && (
-        window.matchMedia('(display-mode: standalone)').matches ||
-        window.matchMedia('(display-mode: fullscreen)').matches ||
-        // Check for iOS standalone mode
-        ('standalone' in window.navigator && (window.navigator as any).standalone === true)
-      );
-
       const response = await fetch(`/api/admin/orders/${orderId}/custom-email`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          ...(isPWA ? { 'x-pwa-request': 'true' } : {}),
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          content: sanitizedContent,
-          isPWA
-        }),
+          prompt: prompt.trim()
+        })
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to generate email');
+        throw new Error('Failed to generate email');
       }
 
       const data = await response.json();
       
-      // Ensure the response data is properly formatted
-      if (!data.html || typeof data.html !== 'string') {
-        throw new Error('Invalid email template format');
-      }
+      if (data.content) {
+        // Update content state
+        setContent(data.content);
+        onContentChange?.(data.content);
 
-      // Add a small delay before setting content to ensure loading state is visible
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      setContent(data.html);
-      if (data.subject) {
-        setSubject(data.subject);
-        if (onSubjectChange) {
-          onSubjectChange(data.subject);
-        }
+        // Clear prompt after successful generation
+        setPrompt('');
       }
-      
-      toast({
-        title: "Email Generated",
-        description: "Your email has been professionally formatted.",
-      });
     } catch (error) {
       console.error('Error generating email:', error);
+      setError('Failed to generate email. Please try again.');
       toast({
         title: "Generation Failed",
-        description: error instanceof Error ? error.message : "Failed to generate email",
-        variant: "destructive",
+        description: "Failed to generate email. Please try again.",
+        variant: "destructive"
       });
     } finally {
-      // Add a small delay before clearing loading state
-      setTimeout(() => {
-        setIsGenerating(false);
-        setIsLoading(false);
-      }, 500);
+      setIsGenerating(false);
     }
   };
 
   const handleSendEmail = async () => {
+    if (!content.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter email content",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsSendingEmail(true);
+    setError('');
+
     try {
-      setSendStatus('loading')
-      setIsLoading(true);
-      
-      if (!content.trim()) {
-        throw new Error('Email content cannot be empty');
-      }
-
-      // Enhanced sanitization for PWA mode
-      const isPWA = typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches;
-      let sanitizedContent = content
-        .trim()
-        .replace(/[\u200B-\u200D\uFEFF]/g, '') // Remove zero-width spaces
-        .replace(/\s+/g, ' '); // Normalize whitespace
-
-      // Additional PWA-specific sanitization
-      if (isPWA) {
-        sanitizedContent = sanitizedContent
-          .replace(/&nbsp;/g, ' ')
-          .replace(/<p><br><\/p>/g, '<p></p>')
-          .replace(/<p><\/p>/g, '<br>')
-          .replace(/\r?\n|\r/g, '');
-      }
-
-      // Validate content structure
-      if (!/^[\s\S]*<[^>]+>[\s\S]*$/.test(sanitizedContent)) {
-        throw new Error('Invalid email content structure');
-      }
-
       const response = await fetch(`/api/admin/orders/${orderId}/send-template`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          templateId: 'custom',
           customEmail: {
-            subject: subject || "Payment Reminder",
-            html: sanitizedContent,
-          },
-          isPWA
-        }),
+            subject: subject,
+            content: content,
+            html: content
+          }
+        })
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to send email');
+        throw new Error('Failed to send email');
       }
 
-      setSendStatus('success');
-      
-      // Show success toast
       toast({
-        title: "Email Sent",
-        description: "Your email has been sent successfully.",
+        title: "Success",
+        description: "Email sent successfully",
+        variant: "default"
       });
-
-      // Wait for success animation to complete
-      setTimeout(() => {
-        if (onEmailSent) {
-          onEmailSent();
-        }
-        onClose?.();
-      }, 1500);
-
+      
+      if (onEmailSent) {
+        onEmailSent();
+      }
     } catch (error) {
       console.error('Error sending email:', error);
-      setSendStatus('error');
+      setError('Failed to send email. Please try again.');
       toast({
-        title: "Send Failed",
-        description: error instanceof Error ? error.message : "Failed to send email",
-        variant: "destructive",
+        title: "Error",
+        description: "Failed to send email. Please try again.",
+        variant: "destructive"
       });
     } finally {
-      setIsLoading(false);
+      setIsSendingEmail(false);
     }
   };
 
@@ -480,7 +423,7 @@ export default function EmailComposer({
           onChange={(e) => handleSubjectChange(e.target.value)}
           placeholder={subjectPlaceholders[0]}
           className="w-full"
-          disabled={isGenerating || isLoading || isTemplateLoading}
+          disabled={isGenerating || isTemplateLoading}
         />
       </div>
 
@@ -489,37 +432,41 @@ export default function EmailComposer({
         <label htmlFor="content" className="block text-sm font-medium text-gray-700">
           Email Content
         </label>
-        <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
+        <div className="rounded-xl border bg-white shadow-sm">
           {activeTab === 'content' ? (
             <div className="p-6 relative">
-              <div className="relative">
-                {(isTemplateLoading || isGenerating || isLoading || isSending) ? (
+              {/* AI Prompt Input at the top */}
+              <div className="mb-4 flex gap-2">
+                <Input
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  placeholder="Enter your prompt for AI generation..."
+                  className="flex-1"
+                  disabled={isGenerating || isTemplateLoading}
+                />
+                <Button 
+                  type="button"
+                  onClick={handleGenerateEmail}
+                  disabled={isGenerating || isTemplateLoading || !prompt.trim()}
+                  className="whitespace-nowrap"
+                >
+                  {isGenerating ? "Generating..." : "Generate with AI"}
+                </Button>
+              </div>
+              
+              {/* Editor Container */}
+              <div className="relative" style={{ height: 'calc(100vh - 400px)' }}>
+                {(isTemplateLoading || isGenerating || isSendingEmail) ? (
                   <div className="min-h-[400px] border rounded-lg bg-white p-6 flex items-center justify-center prose-sm">
                     <div className="flex flex-col items-center gap-4">
-                      <div className="relative">
-                        <div className="w-10 h-10 rounded-full border-2 border-blue-100 animate-[spin_3s_linear_infinite]" />
-                        <div className="w-10 h-10 rounded-full border-2 border-blue-500 border-t-transparent animate-[spin_1.5s_linear_infinite] absolute inset-0" />
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <Sparkles className="h-4 w-4 text-blue-500 animate-pulse" />
-                        </div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-sm font-medium text-gray-900">
-                          <div className="flex flex-col items-center gap-1">
-                            <span>
-                              {isSending ? "Sending Email..." : 
-                               isTemplateLoading ? loadingTemplateName : 
-                               isGenerating ? "Generating Custom Email" :
-                               "Processing..."}
-                            </span>
-                            <div className="flex items-center gap-1">
-                              <div className="w-1 h-1 rounded-full bg-blue-600 animate-[bounce_1.4s_infinite]" />
-                              <div className="w-1 h-1 rounded-full bg-blue-600 animate-[bounce_1.4s_infinite_0.2s]" />
-                              <div className="w-1 h-1 rounded-full bg-blue-600 animate-[bounce_1.4s_infinite_0.4s]" />
-                            </div>
-                          </div>
-                        </div>
-                        <p className="text-xs text-gray-500 mt-1">This may take a few moments</p>
+                      <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+                      <div className="flex flex-col items-center gap-1">
+                        <span>
+                          {isSendingEmail ? "Sending Email..." : 
+                           isTemplateLoading ? loadingTemplateName : 
+                           "Generating Custom Email"}
+                        </span>
+                        <span className="text-sm text-gray-500">Please wait...</span>
                       </div>
                     </div>
                   </div>
@@ -528,68 +475,9 @@ export default function EmailComposer({
                     value={content}
                     onChange={handleContentChange}
                     className="min-h-[400px] prose max-w-none focus:outline-none"
-                    disabled={isGenerating || isLoading || isTemplateLoading}
+                    disabled={isGenerating || isTemplateLoading}
                   />
                 )}
-              </div>
-              <div 
-                className="mt-4 flex justify-end"
-                onClick={(e: React.MouseEvent) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                }}
-                onTouchStart={(e: React.TouchEvent) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                }}
-                onTouchEnd={(e: React.TouchEvent) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                }}
-                onTouchMove={(e: React.TouchEvent) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                }}
-              >
-                <Button 
-                  type="button"
-                  onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (e.nativeEvent) {
-                      e.nativeEvent.preventDefault();
-                      e.nativeEvent.stopPropagation();
-                      e.nativeEvent.stopImmediatePropagation?.();
-                    }
-                    handleGenerateEmail(e);
-                  }}
-                  onTouchStart={(e: React.TouchEvent<HTMLButtonElement>) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (e.nativeEvent) {
-                      e.nativeEvent.preventDefault();
-                      e.nativeEvent.stopPropagation();
-                    }
-                  }}
-                  onTouchEnd={(e: React.TouchEvent<HTMLButtonElement>) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (e.nativeEvent) {
-                      e.nativeEvent.preventDefault();
-                      e.nativeEvent.stopPropagation();
-                    }
-                  }}
-                  onTouchMove={(e: React.TouchEvent<HTMLButtonElement>) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}
-                  disabled={isGenerating || isTemplateLoading}
-                  className="select-none touch-none pointer-events-auto no-tap-highlight"
-                  data-no-navigation="true"
-                  style={{ WebkitTapHighlightColor: 'transparent' }}
-                >
-                  {isGenerating || isLoading ? "Generating..." : "Generate with AI"}
-                </Button>
               </div>
             </div>
           ) : (
