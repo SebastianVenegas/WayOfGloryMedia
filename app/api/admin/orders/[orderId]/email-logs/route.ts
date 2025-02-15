@@ -3,20 +3,19 @@ import { sql } from '@vercel/postgres';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { orderId: string } }
-): Promise<NextResponse> {
+  { params }: { params: Record<string, string> }
+): Promise<Response> {
+  const { orderId } = params;
+  if (!orderId) {
+    return NextResponse.json({ error: 'Order ID is required' }, { status: 400 });
+  }
+
+  const orderIdInt = parseInt(orderId);
+  if (isNaN(orderIdInt)) {
+    return NextResponse.json({ error: 'Invalid Order ID' }, { status: 400 });
+  }
+
   try {
-    // Get orderId from URL instead of params
-    const orderId = request.nextUrl.pathname.split('/')[4];
-    if (!orderId) {
-      return NextResponse.json({ error: 'Order ID is required' }, { status: 400 });
-    }
-
-    const orderIdInt = parseInt(orderId);
-    if (isNaN(orderIdInt)) {
-      return NextResponse.json({ error: 'Invalid Order ID' }, { status: 400 });
-    }
-
     const result = await sql`
       SELECT 
         el.*,
@@ -29,9 +28,6 @@ export async function GET(
     return NextResponse.json(result.rows);
   } catch (error) {
     console.error('Error fetching email logs:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch email logs' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to fetch email logs' }, { status: 500 });
   }
 } 
