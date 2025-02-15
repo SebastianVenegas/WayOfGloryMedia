@@ -310,8 +310,19 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
             'Cache-Control': 'no-store'
           },
           body: JSON.stringify({ 
+            orderId,
             prompt: customPrompt || template.prompt,
-            variables: template.variables,
+            variables: {
+              ...template.variables,
+              order_items: orderItems,
+              subtotal,
+              tax_amount: taxAmount,
+              installation_price: installationPrice,
+              totalAmount,
+              emailType: template.variables.emailType || 'Order Update',
+              logoUrl: `${baseUrl}/images/logo/LogoLight.png`,
+              baseUrl
+            },
             isPWA
           }),
           cache: 'no-store'
