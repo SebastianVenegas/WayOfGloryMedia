@@ -126,11 +126,34 @@ export const getEmailTemplate = (
     installationTime: formattedInstallationTime,
   };
 
+  // Ensure all templates have consistent structure
+  const getTemplateBase = (type: string, customPrompt: string) => ({
+    variables: {
+      ...baseVariables,
+      emailType: type
+    },
+    prompt: `${customPrompt}
+      
+      Important guidelines:
+      - Write as if you are Way of Glory Media writing TO the customer
+      - Keep the tone professional and clear
+      - Focus on the specific purpose of this email
+      ${showInstallation ? '- Include relevant installation information' : '- Do not mention installation'}
+      ${hasTrainingService ? '- Include relevant training information' : '- Do not mention training'}
+      
+      Customer details:
+      Name: ${order.first_name} ${order.last_name}
+      Order: #${order.id}
+      ${showInstallation ? `Installation Date: ${baseVariables.installationDate}\nInstallation Time: ${baseVariables.installationTime}\n` : ''}Status: ${order.status}
+      Includes Installation: ${showInstallation ? 'Yes' : 'No'}
+      Includes Training: ${hasTrainingService ? 'Yes' : 'No'}`
+  });
+
   switch (templateId) {
     case 'order_confirmation':
       return {
         subject: `Order Confirmation - Way of Glory Order #${order.id}`,
-        prompt: `Write an order confirmation email to the customer with these requirements:
+        ...getTemplateBase('Order Confirmation', `Write an order confirmation email to the customer with these requirements:
           - Address the customer by their first name (${order.first_name})
           - Write from Way of Glory Media's perspective
           - Confirm receipt of their order (#${order.id})
@@ -139,221 +162,75 @@ export const getEmailTemplate = (
             ${showInstallation ? '* Mention that our team will contact them to schedule installation' : '* Explain shipping process'}
             ${hasTrainingService ? '* Note that training will be scheduled after installation' : ''}
           - Provide our support contact information (help@wayofglory.com and (310) 872-9781)
-          - End with a warm closing
-          
-          Important guidelines:
-          - Write as if you are Way of Glory Media writing TO the customer
-          - Keep the tone professional and clear
-          - Focus on confirming their order and next steps
-          ${showInstallation ? '          - Mention installation scheduling process' : '          - Do not mention installation services'}
-          ${hasTrainingService ? '          - Include brief mention of training session' : '          - Do not mention training services'}
-          
-          Customer details:
-          Name: ${order.first_name} ${order.last_name}
-          Order: #${order.id}
-          ${showInstallation ? `Installation Date: ${baseVariables.installationDate}\n          Installation Time: ${baseVariables.installationTime}\n` : ''}Total: $${order.total_amount}
-          Status: ${order.status}
-          Includes Installation: ${showInstallation ? 'Yes' : 'No'}
-          Includes Training: ${hasTrainingService ? 'Yes' : 'No'}`,
-        variables: {
-          ...baseVariables,
-          emailType: 'Order Confirmation'
-        }
+          - End with a warm closing`)
       };
 
     case 'order_shipped':
       return {
         subject: `Shipping Confirmation - Way of Glory Order #${order.id}`,
-        prompt: `Write a shipping notification email to the customer with these requirements:
+        ...getTemplateBase('Shipping Confirmation', `Write a shipping notification email to the customer with these requirements:
           - Address the customer by their first name (${order.first_name})
-          - Write from Way of Glory Media's perspective (as the business writing to the customer)
+          - Write from Way of Glory Media's perspective
           - Announce that their order (#${order.id}) has shipped
           - Include tracking information placeholder
           - Provide estimated delivery timeframe
           - Include installation/setup guidance if applicable
           - Provide our support contact information (help@wayofglory.com and (310) 872-9781)
-          - End with a warm closing
-          
-          Important guidelines:
-          - Write as if you are Way of Glory Media writing TO the customer
-          - Keep the tone professional and clear
-          - Focus on shipping details and next steps
-          - Make it clear this is from the business to the customer
-          
-          Customer details:
-          Name: ${order.first_name} ${order.last_name}
-          Order: #${order.id}
-          ${showInstallation ? `Installation Date: ${baseVariables.installationDate}\n          Installation Time: ${baseVariables.installationTime}\n` : ''}Status: ${order.status}`,
-        variables: {
-          ...baseVariables,
-          emailType: 'Shipping Confirmation'
-        }
+          - End with a warm closing`)
       };
 
     case 'order_delayed':
       return {
         subject: `Delay Notification - Way of Glory Order #${order.id}`,
-        prompt: `Write a delay notification email to the customer with these requirements:
+        ...getTemplateBase('Delay Notification', `Write a delay notification email to the customer with these requirements:
           - Address the customer by their first name (${order.first_name})
           - Write from Way of Glory Media's perspective
           - Professionally explain the delay with order #${order.id}
           - Provide a new estimated timeline
-          ${showInstallation ? '          - Explain how this affects installation scheduling' : ''}
-          ${hasTrainingService ? '          - Address any impact on training session timing' : ''}
+          ${showInstallation ? '- Explain how this affects installation scheduling' : ''}
+          ${hasTrainingService ? '- Address any impact on training session timing' : ''}
           - Offer a goodwill gesture (10% off next purchase)
           - Provide our support contact information (help@wayofglory.com and (310) 872-9781)
-          - End with an apologetic but professional closing
-          
-          Important guidelines:
-          - Write as if you are Way of Glory Media writing TO the customer
-          - Keep the tone apologetic but professional
-          - Focus on the solution and next steps
-          ${showInstallation ? '          - Address installation timeline changes' : '          - Do not mention installation'}
-          ${hasTrainingService ? '          - Include updated training timeline' : '          - Do not mention training'}
-          
-          Customer details:
-          Name: ${order.first_name} ${order.last_name}
-          Order: #${order.id}
-          ${showInstallation ? `Installation Date: ${baseVariables.installationDate}\n          Installation Time: ${baseVariables.installationTime}\n` : ''}Status: ${order.status}
-          Includes Installation: ${showInstallation ? 'Yes' : 'No'}
-          Includes Training: ${hasTrainingService ? 'Yes' : 'No'}`,
-        variables: {
-          ...baseVariables,
-          emailType: 'Delay Notification'
-        }
+          - End with an apologetic but professional closing`)
       };
 
     case 'order_completed':
-      // Ensure order_items exists and map them correctly
-      const orderItems = order.order_items?.map(item => {
-        const price = Number(item.price_at_time);
-        const quantity = Number(item.quantity);
-    return {
-          title: item.product?.title || 'Product',
-          quantity: quantity,
-          price: price * quantity,
-          pricePerUnit: price,
-          product: item.product
-        };
-      }) || [];
-
-      const subtotal = orderItems.reduce((sum, item) => sum + item.price, 0);
-
-      // Create the variables object with all necessary data
-      const emailVariables = {
-        ...baseVariables,
-        emailType: 'Thank You for Your Order',
-        orderId: order.id,
-        firstName: order.first_name,
-        lastName: order.last_name,
-        createdAt: order.created_at,
-        order_items: orderItems,
-        subtotal: subtotal,
-        totalAmount: Number(order.total_amount),
-        supportEmail: 'help@wayofglory.com'
-      };
-
-      console.log('Email variables:', {
-        order_items: emailVariables.order_items,
-        subtotal: emailVariables.subtotal,
-        totalAmount: emailVariables.totalAmount
-      });
-
-    return {
+      return {
         subject: `Order Completed - Way of Glory Order #${order.id}`,
-        prompt: `Write a completion thank you email to the customer with these requirements:
+        ...getTemplateBase('Order Completed', `Write a completion thank you email to the customer with these requirements:
           - Address the customer by their first name (${order.first_name})
           - Write from Way of Glory Media's perspective
           - Confirm their order (#${order.id}) is complete
           - Express appreciation for their business
-          ${showInstallation ? '          - Reference successful installation completion' : ''}
-          ${hasTrainingService ? '          - Mention completed training session and ongoing support' : ''}
+          ${showInstallation ? '- Reference successful installation completion' : ''}
+          ${hasTrainingService ? '- Mention completed training session and ongoing support' : ''}
           - Request feedback about their experience
           - Include a special offer (10% off next purchase)
           - Provide our support contact information (help@wayofglory.com)
-          - End with a warm closing
-          
-          Important guidelines:
-          - Write as if you are Way of Glory Media writing TO the customer
-          - Keep the tone warm and professional
-          - Focus on appreciation and future relationship
-          ${showInstallation ? '          - Include feedback request about installation' : ''}
-          ${hasTrainingService ? '          - Ask about training experience' : ''}
-          
-          Customer details:
-          Name: ${order.first_name} ${order.last_name}
-          Order: #${order.id}
-          ${showInstallation ? `Installation Date: ${baseVariables.installationDate}\n          Installation Time: ${baseVariables.installationTime}\n` : ''}Status: ${order.status}
-          Includes Installation: ${showInstallation ? 'Yes' : 'No'}
-          Includes Training: ${hasTrainingService ? 'Yes' : 'No'}`,
-        variables: {
-          ...emailVariables,
-          emailType: 'Order Completed'
-        }
+          - End with a warm closing`)
       };
 
     case 'thank_you':
-      // Process order items and calculate totals
-      const thankYouOrderItems = order.order_items?.map(item => ({
-        ...item,
-        price_at_time: Number(item.price_at_time),
-        quantity: Number(item.quantity),
-        title: item.product?.title || item.title || 'Product'
-      })) || [];
-
-      const thankYouSubtotal = thankYouOrderItems.reduce((sum, item) => 
-        sum + (item.price_at_time * item.quantity), 0
-      );
-
-      const thankYouVariables = {
-        ...baseVariables,
-        emailType: 'Thank You for Your Order',
-        order_items: thankYouOrderItems,
-        subtotal: thankYouSubtotal,
-        tax_amount: Number(order.tax_amount || 0),
-        installation_price: Number(order.installation_price || 0),
-        total_amount: Number(order.total_amount || 0)
-      };
-
       return {
         subject: `Thank You for Your Order - Way of Glory #${order.id}`,
-        prompt: `Write a heartfelt thank you email with these requirements:
+        ...getTemplateBase('Thank You', `Write a heartfelt thank you email with these requirements:
           - Begin with a warm, personal greeting to ${order.first_name}
           - Write from Way of Glory Media's perspective
           - Express genuine appreciation for choosing Way of Glory Media
           - Acknowledge order #${order.id} with enthusiasm
-          - Share our excitement about enhancing their worship experience:
-            * Mention our commitment to excellence
-            * Emphasize the impact on their ministry
-            * Express anticipation of their success
+          - Share our excitement about enhancing their worship experience
           - Outline next steps clearly:
             * Order processing timeline
-            ${showInstallation ? '            * Installation scheduling process' : '            * Shipping process'}
-            ${hasTrainingService ? '            * Training session coordination' : ''}
-            * How we'll stay in touch
+            ${showInstallation ? '* Installation scheduling process' : '* Shipping process'}
+            ${hasTrainingService ? '* Training session coordination' : ''}
           - Include our support contact information (help@wayofglory.com and (310) 872-9781)
-          - Close with a warm message about our ongoing partnership
-          
-          Important guidelines:
-          - Make it personal and genuine
-          - Focus on the relationship, not just the transaction
-          - Emphasize our shared mission in worship ministry
-          ${showInstallation ? '          - Include excitement about upcoming installation' : ''}
-          ${hasTrainingService ? '          - Express enthusiasm about training and support' : ''}
-          
-          Customer details:
-          Name: ${order.first_name} ${order.last_name}
-          Order: #${order.id}
-          ${showInstallation ? `Installation Date: ${baseVariables.installationDate}\n          Installation Time: ${baseVariables.installationTime}\n` : ''}Status: ${order.status}
-          Includes Installation: ${showInstallation ? 'Yes' : 'No'}
-          Includes Training: ${hasTrainingService ? 'Yes' : 'No'}`,
-        variables: thankYouVariables
+          - Close with a warm message about our ongoing partnership`)
       };
 
     case 'payment_reminder':
       return {
         subject: `Payment Reminder - Way of Glory Order #${order.id}`,
-        prompt: `Write a professional payment reminder email with these requirements:
+        ...getTemplateBase('Payment Reminder', `Write a professional payment reminder email with these requirements:
           - Start with a friendly greeting to ${order.first_name}
           - Write from Way of Glory Media's perspective
           - Gently remind about the pending payment for order #${order.id}
@@ -361,143 +238,53 @@ export const getEmailTemplate = (
           - List accepted payment methods:
             * Direct bank transfer (details will be provided separately)
             * Check payments (payable to "Way of Glory Media")
-          ${showInstallation ? '          - Mention that installation scheduling will begin after payment is received' : '          - Mention that shipping will begin after payment is received'}
+          ${showInstallation ? '- Mention that installation scheduling will begin after payment is received' : '- Mention that shipping will begin after payment is received'}
           - Include our support contact information (help@wayofglory.com and (310) 872-9781)
-          - End with a courteous closing that encourages quick action
-          
-          Important guidelines:
-          - Keep the tone polite and understanding, not demanding
-          - Be clear about expectations but maintain a helpful attitude
-          - Focus on facilitating payment rather than demanding it
-          ${showInstallation ? '          - Reference installation scheduling process' : '          - Do not mention installation'}
-          ${hasTrainingService ? '          - Include brief mention of training session timing' : '          - Do not mention training'}
-          
-          Customer details:
-          Name: ${order.first_name} ${order.last_name}
-          Order: #${order.id}
-          ${showInstallation ? `Installation Date: ${baseVariables.installationDate}\n          Installation Time: ${baseVariables.installationTime}\n` : ''}Total Due: $${order.total_amount}
-          Status: ${order.status}
-          Includes Installation: ${showInstallation ? 'Yes' : 'No'}
-          Includes Training: ${hasTrainingService ? 'Yes' : 'No'}`,
-        variables: {
-          ...baseVariables,
-          emailType: 'Payment Reminder'
-        }
+          - End with a courteous closing that encourages quick action`)
       };
 
     case 'installation_confirmation':
       return {
         subject: `Installation Confirmation - Way of Glory Order #${order.id}`,
-        prompt: `Write a detailed installation confirmation email with these requirements:
+        ...getTemplateBase('Installation Confirmation', `Write a detailed installation confirmation email with these requirements:
           - Begin with a warm greeting to ${order.first_name}
           - Write from Way of Glory Media's perspective
           - Express excitement about the upcoming installation
           - Confirm installation details for order #${order.id}:
             * Installation Date: ${baseVariables.installationDate}
             * Installation Time: ${baseVariables.installationTime}
-            * Location: [Customer's address]
             * Estimated Duration: ${hasTrainingService ? '3-4' : '2-3'} hours
-          - Provide a clear preparation checklist:
-            * Clear access to installation area
-            * Power outlets availability
-            * Space requirements
-            * Remove any obstacles
-          - Explain what to expect during installation:
-            * Our team will arrive in the specified time window
-            * Equipment setup and testing process
-            * Quality assurance checks
-            ${hasTrainingService ? '            * Comprehensive training session on equipment usage and best practices' : ''}
+          - Provide a clear preparation checklist
+          - Explain what to expect during installation
+          ${hasTrainingService ? '- Include information about the training session' : ''}
           - Include our support contact information (help@wayofglory.com and (310) 872-9781)
-          - End with an enthusiastic closing about enhancing their worship experience
-          
-          Important guidelines:
-          - Maintain a professional but warm tone
-          - Focus on making the customer feel prepared and confident
-          - Emphasize our expertise and commitment to quality
-          - Show excitement about helping enhance their worship space
-          
-          
-          Customer details:
-          Name: ${order.first_name} ${order.last_name}
-          Order: #${order.id}
-          Installation Date: ${baseVariables.installationDate}
-          Installation Time: ${baseVariables.installationTime}
-          Status: ${order.status}
-          Includes Training: ${hasTrainingService ? 'Yes' : 'No'}`,
-        variables: {
-          ...baseVariables,
-          emailType: 'Installation Confirmation',
-          includesTraining: hasTrainingService
-        }
+          - End with an enthusiastic closing`)
       };
 
     case 'shipping_update':
       return {
         subject: `Shipping Update - Way of Glory Order #${order.id}`,
-        prompt: `Write a shipping update email with these requirements:
+        ...getTemplateBase('Shipping Update', `Write a shipping update email with these requirements:
           - Start with a friendly greeting to ${order.first_name}
           - Write from Way of Glory Media's perspective
-          - Provide clear status update for order #${order.id}:
-            * Current shipment location/status
-            * Expected delivery timeline
-            * Any relevant tracking information
+          - Provide clear status update for order #${order.id}
           - Include any special delivery instructions or requirements
-          - Explain next steps after delivery:
-            * Inspection process
-            ${showInstallation ? '            * Installation scheduling and coordination\n            * Pre-installation preparation requirements' : '            * Basic setup recommendations'}
+          - Explain next steps after delivery
           - Include our support contact information (help@wayofglory.com and (310) 872-9781)
-          - End with an assuring message about their order's progress
-          
-          Important guidelines:
-          - Keep the tone informative and confident
-          - Focus on transparency and clear communication
-          - Show attention to detail and care for their order
-          - Emphasize our commitment to successful delivery
-          ${showInstallation ? '          - Include information about installation coordination\n          - Mention that our team will contact them to schedule installation' : '          - Do not mention installation services or scheduling\n          - Focus on self-setup guidance if needed'}
-          
-          Customer details:
-          Name: ${order.first_name} ${order.last_name}
-          Order: #${order.id}
-          ${showInstallation ? `Installation Date: ${baseVariables.installationDate}\n          Installation Time: ${baseVariables.installationTime}\n` : ''}Status: ${order.status}
-          Includes Installation: ${showInstallation ? 'Yes' : 'No'}`,
-        variables: {
-          ...baseVariables,
-          emailType: 'Shipping Update',
-          includesInstallation: showInstallation
-        }
+          - End with an assuring message about their order's progress`)
       };
 
     default:
       return {
         subject: `Order Status Update - Way of Glory #${order.id}`,
-        prompt: `Write an order update email to the customer with these requirements:
+        ...getTemplateBase('Order Status Update', `Write an order update email to the customer with these requirements:
           - Address the customer by their first name (${order.first_name})
           - Write from Way of Glory Media's perspective
           - Provide clear update about their order (#${order.id})
-          - Include current order status and next steps:
-            ${showInstallation ? '* Update on installation scheduling/status' : '* Update on order processing'}
-            ${hasTrainingService ? '* Information about training session timing' : ''}
+          - Include current order status and next steps
           - Provide our support contact information (help@wayofglory.com and (310) 872-9781)
-          - End with a professional closing
-          
-          Important guidelines:
-          - Write as if you are Way of Glory Media writing TO the customer
-          - Keep the tone professional and clear
-          - Focus on the status update and next steps
-          ${showInstallation ? '          - Include installation-related updates' : '          - Do not mention installation'}
-          ${hasTrainingService ? '          - Include training-related updates' : '          - Do not mention training'}
-          
-          Customer details:
-          Name: ${order.first_name} ${order.last_name}
-          Order: #${order.id}
-          ${showInstallation ? `Installation Date: ${baseVariables.installationDate}\n          Installation Time: ${baseVariables.installationTime}\n` : ''}Status: ${order.status}
-          Includes Installation: ${showInstallation ? 'Yes' : 'No'}
-          Includes Training: ${hasTrainingService ? 'Yes' : 'No'}`,
-        variables: {
-          ...baseVariables,
-          emailType: 'Order Status Update'
-        }
-    };
+          - End with a professional closing`)
+      };
   }
 };
 
