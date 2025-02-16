@@ -139,6 +139,9 @@ export default function EmailComposer({
   const [isLoadingLogs, setIsLoadingLogs] = useState(false)
   const [previewEmail, setPreviewEmail] = useState<EmailLog | null>(null)
   const [sendStatus, setSendStatus] = useState<SendStatus>('idle')
+  const [isAiPromptOpen, setIsAiPromptOpen] = useState(false)
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false)
+  const [aiPrompt, setAiPrompt] = useState('')
 
   useEffect(() => {
     if (initialContent !== undefined) {
@@ -177,60 +180,6 @@ export default function EmailComposer({
       onSubjectChange(value)
     }
   }
-
-  const handleGenerateEmail = async (e: React.MouseEvent<HTMLButtonElement> | React.TouchEvent<HTMLButtonElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    if (!prompt.trim()) {
-      toast({
-        title: "Error",
-        description: "Please enter a prompt",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsGenerating(true);
-    setError('');
-
-    try {
-      const response = await fetch(`/api/admin/orders/${orderId}/custom-email`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          prompt: prompt.trim()
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to generate email');
-      }
-
-      const data = await response.json();
-      
-      if (data.content) {
-        // Update content state
-        setContent(data.content);
-        onContentChange?.(data.content);
-
-        // Clear prompt after successful generation
-        setPrompt('');
-      }
-    } catch (error) {
-      console.error('Error generating email:', error);
-      setError('Failed to generate email. Please try again.');
-      toast({
-        title: "Generation Failed",
-        description: "Failed to generate email. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsGenerating(false);
-    }
-  };
 
   const handleSendEmail = async () => {
     if (!content.trim()) {
@@ -435,25 +384,6 @@ export default function EmailComposer({
         <div className="rounded-xl border bg-white shadow-sm">
           {activeTab === 'content' ? (
             <div className="p-6 relative">
-              {/* AI Prompt Input at the top */}
-              <div className="mb-4 flex gap-2">
-                <Input
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  placeholder="Enter your prompt for AI generation..."
-                  className="flex-1"
-                  disabled={isGenerating || isTemplateLoading}
-                />
-                <Button 
-                  type="button"
-                  onClick={handleGenerateEmail}
-                  disabled={isGenerating || isTemplateLoading || !prompt.trim()}
-                  className="whitespace-nowrap"
-                >
-                  {isGenerating ? "Generating..." : "Generate with AI"}
-                </Button>
-              </div>
-              
               {/* Editor Container */}
               <div className="relative" style={{ height: 'calc(100vh - 400px)' }}>
                 {(isTemplateLoading || isGenerating || isSendingEmail) ? (
@@ -488,31 +418,96 @@ export default function EmailComposer({
     </div>
   );
 
+  const handleGenerateEmail = async () => {
+    try {
+      if (!orderId) {
+        toast({
+          title: "Error",
+          description: "Please select an order first",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Just open the AI prompt dialog, don't start generation yet
+      setIsAiPromptOpen(true);
+      setIsGeneratingAI(false);
+    } catch (error) {
+      console.error('Error in handleGenerateEmail:', error);
+      toast({
+        title: "Error",
+        description: "Failed to open AI prompt",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleAiPromptSubmit = async (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      if (!orderId || !aiPrompt) {
+        toast({
+          title: "Error",
+          description: "Please provide both an order and a prompt",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Set loading states before closing the prompt
+      setIsGeneratingAI(true);
+      setIsAiPromptOpen(false); // Close the prompt dialog
+
+      const response = await fetch(`/api/admin/orders/${orderId}/custom-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          prompt: aiPrompt.trim()
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate email');
+      }
+
+      const data = await response.json();
+      
+      // Update content only if we received valid content
+      if (data.content) {
+        setContent(data.html || data.content);
+        if (onContentChange) onContentChange(data.html || data.content);
+        if (data.subject) {
+          setSubject(data.subject);
+          if (onSubjectChange) onSubjectChange(data.subject);
+        }
+      }
+
+      // Clear the prompt after successful generation
+      setAiPrompt('');
+    } catch (error) {
+      console.error('Error generating email:', error);
+      toast({
+        title: "Error",
+        description: "Failed to generate email. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGeneratingAI(false);
+    }
+  };
+
   return (
     <div className="flex flex-col h-[calc(100vh-2rem)] max-w-4xl mx-auto bg-white">
       <div className="bg-white border rounded-xl shadow-sm overflow-hidden flex flex-col flex-1 relative backdrop-blur-none">
         {/* Header */}
         <div className="border-b bg-white">
           <div className="px-6 py-4 bg-white">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <Mail className="w-6 h-6 text-blue-600" />
-                <h2 className="text-xl font-semibold text-gray-900">Compose Email</h2>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant={activeTab === 'content' ? 'default' : 'outline'}
-                  onClick={() => onTabChange?.('content')}
-                >
-                  Content
-                </Button>
-                <Button
-                  variant={activeTab === 'history' ? 'default' : 'outline'}
-                  onClick={() => onTabChange?.('history')}
-                >
-                  History
-                </Button>
-              </div>
+            <div className="flex items-center space-x-3">
+              <Mail className="w-6 h-6 text-blue-600" />
+              <h2 className="text-xl font-semibold text-gray-900">Compose Email</h2>
             </div>
             <p className="mt-1 text-sm text-gray-500">Create a professional email to send to your customer</p>
           </div>
@@ -520,10 +515,82 @@ export default function EmailComposer({
 
         {/* Main content area */}
         <div className="flex-1 overflow-y-auto min-h-0">
-          {activeTab === 'content' && renderContent()}
-          {activeTab === 'history' && renderEmailHistory()}
+          {renderContent()}
+        </div>
+
+        {/* Footer with send button */}
+        <div className="border-t bg-white p-4">
+          <div className="flex justify-end gap-3">
+            <Button
+              onClick={handleGenerateEmail}
+              variant="outline"
+              className="gap-2"
+              disabled={isGenerating || isTemplateLoading || isSendingEmail}
+            >
+              <Sparkles className="w-4 h-4" />
+              Generate
+            </Button>
+            <Button
+              onClick={handleSendEmail}
+              className="gap-2"
+              disabled={isGenerating || isTemplateLoading || isSendingEmail}
+            >
+              {isSendingEmail ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <Send className="w-4 h-4" />
+                  Send Email
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </div>
+
+      {/* AI Prompt Dialog */}
+      <Dialog open={isAiPromptOpen} onOpenChange={setIsAiPromptOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Generate Custom Email</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label htmlFor="prompt" className="text-sm font-medium text-gray-700">
+                What would you like to say?
+              </label>
+              <textarea
+                id="prompt"
+                value={aiPrompt}
+                onChange={(e) => setAiPrompt(e.target.value)}
+                placeholder="e.g., Write a payment reminder email that is professional but friendly"
+                className="w-full h-32 px-3 py-2 border rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setIsAiPromptOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleAiPromptSubmit} disabled={isGeneratingAI || !aiPrompt.trim()}>
+              {isGeneratingAI ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Generate
+                </>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

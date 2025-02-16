@@ -6,11 +6,12 @@ export async function GET(
   { params }: { params: { orderId: string } }
 ): Promise<NextResponse> {
   try {
-    if (!params.orderId) {
+    const orderIdStr = params.orderId;
+    if (!orderIdStr) {
       return NextResponse.json({ error: 'Order ID is required' }, { status: 400 });
     }
 
-    const orderIdInt = parseInt(params.orderId);
+    const orderIdInt = parseInt(orderIdStr);
     if (isNaN(orderIdInt)) {
       return NextResponse.json({ error: 'Invalid Order ID' }, { status: 400 });
     }
