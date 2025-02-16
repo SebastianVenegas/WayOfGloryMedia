@@ -31,9 +31,12 @@ interface OrderItem {
 }
 
 // Add the getBaseUrl helper to dynamically compute the base URL
-function getBaseUrl(request: NextRequest): string {
+function getBaseUrl(request: NextRequest, isPWA: boolean): string {
   if (process.env.NEXT_PUBLIC_BASE_URL) {
     return process.env.NEXT_PUBLIC_BASE_URL;
+  }
+  if (process.env.NODE_ENV === 'production' || isPWA) {
+    return 'https://wayofglory.com';
   }
   const host = request.headers.get('host') || 'localhost:3000';
   const protocol = request.headers.get('x-forwarded-proto') || 'https';
@@ -54,9 +57,13 @@ export async function GET(
   
   try {
     // Use absolute URLs for logos
-    const baseUrl = getBaseUrl(request);
-    const logoLightUrl = `${baseUrl}/images/logo/LogoLight.png`;
-    const logoNormalUrl = `${baseUrl}/images/logo/logo.png`;
+    const baseUrl = getBaseUrl(request, isPWA);
+    const logoLightUrl = isPWA ? 
+      'https://wayofglory.com/images/logo/LogoLight.png' : 
+      `${baseUrl}/images/logo/LogoLight.png`;
+    const logoNormalUrl = isPWA ? 
+      'https://wayofglory.com/images/logo/logo.png' : 
+      `${baseUrl}/images/logo/logo.png`;
 
     if (!orderId) {
       console.error('Missing orderId in URL');
@@ -207,13 +214,19 @@ export async function GET(
     }
 
     // Generate content using the generate-email endpoint
-    const generateUrl = new URL('/api/admin/generate-email', baseUrl).toString();
+    const generateUrl = isPWA ? 
+      'https://wayofglory.com/api/admin/generate-email' : 
+      new URL('/api/admin/generate-email', baseUrl).toString();
     
     console.log('Generating email with:', {
       templateId,
       prompt: prompt.substring(0, 100) + '...',
       variables: template.variables,
-      isPWA
+      isPWA,
+      logoUrls: {
+        light: logoLightUrl,
+        normal: logoNormalUrl
+      }
     });
 
     const generatePayload = {
@@ -221,9 +234,10 @@ export async function GET(
       content: prompt,
       variables: {
         ...template.variables,
-        logoUrl: logoLightUrl,
+        logoUrl: logoNormalUrl,
         logoNormalUrl: logoNormalUrl,
-        baseUrl,
+        logoLightUrl: logoLightUrl,
+        baseUrl: isPWA ? 'https://wayofglory.com' : baseUrl,
         isPWA
       },
       orderId: orderId_int,
