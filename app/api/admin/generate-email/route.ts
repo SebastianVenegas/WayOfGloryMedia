@@ -78,15 +78,18 @@ export async function POST(request: NextRequest) {
       // Update logo URLs based on PWA status
       const baseUrl = isPWA ? 'https://wayofglory.com' : process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
       
+      // Ensure logo URLs are absolute
+      const logoLight = 'https://wayofglory.com/images/logo/LogoLight.png';
+      const logoNormal = 'https://wayofglory.com/images/logo/logo.png';
+
       const formattedVariables = {
         ...variables,
-        logoUrl: isPWA ? 
-          'https://wayofglory.com/images/logo/LogoLight.png' : 
-          `${baseUrl}/images/logo/LogoLight.png`,
-        logoNormalUrl: isPWA ? 
-          'https://wayofglory.com/images/logo/logo.png' : 
-          `${baseUrl}/images/logo/logo.png`,
-        baseUrl
+        logoUrl: isPWA ? logoLight : `${baseUrl}/images/logo/LogoLight.png`,
+        logoNormalUrl: isPWA ? logoNormal : `${baseUrl}/images/logo/logo.png`,
+        baseUrl,
+        companyName: 'Way of Glory Media',
+        supportEmail: 'help@wayofglory.com',
+        websiteUrl: isPWA ? 'https://wayofglory.com' : baseUrl
       };
 
       // Format the content with proper styling

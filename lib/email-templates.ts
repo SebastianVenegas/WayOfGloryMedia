@@ -531,14 +531,18 @@ export function formatEmailContent(content: string, variables: any): string {
     footerCopyright: 'font-size: 13px; color: #64748b; margin: 24px 0 0 0; letter-spacing: -0.01em;',
   };
 
-  // Ensure all image URLs are absolute
-  const headerLogoUrl = variables.logoUrl?.startsWith('http') ? 
-    variables.logoUrl : 
-    `${variables.baseUrl}${variables.logoUrl}`;
-  
-  const footerLogoUrl = variables.logoNormalUrl?.startsWith('http') ? 
-    variables.logoNormalUrl : 
-    `${variables.baseUrl}${variables.logoNormalUrl}`;
+  // Ensure all image URLs are absolute and properly formatted
+  const headerLogoUrl = variables.logoUrl || 'https://wayofglory.com/images/logo/LogoLight.png';
+  const footerLogoUrl = variables.logoNormalUrl || 'https://wayofglory.com/images/logo/logo.png';
+
+  // Ensure the URLs are complete
+  const ensureAbsoluteUrl = (url: string) => {
+    if (url.startsWith('http')) return url;
+    return `https://wayofglory.com${url.startsWith('/') ? '' : '/'}${url}`;
+  };
+
+  const finalHeaderLogoUrl = ensureAbsoluteUrl(headerLogoUrl);
+  const finalFooterLogoUrl = ensureAbsoluteUrl(footerLogoUrl);
 
   // Format the content
   let formattedContent = content;
@@ -664,14 +668,14 @@ export function formatEmailContent(content: string, variables: any): string {
         <div style="${styles.mainWrapper}">
           <div style="${styles.header}">
             <div style="${styles.headerOverlay}"></div>
-            <img src="${headerLogoUrl}" alt="${variables.companyName}" style="${styles.logo}">
+            <img src="${finalHeaderLogoUrl}" alt="${variables.companyName}" style="${styles.logo}">
           </div>
           <div style="${styles.mainContent}">
             ${formattedContent}
             ${orderDetailsSection}
           </div>
           <div style="${styles.footer}">
-            <img src="${footerLogoUrl}" alt="${variables.companyName}" style="${styles.footerLogo}">
+            <img src="${finalFooterLogoUrl}" alt="${variables.companyName}" style="${styles.footerLogo}">
             <h3 style="${styles.footerTitle}">Enhancing Worship Experiences</h3>
             <p style="${styles.footerSubtitle}">Professional Audio and Visual Solutions for Your Ministry</p>
             <div style="${styles.footerDivider}"></div>
