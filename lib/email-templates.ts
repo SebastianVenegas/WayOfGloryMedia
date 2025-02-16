@@ -533,12 +533,12 @@ export function formatEmailContent(content: string, variables: any): string {
 
   // Ensure logo URLs are always absolute for PWA
   const headerLogoUrl = variables.isPWA ? 
-    'https://wayofglory.com/images/logo/LogoLight.png' : 
-    (variables.logoUrl || '/images/logo/LogoLight.png');
+    'https://wayofglory.com/images/logo/logo.png' : 
+    (variables.logoUrl || '/images/logo/logo.png');
     
   const footerLogoUrl = variables.isPWA ? 
-    'https://wayofglory.com/images/logo/logo.png' : 
-    (variables.logoNormalUrl || '/images/logo/logo.png');
+    'https://wayofglory.com/images/logo/LogoLight.png' : 
+    (variables.logoNormalUrl || '/images/logo/LogoLight.png');
 
   // Ensure the URLs are complete
   const ensureAbsoluteUrl = (url: string) => {

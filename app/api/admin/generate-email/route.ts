@@ -84,24 +84,20 @@ export async function POST(request: NextRequest) {
 
       const formattedVariables = {
         ...variables,
-        logoUrl: logoLight,
-        logoNormalUrl: logoNormal,
+        logoUrl: logoNormal,
+        logoNormalUrl: logoLight,
         logoLightUrl: logoLight,
         baseUrl,
         companyName: 'Way of Glory Media',
         supportEmail: 'help@wayofglory.com',
-        websiteUrl: 'https://wayofglory.com'
+        websiteUrl: 'https://wayofglory.com',
+        isPWA
       };
 
       // Format the content with proper styling
-      const formattedHtml = formatEmailContent(content, {
-        ...formattedVariables,
-        isPWA: true, // Pass isPWA flag to formatEmailContent
-        content // Pass the content directly instead of generating it again
-      });
+      const formattedHtml = formatEmailContent(content, formattedVariables);
 
       return NextResponse.json({
-        content: formattedHtml, // Return only the formatted HTML
         html: formattedHtml,
         success: true,
         isPWA

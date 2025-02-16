@@ -249,12 +249,13 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
           totalAmount: formatPrice(totalAmount),
           emailType: 'Custom Email',
           logoUrl: isPWA ? 
-            'https://wayofglory.com/images/logo/LogoLight.png' : 
-            `${baseUrl}/images/logo/LogoLight.png`,
-          logoNormalUrl: isPWA ? 
             'https://wayofglory.com/images/logo/logo.png' : 
             `${baseUrl}/images/logo/logo.png`,
-          baseUrl: isPWA ? 'https://wayofglory.com' : baseUrl
+          logoNormalUrl: isPWA ? 
+            'https://wayofglory.com/images/logo/LogoLight.png' : 
+            `${baseUrl}/images/logo/LogoLight.png`,
+          baseUrl,
+          isPWA
         });
 
         // Log the email
@@ -271,7 +272,7 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
             email: order.email,
             subject,
             html: emailContent,
-            text: customEmail.content || emailContent,
+            text: customEmail.content,
             isPWA
           })
         });
