@@ -541,7 +541,20 @@ export function formatEmailContent(content: string, variables: any): string {
     `${variables.baseUrl}${variables.logoNormalUrl}`;
 
   // Format the content with proper styling
-  let formattedContent = content
+  let formattedContent = content;
+  
+  // If content doesn't start with HTML tags, wrap it in paragraphs
+  if (!content.trim().startsWith('<')) {
+    formattedContent = content
+      .split('\n\n')
+      .map(paragraph => paragraph.trim())
+      .filter(paragraph => paragraph)
+      .map(paragraph => `<p>${paragraph}</p>`)
+      .join('\n');
+  }
+
+  // Apply styles to paragraphs and replace variables
+  formattedContent = formattedContent
     .replace(/<p>/g, `<p style="${styles.paragraph}">`)
     .replace(/\${([^}]+)}/g, (match, key) => {
       return variables[key] || match;
@@ -552,6 +565,11 @@ export function formatEmailContent(content: string, variables: any): string {
     /<a\s+(?:[^>]*?\s+)?href=(["'])(.*?)\1/g,
     `<a style="color: #2563eb; text-decoration: none; font-weight: 500;" href="$1$2$1`
   );
+
+  // Add proper styling to any lists
+  formattedContent = formattedContent
+    .replace(/<ul>/g, `<ul style="margin: 16px 0; padding-left: 24px;">`)
+    .replace(/<li>/g, `<li style="margin: 8px 0; color: #334155;">`);
 
   // Create order details section if order items exist
   let orderDetailsSection = '';

@@ -239,8 +239,23 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
     if (customEmail?.html) {
       const subject = customEmail.subject || `Order Update - Way of Glory #${orderId}`;
       try {
-        // Don't format custom emails again - they are already formatted
-        const emailContent = customEmail.html;
+        // Format custom emails with the same template as generated ones
+        const emailContent = formatEmailContent(customEmail.html, {
+          ...baseVariables,
+          order_items: orderItems,
+          subtotal: formatPrice(subtotal),
+          tax_amount: formatPrice(taxAmount),
+          installation_price: formatPrice(installationPrice),
+          totalAmount: formatPrice(totalAmount),
+          emailType: 'Custom Email',
+          logoUrl: isPWA ? 
+            'https://wayofglory.com/images/logo/LogoLight.png' : 
+            `${baseUrl}/images/logo/LogoLight.png`,
+          logoNormalUrl: isPWA ? 
+            'https://wayofglory.com/images/logo/logo.png' : 
+            `${baseUrl}/images/logo/logo.png`,
+          baseUrl: isPWA ? 'https://wayofglory.com' : baseUrl
+        });
 
         // Log the email
         await sql`
