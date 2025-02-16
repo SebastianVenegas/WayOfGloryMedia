@@ -107,7 +107,8 @@ export const getEmailTemplate = (
     supportEmail: 'help@wayofglory.com',
     supportPhone: '(310) 872-9781',
     websiteUrl: 'https://wayofglory.com',
-    logoUrl: '/images/logo/LogoLight.png',
+    logoUrl: '/images/logo/logo.png',
+    logoLightUrl: '/images/logo/LogoLight.png',
     year: new Date().getFullYear(),
     includesInstallation: showInstallation,
     includesTraining: hasTrainingService,
@@ -502,9 +503,10 @@ export const getEmailTemplate = (
 
 export function formatEmailContent(content: string, variables: any): string {
   const styles = getEmailStyles();
-  // Use normal logo for header and light logo for footer
-  const headerLogoUrl = variables.isPWA ? 'https://wayofglory.com/images/logo/logo.png' : '/images/logo/logo.png';
-  const footerLogoUrl = variables.isPWA ? 'https://wayofglory.com/images/logo/LogoLight.png' : '/images/logo/LogoLight.png';
+  // Use normal logo for header and light logo for footer with proper URL formatting
+  const baseUrl = variables.isPWA ? 'https://wayofglory.com' : '';
+  const headerLogoUrl = `${baseUrl}/images/logo/logo.png`;
+  const footerLogoUrl = `${baseUrl}/images/logo/LogoLight.png`;
 
   // Check if content already has our wrapper
   if (content.includes('class="way-of-glory-email"')) {
