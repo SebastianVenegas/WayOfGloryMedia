@@ -239,24 +239,26 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
     if (customEmail?.html) {
       const subject = customEmail.subject || `Order Update - Way of Glory #${orderId}`;
       try {
-        // Format custom emails with the same template as generated ones
-        const emailContent = formatEmailContent(customEmail.html, {
-          ...baseVariables,
-          order_items: orderItems,
-          subtotal: formatPrice(subtotal),
-          tax_amount: formatPrice(taxAmount),
-          installation_price: formatPrice(installationPrice),
-          totalAmount: formatPrice(totalAmount),
-          emailType: 'Custom Email',
-          logoUrl: isPWA ? 
-            'https://wayofglory.com/images/logo/logo.png' : 
-            `${baseUrl}/images/logo/logo.png`,
-          logoNormalUrl: isPWA ? 
-            'https://wayofglory.com/images/logo/LogoLight.png' : 
-            `${baseUrl}/images/logo/LogoLight.png`,
-          baseUrl,
-          isPWA
-        });
+        // Only format if the content isn't already formatted
+        const emailContent = customEmail.html.includes('class="way-of-glory-email"') 
+          ? customEmail.html 
+          : formatEmailContent(customEmail.html, {
+              ...baseVariables,
+              order_items: orderItems,
+              subtotal: formatPrice(subtotal),
+              tax_amount: formatPrice(taxAmount),
+              installation_price: formatPrice(installationPrice),
+              totalAmount: formatPrice(totalAmount),
+              emailType: 'Custom Email',
+              logoUrl: isPWA ? 
+                'https://wayofglory.com/images/logo/logo.png' : 
+                `${baseUrl}/images/logo/logo.png`,
+              logoNormalUrl: isPWA ? 
+                'https://wayofglory.com/images/logo/LogoLight.png' : 
+                `${baseUrl}/images/logo/LogoLight.png`,
+              baseUrl,
+              isPWA
+            });
 
         // Log the email
         await sql`
@@ -358,12 +360,14 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
           includesInstallation: !!order.installation_date || (installationPrice > 0)
         };
 
+        // Generate content using the generate-email endpoint
         const generateResult = await safeFetch(generateEmailUrl, {
           method: 'POST',
           headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json',
-            'Cache-Control': 'no-store'
+            'Cache-Control': 'no-store',
+            'x-pwa-request': isPWA ? 'true' : 'false'
           },
           body: JSON.stringify({ 
             orderId,
@@ -373,7 +377,7 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
           }),
           cache: 'no-store'
         });
-        
+
         if (!generateResult.ok) {
           console.error('Failed to generate email:', {
             status: generateResult.status,
@@ -381,10 +385,12 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
             details: generateResult.data?.details
           });
           return new NextResponse(JSON.stringify({
-            error: 'Failed to generate email',
-            details: generateResult.data?.error || generateResult.data?.details || 'Email generation failed',
+            error: generateResult.data?.error || 'Failed to generate email',
+            details: generateResult.data?.details || 'Email generation failed',
             success: false,
-            isPWA
+            isPWA,
+            content: null,
+            html: null
           }), {
             status: generateResult.status || 500,
             headers: {
@@ -394,15 +400,16 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
           });
         }
 
-        // Ensure we have valid content from the generator
+        // Validate the response
         if (!generateResult.data?.html) {
           console.error('Invalid generator response:', generateResult.data);
           return new NextResponse(JSON.stringify({
             error: 'Invalid response from email generator',
-            details: 'Missing required content in response',
+            details: 'Missing required HTML in response',
             success: false,
             isPWA,
-            errorData: generateResult.data
+            content: null,
+            html: null
           }), {
             status: 500,
             headers: {
@@ -415,6 +422,7 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
         try {
           // Use the pre-formatted HTML directly
           const emailContent = generateResult.data.html;
+          const emailText = generateResult.data.content || '';
 
           // Log the email
           await sql`
@@ -434,6 +442,7 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
               email: order.email, 
               subject: template.subject, 
               html: emailContent,
+              content: emailText,
               isPWA
             }),
             cache: 'no-store'
@@ -446,14 +455,28 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
               error: sendResult.data?.error,
               details: sendResult.data?.details
             });
-            throw new Error(sendResult.data?.error || sendResult.data?.details || 'Failed to send email');
+            return new NextResponse(JSON.stringify({
+              error: sendResult.data?.error || 'Failed to send email',
+              details: sendResult.data?.details || 'Email sending failed',
+              success: false,
+              isPWA,
+              content: null,
+              html: null
+            }), {
+              status: sendResult.status || 500,
+              headers: {
+                'Content-Type': 'application/json',
+                'Cache-Control': 'no-store'
+              }
+            });
           }
 
           return new NextResponse(JSON.stringify({ 
             success: true,
             isPWA,
             message: 'Email sent successfully',
-            preview: emailContent
+            preview: emailContent,
+            content: emailText
           }), {
             status: 200,
             headers: {

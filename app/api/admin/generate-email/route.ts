@@ -41,11 +41,19 @@ export async function POST(request: NextRequest) {
     const { prompt, variables, isPWA } = body;
 
     if (!prompt) {
-      return NextResponse.json({ 
+      return new NextResponse(JSON.stringify({ 
         error: 'Prompt is required',
         success: false,
-        isPWA 
-      }, { status: 400 });
+        isPWA,
+        content: null,
+        html: null
+      }), { 
+        status: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-store'
+        }
+      });
     }
 
     try {
@@ -108,7 +116,7 @@ export async function POST(request: NextRequest) {
 
       // Return both the raw content and formatted HTML
       return new NextResponse(JSON.stringify({
-        content: content,
+        content,
         html: formattedHtml,
         success: true,
         isPWA,
@@ -128,12 +136,13 @@ export async function POST(request: NextRequest) {
         details: error.response?.data || error.data || error
       });
       
-      // Enhanced error response with more details
       return new NextResponse(JSON.stringify({
         error: 'Failed to generate email content',
         details: error.message || 'An error occurred during email generation',
         success: false,
         isPWA,
+        content: null,
+        html: null,
         errorData: {
           message: error.message,
           type: error.type || error.name,
@@ -155,12 +164,13 @@ export async function POST(request: NextRequest) {
       details: error.response?.data || error.data || error
     });
     
-    // Enhanced error response for request processing errors
     return new NextResponse(JSON.stringify({
       error: 'Failed to process request',
       details: error.message || 'Invalid request format',
       success: false,
       isPWA: false,
+      content: null,
+      html: null,
       errorData: {
         message: error.message,
         type: error.type || error.name,
