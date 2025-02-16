@@ -101,7 +101,6 @@ export async function POST(request: NextRequest) {
       // Return only the formatted HTML with detailed success response
       return NextResponse.json({
         html: formattedHtml,
-        content: content,
         success: true,
         isPWA,
         message: 'Email content generated successfully'

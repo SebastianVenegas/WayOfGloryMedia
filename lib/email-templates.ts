@@ -500,230 +500,43 @@ export const getEmailTemplate = (
   }
 };
 
-export function formatEmailContent(content: string, variables: any): string {
-  // Ensure content is not empty
-  if (!content || content.trim() === '') {
-    throw new Error('Missing required content in response');
-  }
-
-  // Base styles for the email with modern design
-  const styles = {
+function getEmailStyles() {
+  return {
     container: 'font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; width: 100% !important; max-width: 640px; margin: 0 auto; line-height: 1.6; color: #1a1a1a;',
-    mainWrapper: 'background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);',
-    header: 'text-align: center; padding: 32px 16px; background: linear-gradient(135deg, #2563eb, #1d4ed8); position: relative;',
-    headerOverlay: 'position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: radial-gradient(circle at top right, rgba(255, 255, 255, 0.1) 0%, transparent 60%);',
-    logo: 'width: 180px; max-width: 80%; height: auto; display: block; margin: 0 auto; position: relative; z-index: 1; filter: brightness(0) invert(1);',
-    mainContent: 'padding: 32px 24px; background-color: #ffffff;',
-    paragraph: 'font-size: 15px; line-height: 1.7; margin-bottom: 24px; color: #334155; font-weight: 450; letter-spacing: -0.01em;',
-    orderDetails: 'background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; margin: 24px 0; overflow: hidden;',
-    orderHeader: 'padding: 20px 24px; background: linear-gradient(to right, #f8fafc, #ffffff); border-bottom: 1px solid #e2e8f0;',
-    orderTitle: 'font-size: 18px; font-weight: 600; color: #0f172a; margin: 0; letter-spacing: -0.02em;',
-    orderBody: 'padding: 20px 24px;',
-    orderItem: 'display: flex; justify-content: space-between; align-items: flex-start; padding: 16px 0; border-bottom: 1px solid #f1f5f9;',
-    orderItemTitle: 'font-weight: 500; color: #0f172a; font-size: 15px; letter-spacing: -0.01em; margin-right: 8px;',
-    orderItemQuantity: 'color: #64748b; font-size: 14px; font-weight: 450;',
-    orderItemPrice: 'font-weight: 600; color: #0f172a; font-size: 15px; letter-spacing: -0.01em; white-space: nowrap;',
-    totals: 'margin-top: 24px; padding: 20px; background: #f8fafc; border-radius: 12px;',
-    totalRow: 'display: flex; justify-content: space-between; padding: 8px 0; color: #475569; font-size: 14px; letter-spacing: -0.01em;',
-    totalRowFinal: 'display: flex; justify-content: space-between; margin-top: 16px; padding-top: 16px; border-top: 2px solid #e2e8f0; font-size: 16px; font-weight: 700; color: #0f172a; letter-spacing: -0.02em;',
-    footer: 'text-align: center; padding: 32px 24px; background-color: #f8fafc; border-top: 1px solid #e2e8f0; border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;',
-    footerLogo: 'width: 120px; max-width: 60%; height: auto; margin-bottom: 24px; opacity: 0.9; display: block; margin: 0 auto 24px auto;',
-    footerTitle: 'font-size: 18px; font-weight: 600; color: #0f172a; margin: 0 0 8px 0; letter-spacing: -0.02em;',
-    footerSubtitle: 'font-size: 14px; color: #475569; margin: 0 0 24px 0; line-height: 1.6; letter-spacing: -0.01em;',
-    footerContact: 'margin: 24px 0; font-size: 14px; color: #475569; letter-spacing: -0.01em;',
-    footerLink: 'display: inline-block; color: #2563eb; text-decoration: none; font-weight: 500; letter-spacing: -0.01em; margin: 4px 8px;',
-    footerDivider: 'width: 40px; height: 2px; background: #e2e8f0; margin: 24px auto;',
-    footerCopyright: 'font-size: 13px; color: #64748b; margin: 24px 0 0 0; letter-spacing: -0.01em;',
+    header: 'text-align: center; padding: 32px 16px; background: linear-gradient(135deg, #2563eb, #1d4ed8);',
+    logo: 'width: 180px; max-width: 80%; height: auto; display: block; margin: 0 auto; filter: brightness(0) invert(1);',
+    content: 'padding: 32px 24px; background-color: #ffffff;',
+    footer: 'text-align: center; padding: 32px 24px; background-color: #f8fafc; border-top: 1px solid #e2e8f0;',
+    footerText: 'margin: 0 0 16px 0; color: #475569; font-size: 14px;',
+    footerContact: 'margin: 0; font-size: 14px; color: #475569;',
+    link: 'color: #2563eb; text-decoration: none; font-weight: 500;',
+    copyright: 'margin: 24px 0 8px 0; font-size: 13px; color: #64748b;',
+    disclaimer: 'margin: 0; font-size: 12px; color: #94a3b8;'
   };
+}
 
-  // Ensure logo URLs are always absolute for PWA
-  const headerLogoUrl = variables.isPWA ? 
-    `${variables.baseUrl}/images/logo/logo.png` : 
-    (variables.logoUrl || '/images/logo/logo.png');
-    
-  const footerLogoUrl = variables.isPWA ? 
-    `${variables.baseUrl}/images/logo/LogoLight.png` : 
-    (variables.logoNormalUrl || '/images/logo/LogoLight.png');
-
-  // Ensure the URLs are complete
-  const ensureAbsoluteUrl = (url: string) => {
-    if (url.startsWith('http')) return url;
-    const baseUrl = variables.isPWA ? 'https://wayofglory.com' : (variables.baseUrl || 'https://wayofglory.com');
-    return `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
-  };
-
-  const finalHeaderLogoUrl = ensureAbsoluteUrl(headerLogoUrl);
-  const finalFooterLogoUrl = ensureAbsoluteUrl(footerLogoUrl);
-
-  // Clean and format the content
-  let formattedContent = content.trim();
-
-  // Remove any existing footer content if present
-  formattedContent = formattedContent.replace(/<div[^>]*class="?footer"?[\s\S]*?<\/div>/g, '');
-  formattedContent = formattedContent.replace(/Questions\? Contact our support team:[\s\S]*?<\/div>/g, '');
-  formattedContent = formattedContent.replace(/Enhancing Worship Experiences[\s\S]*?<\/div>/g, '');
-
-  // Replace variables in the content
-  Object.keys(variables).forEach(key => {
-    const value = variables[key];
-    if (typeof value === 'string' || typeof value === 'number') {
-      const regex = new RegExp(`\\$\\{${key}\\}`, 'g');
-      formattedContent = formattedContent.replace(regex, String(value));
-    }
-  });
-
-  // If content is plain text, wrap it in paragraphs
-  if (!formattedContent.includes('<p>')) {
-    formattedContent = formattedContent
-      .split(/\n{2,}/)
-      .map(paragraph => paragraph.trim())
-      .filter(paragraph => paragraph)
-      .map(paragraph => `<p>${paragraph}</p>`)
-      .join('\n');
-  }
-
-  // Apply styles to paragraphs
-  formattedContent = formattedContent
-    .replace(/<p>/g, `<p style="${styles.paragraph}">`)
-    .replace(/\${([^}]+)}/g, (match, key) => {
-      const value = variables[key];
-      return value !== undefined ? String(value) : match;
-    });
-
-  // Add proper styling to any links
-  formattedContent = formattedContent.replace(
-    /<a\s+(?:[^>]*?\s+)?href=(["'])(.*?)\1/g,
-    `<a style="color: #2563eb; text-decoration: none; font-weight: 500;" href="$1$2$1`
-  );
-
-  // Add proper styling to lists
-  formattedContent = formattedContent
-    .replace(/<ul>/g, `<ul style="margin: 16px 0; padding-left: 24px;">`)
-    .replace(/<li>/g, `<li style="margin: 8px 0; color: #334155;">`);
-
-  // Create order details section if order items exist and not already included in content
-  let orderDetailsSection = '';
-  if (variables.order_items && 
-      variables.order_items.length > 0 && 
-      !formattedContent.includes('Order Summary') && 
-      !formattedContent.toLowerCase().includes('subtotal')) {
-    const orderItemsHtml = variables.order_items
-      .map((item: { title?: string; quantity: number; price: number; pricePerUnit: number; product?: { title?: string } }) => {
-        const title = item.product?.title || item.title || 'Product';
-        const quantity = Number(item.quantity);
-        const price = Number(item.price);
-        const pricePerUnit = Number(item.pricePerUnit);
-        
-        return `
-          <div style="${styles.orderItem}">
-            <div style="display: flex; flex-direction: column; flex: 1;">
-              <div style="display: flex; align-items: baseline; justify-content: space-between;">
-                <div>
-                  <span style="${styles.orderItemTitle}">${title}</span>
-                  <span style="${styles.orderItemQuantity}">× ${quantity}</span>
-                </div>
-                <span style="${styles.orderItemPrice}">$${price.toFixed(2)}</span>
-              </div>
-            </div>
-          </div>
-        `;
-      })
-      .join('');
-
-    // Calculate totals with safeguards against NaN
-    const subtotal = variables.subtotal || 0;
-    const taxAmount = Number(variables.tax_amount) || 0;
-    const installationPrice = Number(variables.installation_price) || 0;
-    const totalAmount = Number(variables.totalAmount) || (subtotal + taxAmount + installationPrice);
-
-    orderDetailsSection = `
-      <div style="${styles.orderDetails}">
-        <div style="${styles.orderHeader}">
-          <h2 style="${styles.orderTitle}">Order Summary</h2>
-        </div>
-        <div style="${styles.orderBody}">
-          ${orderItemsHtml}
-          <div style="${styles.totals}">
-            <div style="${styles.totalRow}">
-              <span>Subtotal</span>
-              <span style="font-weight: 500;">$${Number(subtotal).toFixed(2)}</span>
-            </div>
-            ${taxAmount > 0 ? `
-              <div style="${styles.totalRow}">
-                <span>Tax</span>
-                <span style="font-weight: 500;">$${taxAmount.toFixed(2)}</span>
-              </div>
-            ` : ''}
-            ${installationPrice > 0 ? `
-              <div style="${styles.totalRow}">
-                <span>Installation</span>
-                <span style="font-weight: 500;">$${installationPrice.toFixed(2)}</span>
-              </div>
-            ` : ''}
-            <div style="${styles.totalRowFinal}">
-              <span>Total</span>
-              <span>$${totalAmount.toFixed(2)}</span>
-            </div>
-          </div>
-        </div>
+export function formatEmailContent(content: string, variables: any): string {
+  const styles = getEmailStyles();
+  const finalLogoUrl = variables.isPWA ? 'https://wayofglory.com/images/logo/LogoLight.png' : variables.logoUrl;
+  
+  return `
+    <div style="${styles.container}">
+      <div style="${styles.header}">
+        <img src="${finalLogoUrl}" alt="${variables.companyName}" style="${styles.logo}">
       </div>
-    `;
-  }
-
-  // Combine all sections into the final email, ensuring content appears only once
-  const emailHtml = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <meta name="color-scheme" content="light">
-      <meta name="supported-color-schemes" content="light">
-      <style>
-        body { margin: 0; padding: 16px; background-color: #f8fafc; }
-        table { border-spacing: 0; }
-        td { padding: 0; }
-        img { border: 0; }
-        @media only screen and (max-width: 640px) {
-          .container {
-            width: 100% !important;
-            padding: 0 !important;
-          }
-        }
-      </style>
-    </head>
-    <body>
-      <div style="max-width: 640px; margin: 0 auto; background-color: #f8fafc; padding: 16px;">
-        <div style="${styles.mainWrapper}">
-          <div style="${styles.header}">
-            <div style="${styles.headerOverlay}"></div>
-            <img src="${finalHeaderLogoUrl}" alt="${variables.companyName}" style="${styles.logo}">
-          </div>
-          <div style="${styles.mainContent}">
-            ${formattedContent}
-            ${orderDetailsSection}
-          </div>
-          <footer style="${styles.footer}">
-            <div style="${styles.footerDivider}"></div>
-            <div style="${styles.footerContact}">
-              <p style="margin: 0 0 16px 0;">Questions? Contact our support team:</p>
-              <p style="margin: 0;">
-                <a href="mailto:${variables.supportEmail}" style="${styles.footerLink}">${variables.supportEmail}</a>
-                <a href="tel:+13108729781" style="${styles.footerLink}">(310) 872-9781</a>
-                <a href="${variables.websiteUrl}" style="${styles.footerLink}" target="_blank">Visit our website</a>
-              </p>
-            </div>
-            <div style="${styles.footerDivider}"></div>
-            <p style="${styles.footerCopyright}">
-              &copy; ${variables.year || new Date().getFullYear()} ${variables.companyName}. All rights reserved.<br>
-              <span style="font-size: 12px; color: #94a3b8;">Dedicated to serving churches and ministries with excellence</span>
-            </p>
-          </footer>
-        </div>
+      <div style="${styles.content}">
+        ${content}
       </div>
-    </body>
-    </html>
+      <div style="${styles.footer}">
+        <p style="${styles.footerText}">Questions? Contact our support team:</p>
+        <p style="${styles.footerContact}">
+          <a href="mailto:${variables.supportEmail}" style="${styles.link}">${variables.supportEmail}</a> | 
+          <a href="tel:+13105729781" style="${styles.link}">(310) 572-9781</a> | 
+          <a href="${variables.websiteUrl}" style="${styles.link}">Visit our website</a>
+        </p>
+        <p style="${styles.copyright}">© ${variables.year} Way of Glory Media. All rights reserved.</p>
+        <p style="${styles.disclaimer}">Dedicated to serving churches and non-profits with excellence</p>
+      </div>
+    </div>
   `;
-
-  return emailHtml;
 } 
