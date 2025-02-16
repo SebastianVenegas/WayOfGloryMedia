@@ -68,6 +68,7 @@ export async function POST(request: NextRequest) {
       const content = completion.choices[0]?.message?.content;
 
       if (!content) {
+        console.error('No content generated from OpenAI');
         return NextResponse.json({
           error: 'No content generated',
           success: false,
@@ -79,8 +80,8 @@ export async function POST(request: NextRequest) {
       const baseUrl = isPWA ? 'https://wayofglory.com' : process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
       
       // Ensure logo URLs are always absolute for PWA
-      const logoLight = 'https://wayofglory.com/images/logo/LogoLight.png';
-      const logoNormal = 'https://wayofglory.com/images/logo/logo.png';
+      const logoLight = `${baseUrl}/images/logo/LogoLight.png`;
+      const logoNormal = `${baseUrl}/images/logo/logo.png`;
 
       const formattedVariables = {
         ...variables,
@@ -97,7 +98,9 @@ export async function POST(request: NextRequest) {
       // Format the content with proper styling
       const formattedHtml = formatEmailContent(content, formattedVariables);
 
+      // Return both the raw content and formatted HTML
       return NextResponse.json({
+        content: content,
         html: formattedHtml,
         success: true,
         isPWA
@@ -112,9 +115,11 @@ export async function POST(request: NextRequest) {
     } catch (error: any) {
       console.error('OpenAI API Error:', error);
       
+      // Ensure error response is properly formatted
+      const errorMessage = error.message || 'Unknown error occurred';
       return NextResponse.json({
         error: 'Failed to generate email content',
-        details: error.message || 'Unknown error occurred',
+        details: errorMessage,
         success: false,
         isPWA
       }, { 
@@ -128,6 +133,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('Request processing error:', error);
     
+    // Ensure error response is properly formatted
     return NextResponse.json({
       error: 'Failed to process request',
       details: error.message || 'Invalid request format',

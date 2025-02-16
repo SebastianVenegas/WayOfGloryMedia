@@ -501,6 +501,11 @@ export const getEmailTemplate = (
 };
 
 export function formatEmailContent(content: string, variables: any): string {
+  // Ensure content is not empty
+  if (!content || content.trim() === '') {
+    throw new Error('Missing required content in response');
+  }
+
   // Base styles for the email with modern design
   const styles = {
     container: 'font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; width: 100% !important; max-width: 640px; margin: 0 auto; line-height: 1.6; color: #1a1a1a;',
@@ -533,11 +538,11 @@ export function formatEmailContent(content: string, variables: any): string {
 
   // Ensure logo URLs are always absolute for PWA
   const headerLogoUrl = variables.isPWA ? 
-    'https://wayofglory.com/images/logo/logo.png' : 
+    `${variables.baseUrl}/images/logo/logo.png` : 
     (variables.logoUrl || '/images/logo/logo.png');
     
   const footerLogoUrl = variables.isPWA ? 
-    'https://wayofglory.com/images/logo/LogoLight.png' : 
+    `${variables.baseUrl}/images/logo/LogoLight.png` : 
     (variables.logoNormalUrl || '/images/logo/LogoLight.png');
 
   // Ensure the URLs are complete
@@ -550,12 +555,21 @@ export function formatEmailContent(content: string, variables: any): string {
   const finalHeaderLogoUrl = ensureAbsoluteUrl(headerLogoUrl);
   const finalFooterLogoUrl = ensureAbsoluteUrl(footerLogoUrl);
 
-  // Format the content
-  let formattedContent = content;
+  // Clean and format the content
+  let formattedContent = content.trim();
+
+  // Replace variables in the content
+  Object.keys(variables).forEach(key => {
+    const value = variables[key];
+    if (typeof value === 'string' || typeof value === 'number') {
+      const regex = new RegExp(`\\$\\{${key}\\}`, 'g');
+      formattedContent = formattedContent.replace(regex, String(value));
+    }
+  });
 
   // If content is plain text, wrap it in paragraphs
-  if (!content.includes('<p>')) {
-    formattedContent = content
+  if (!formattedContent.includes('<p>')) {
+    formattedContent = formattedContent
       .split(/\n{2,}/)
       .map(paragraph => paragraph.trim())
       .filter(paragraph => paragraph)
@@ -563,11 +577,12 @@ export function formatEmailContent(content: string, variables: any): string {
       .join('\n');
   }
 
-  // Apply styles to paragraphs and replace variables
+  // Apply styles to paragraphs
   formattedContent = formattedContent
     .replace(/<p>/g, `<p style="${styles.paragraph}">`)
     .replace(/\${([^}]+)}/g, (match, key) => {
-      return variables[key] || match;
+      const value = variables[key];
+      return value !== undefined ? String(value) : match;
     });
 
   // Add proper styling to any links
