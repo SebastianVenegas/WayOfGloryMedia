@@ -1,12 +1,12 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { sql } from '@vercel/postgres';
-import { ParsedUrlQuery } from 'querystring';
 
 export async function GET(
   request: NextRequest,
-  { params, searchParams }: { params: { orderId: string }, searchParams: { [key: string]: string | string[] | undefined } }
+  context: any
 ): Promise<Response> {
-  const orderId = Array.isArray(params.orderId) ? params.orderId[0] : params.orderId;
+  const { params } = context;
+  const orderId = params.orderId;
 
   try {
     if (!orderId) {
