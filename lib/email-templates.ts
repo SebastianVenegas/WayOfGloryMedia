@@ -531,15 +531,27 @@ export function formatEmailContent(content: string, variables: any): string {
     footerCopyright: 'font-size: 13px; color: #64748b; margin: 24px 0 0 0; letter-spacing: -0.01em;',
   };
 
-  // Clean the content by removing subject lines and format with paragraphs
-  const formattedContent = content
-    .replace(/^(?:subject:|re:|regarding:)\s*.+?\n/i, '') // Remove subject line if present
-    .trim()
-    .split('\n\n')
-    .map(paragraph => paragraph.trim())
-    .filter(paragraph => paragraph)
-    .map(paragraph => `<p style="${styles.paragraph}">${paragraph}</p>`)
-    .join('');
+  // Ensure all image URLs are absolute
+  const headerLogoUrl = variables.logoUrl.startsWith('http') ? 
+    variables.logoUrl : 
+    `${variables.baseUrl}${variables.logoUrl}`;
+  
+  const footerLogoUrl = variables.logoNormalUrl.startsWith('http') ? 
+    variables.logoNormalUrl : 
+    `${variables.baseUrl}${variables.logoNormalUrl}`;
+
+  // Format the content with proper styling
+  let formattedContent = content
+    .replace(/<p>/g, `<p style="${styles.paragraph}">`)
+    .replace(/\${([^}]+)}/g, (match, key) => {
+      return variables[key] || match;
+    });
+
+  // Add proper styling to any links in the content
+  formattedContent = formattedContent.replace(
+    /<a\s+(?:[^>]*?\s+)?href=(["'])(.*?)\1/g,
+    `<a style="color: #2563eb; text-decoration: none; font-weight: 500;" href="$1$2$1`
+  );
 
   // Create order details section if order items exist
   let orderDetailsSection = '';
@@ -606,10 +618,6 @@ export function formatEmailContent(content: string, variables: any): string {
       </div>
     `;
   }
-
-  // Use regular logo for header and light logo for footer
-  const headerLogoUrl = variables.logoNormalUrl || '/images/logo/logo.png';
-  const footerLogoUrl = variables.logoUrl || '/images/logo/LogoLight.png';
 
   // Combine all sections into the final email
   const emailHtml = `

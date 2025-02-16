@@ -306,7 +306,8 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
           templateId,
           baseUrl,
           prompt: template.prompt.substring(0, 100) + '...',
-          variables: template.variables
+          variables: template.variables,
+          isPWA
         });
 
         // Prepare all variables needed for the template
@@ -319,9 +320,13 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
           installation_price: formatPrice(installationPrice),
           totalAmount: formatPrice(totalAmount),
           emailType: template.variables.emailType || 'Order Update',
-          logoUrl: `${baseUrl}/images/logo/LogoLight.png`,
-          logoNormalUrl: `${baseUrl}/images/logo/logo.png`,
-          baseUrl,
+          logoUrl: isPWA ? 
+            'https://wayofglory.com/images/logo/LogoLight.png' : 
+            `${baseUrl}/images/logo/LogoLight.png`,
+          logoNormalUrl: isPWA ? 
+            'https://wayofglory.com/images/logo/logo.png' : 
+            `${baseUrl}/images/logo/logo.png`,
+          baseUrl: isPWA ? 'https://wayofglory.com' : baseUrl,
           year: new Date().getFullYear(),
           installationDate: order.installation_date ? new Date(order.installation_date).toLocaleDateString('en-US', { 
             weekday: 'long', 
