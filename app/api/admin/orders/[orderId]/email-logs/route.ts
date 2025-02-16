@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { sql } from '@vercel/postgres';
 
 export async function GET(
-  request: NextRequest,
+  request: Request,
   { params }: { params: { orderId: string } }
-): Promise<NextResponse> {
+): Promise<Response> {
   try {
     const orderIdStr = params.orderId;
     if (!orderIdStr) {
@@ -28,9 +28,6 @@ export async function GET(
     return NextResponse.json(result.rows);
   } catch (error) {
     console.error('Error fetching email logs:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch email logs' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to fetch email logs' }, { status: 500 });
   }
 } 
