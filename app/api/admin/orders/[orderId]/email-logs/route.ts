@@ -3,7 +3,7 @@ import { sql } from '@vercel/postgres';
 
 export async function GET(
   request: Request,
-  { params }: { params: { orderId: string } }
+  { params, searchParams }: { params: { orderId: string }, searchParams: URLSearchParams }
 ): Promise<Response> {
   try {
     const orderIdStr = params.orderId;
