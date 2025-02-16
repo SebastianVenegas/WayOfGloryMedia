@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
       });
       
       // Enhanced error response with more details
-      return NextResponse.json({
+      return new NextResponse(JSON.stringify({
         error: 'Failed to generate email content',
         details: error.message || 'An error occurred during email generation',
         success: false,
@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
           status: error.status || 500,
           details: error.response?.data || error.data || null
         }
-      }, { 
+      }), { 
         status: error.status || 500,
         headers: {
           'Content-Type': 'application/json',
@@ -147,7 +147,7 @@ export async function POST(request: NextRequest) {
     });
     
     // Enhanced error response for request processing errors
-    return NextResponse.json({
+    return new NextResponse(JSON.stringify({
       error: 'Failed to process request',
       details: error.message || 'Invalid request format',
       success: false,
@@ -158,7 +158,7 @@ export async function POST(request: NextRequest) {
         status: error.status || 400,
         details: error.response?.data || error.data || null
       }
-    }, { 
+    }), { 
       status: 400,
       headers: {
         'Content-Type': 'application/json',

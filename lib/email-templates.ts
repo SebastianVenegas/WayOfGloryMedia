@@ -503,10 +503,14 @@ export const getEmailTemplate = (
 
 export function formatEmailContent(content: string, variables: any): string {
   const styles = getEmailStyles();
-  // Use normal logo for header and light logo for footer with proper URL formatting
-  const baseUrl = variables.isPWA ? 'https://wayofglory.com' : '';
-  const headerLogoUrl = `${baseUrl}/images/logo/logo.png`;
-  const footerLogoUrl = `${baseUrl}/images/logo/LogoLight.png`;
+  // Ensure proper URL formatting for both PWA and web modes
+  const baseUrl = variables.isPWA ? 'https://wayofglory.com' : variables.baseUrl || '';
+  const headerLogoUrl = variables.isPWA ? 
+    'https://wayofglory.com/images/logo/logo.png' : 
+    `${baseUrl}/images/logo/logo.png`;
+  const footerLogoUrl = variables.isPWA ? 
+    'https://wayofglory.com/images/logo/LogoLight.png' : 
+    `${baseUrl}/images/logo/LogoLight.png`;
 
   // Check if content already has our wrapper
   if (content.includes('class="way-of-glory-email"')) {
