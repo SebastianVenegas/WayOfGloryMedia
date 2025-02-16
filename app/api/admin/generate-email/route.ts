@@ -98,10 +98,9 @@ export async function POST(request: NextRequest) {
       // Format the content with proper styling
       const formattedHtml = formatEmailContent(content, formattedVariables);
 
-      // Return only the formatted HTML with detailed success response
+      // Return only the formatted HTML
       return NextResponse.json({
         html: formattedHtml,
-        content: content,
         success: true,
         isPWA,
         message: 'Email content generated successfully'

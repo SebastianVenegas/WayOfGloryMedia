@@ -395,11 +395,11 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
         }
 
         // Ensure we have valid content from the generator
-        if (!generateResult.data?.content && !generateResult.data?.html) {
+        if (!generateResult.data?.html) {
           console.error('Invalid generator response:', generateResult.data);
           return new NextResponse(JSON.stringify({
             error: 'Invalid response from email generator',
-            details: 'Missing required content in response',
+            details: 'Missing required HTML content in response',
             success: false,
             isPWA,
             errorData: generateResult.data
@@ -412,14 +412,9 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
           });
         }
 
-        // Use either the HTML content or format the raw content
         try {
-          // Only use the content once, not both html and content
-          const emailContent = generateResult.data.html || generateResult.data.content;
-          
-          if (!emailContent) {
-            throw new Error('No content generated from email generator');
-          }
+          // Use only the HTML content, which already includes all formatting
+          const emailContent = generateResult.data.html;
 
           // Log the email
           await sql`
@@ -427,7 +422,7 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
             VALUES (${orderId}, ${template.subject}, ${emailContent}, ${templateId})
           `;
 
-          // Send the email with only the formatted HTML
+          // Send the email with only the HTML content
           const sendResult = await safeFetch(`${baseUrl}/api/admin/send-email`, {
             method: 'POST',
             headers: {
