@@ -1,19 +1,19 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { sql } from '@vercel/postgres';
+import { ParsedUrlQuery } from 'querystring';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { orderId: string } }
+  { params, searchParams }: { params: { orderId: string }, searchParams: { [key: string]: string | string[] | undefined } }
 ): Promise<Response> {
-  const searchParams = request.nextUrl.searchParams;
+  const orderId = Array.isArray(params.orderId) ? params.orderId[0] : params.orderId;
 
   try {
-    const orderIdStr = params.orderId;
-    if (!orderIdStr) {
+    if (!orderId) {
       return NextResponse.json({ error: 'Order ID is required' }, { status: 400 });
     }
 
-    const orderIdInt = parseInt(orderIdStr);
+    const orderIdInt = parseInt(orderId);
     if (isNaN(orderIdInt)) {
       return NextResponse.json({ error: 'Invalid Order ID' }, { status: 400 });
     }
