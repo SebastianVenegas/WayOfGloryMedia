@@ -98,11 +98,13 @@ export async function POST(request: NextRequest) {
       // Format the content with proper styling
       const formattedHtml = formatEmailContent(content, formattedVariables);
 
-      // Return only the formatted HTML
+      // Return only the formatted HTML with detailed success response
       return NextResponse.json({
         html: formattedHtml,
+        content: content,
         success: true,
-        isPWA
+        isPWA,
+        message: 'Email content generated successfully'
       }, { 
         status: 200,
         headers: {
@@ -112,15 +114,24 @@ export async function POST(request: NextRequest) {
       });
 
     } catch (error: any) {
-      console.error('OpenAI API Error:', error);
+      console.error('OpenAI API Error:', {
+        error: error.message,
+        stack: error.stack,
+        details: error.response?.data || error.data || error
+      });
       
-      // Ensure error response is properly formatted
-      const errorMessage = error.message || 'Unknown error occurred';
+      // Enhanced error response with more details
       return NextResponse.json({
         error: 'Failed to generate email content',
-        details: errorMessage,
+        details: error.message || 'An error occurred during email generation',
         success: false,
-        isPWA
+        isPWA,
+        errorData: {
+          message: error.message,
+          type: error.type || error.name,
+          status: error.status || 500,
+          details: error.response?.data || error.data || null
+        }
       }, { 
         status: error.status || 500,
         headers: {
@@ -130,14 +141,24 @@ export async function POST(request: NextRequest) {
       });
     }
   } catch (error: any) {
-    console.error('Request processing error:', error);
+    console.error('Request processing error:', {
+      error: error.message,
+      stack: error.stack,
+      details: error.response?.data || error.data || error
+    });
     
-    // Ensure error response is properly formatted
+    // Enhanced error response for request processing errors
     return NextResponse.json({
       error: 'Failed to process request',
       details: error.message || 'Invalid request format',
       success: false,
-      isPWA: false
+      isPWA: false,
+      errorData: {
+        message: error.message,
+        type: error.type || error.name,
+        status: error.status || 400,
+        details: error.response?.data || error.data || null
+      }
     }, { 
       status: 400,
       headers: {

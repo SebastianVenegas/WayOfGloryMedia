@@ -704,9 +704,6 @@ export function formatEmailContent(content: string, variables: any): string {
             ${orderDetailsSection}
           </div>
           <footer style="${styles.footer}">
-            <img src="${finalFooterLogoUrl}" alt="${variables.companyName}" style="${styles.footerLogo}">
-            <h3 style="${styles.footerTitle}">Enhancing Worship Experiences</h3>
-            <p style="${styles.footerSubtitle}">Professional Audio and Visual Solutions for Your Ministry</p>
             <div style="${styles.footerDivider}"></div>
             <div style="${styles.footerContact}">
               <p style="margin: 0 0 16px 0;">Questions? Contact our support team:</p>

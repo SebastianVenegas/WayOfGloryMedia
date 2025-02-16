@@ -401,7 +401,8 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
             error: 'Invalid response from email generator',
             details: 'Missing required content in response',
             success: false,
-            isPWA
+            isPWA,
+            errorData: generateResult.data
           }), {
             status: 500,
             headers: {
@@ -412,7 +413,6 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
         }
 
         // Use either the HTML content or format the raw content
-        let formattedHtml;
         try {
           // Only use the content once, not both html and content
           const emailContent = generateResult.data.html || generateResult.data.content;
@@ -445,13 +445,20 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
           });
 
           if (!sendResult.ok) {
+            console.error('Send email error:', {
+              status: sendResult.status,
+              data: sendResult.data,
+              error: sendResult.data?.error,
+              details: sendResult.data?.details
+            });
             throw new Error(sendResult.data?.error || sendResult.data?.details || 'Failed to send email');
           }
 
           return new NextResponse(JSON.stringify({ 
             success: true,
             isPWA,
-            message: 'Email sent successfully'
+            message: 'Email sent successfully',
+            preview: emailContent
           }), {
             status: 200,
             headers: {
