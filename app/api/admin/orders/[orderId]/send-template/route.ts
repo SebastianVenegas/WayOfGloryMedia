@@ -271,7 +271,7 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
             email: order.email,
             subject,
             html: emailContent,
-            text: customEmail.content,
+            text: customEmail.content || emailContent,
             isPWA
           })
         });

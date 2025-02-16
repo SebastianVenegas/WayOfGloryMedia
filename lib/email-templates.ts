@@ -531,14 +531,20 @@ export function formatEmailContent(content: string, variables: any): string {
     footerCopyright: 'font-size: 13px; color: #64748b; margin: 24px 0 0 0; letter-spacing: -0.01em;',
   };
 
-  // Ensure all image URLs are absolute and properly formatted
-  const headerLogoUrl = variables.logoUrl || 'https://wayofglory.com/images/logo/LogoLight.png';
-  const footerLogoUrl = variables.logoNormalUrl || 'https://wayofglory.com/images/logo/logo.png';
+  // Ensure logo URLs are always absolute for PWA
+  const headerLogoUrl = variables.isPWA ? 
+    'https://wayofglory.com/images/logo/LogoLight.png' : 
+    (variables.logoUrl || '/images/logo/LogoLight.png');
+    
+  const footerLogoUrl = variables.isPWA ? 
+    'https://wayofglory.com/images/logo/logo.png' : 
+    (variables.logoNormalUrl || '/images/logo/logo.png');
 
   // Ensure the URLs are complete
   const ensureAbsoluteUrl = (url: string) => {
     if (url.startsWith('http')) return url;
-    return `https://wayofglory.com${url.startsWith('/') ? '' : '/'}${url}`;
+    const baseUrl = variables.isPWA ? 'https://wayofglory.com' : (variables.baseUrl || 'https://wayofglory.com');
+    return `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
   };
 
   const finalHeaderLogoUrl = ensureAbsoluteUrl(headerLogoUrl);
@@ -575,9 +581,12 @@ export function formatEmailContent(content: string, variables: any): string {
     .replace(/<ul>/g, `<ul style="margin: 16px 0; padding-left: 24px;">`)
     .replace(/<li>/g, `<li style="margin: 8px 0; color: #334155;">`);
 
-  // Create order details section if order items exist
+  // Create order details section if order items exist and not already included in content
   let orderDetailsSection = '';
-  if (variables.order_items && variables.order_items.length > 0) {
+  if (variables.order_items && 
+      variables.order_items.length > 0 && 
+      !formattedContent.includes('Order Summary') && 
+      !formattedContent.toLowerCase().includes('subtotal')) {
     const orderItemsHtml = variables.order_items
       .map((item: { title?: string; quantity: number; price: number; pricePerUnit: number; product?: { title?: string } }) => {
         const title = item.product?.title || item.title || 'Product';

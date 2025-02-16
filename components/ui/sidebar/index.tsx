@@ -75,10 +75,11 @@ export function Sidebar({ isExpanded, toggleSidebar, pathname, handleLogout }: S
   const router = useRouter()
 
   const handleNavigation = (href: string) => {
+    // Navigate immediately
     router.push(href)
-    // Auto collapse sidebar on mobile after navigation
+    // Only toggle sidebar on mobile after navigation
     if (window.innerWidth < 768) {
-      toggleSidebar()
+      setTimeout(() => toggleSidebar(), 100)
     }
   }
 
