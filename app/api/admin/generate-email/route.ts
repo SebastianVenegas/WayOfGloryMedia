@@ -69,11 +69,19 @@ export async function POST(request: NextRequest) {
 
       if (!content) {
         console.error('No content generated from OpenAI');
-        return NextResponse.json({
+        return new NextResponse(JSON.stringify({
           error: 'No content generated',
           success: false,
-          isPWA
-        }, { status: 500 });
+          isPWA,
+          content: null,
+          html: null
+        }), { 
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-store'
+          }
+        });
       }
 
       // Update logo URLs based on PWA status
@@ -98,13 +106,14 @@ export async function POST(request: NextRequest) {
       // Format the content with proper styling
       const formattedHtml = formatEmailContent(content, formattedVariables);
 
-      // Return only the formatted HTML with detailed success response
-      return NextResponse.json({
+      // Return both the raw content and formatted HTML
+      return new NextResponse(JSON.stringify({
+        content: content,
         html: formattedHtml,
         success: true,
         isPWA,
         message: 'Email content generated successfully'
-      }, { 
+      }), { 
         status: 200,
         headers: {
           'Content-Type': 'application/json',
