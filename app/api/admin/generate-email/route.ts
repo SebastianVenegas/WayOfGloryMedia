@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
       // Format the content with proper styling
       const formattedHtml = formatEmailContent(content, formattedVariables);
 
-      // Return only the formatted HTML to prevent duplication
+      // Return only the formatted HTML
       return NextResponse.json({
         html: formattedHtml,
         success: true,

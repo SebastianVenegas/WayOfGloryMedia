@@ -415,29 +415,16 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
         let formattedHtml;
         try {
           // Only use the content once, not both html and content
-          const emailContent = generateResult.data.content;
-          formattedHtml = formatEmailContent(emailContent, {
-            ...templateVariables,
-            order_items: orderItems,
-            subtotal: formatPrice(subtotal),
-            tax_amount: formatPrice(taxAmount),
-            installation_price: formatPrice(installationPrice),
-            totalAmount: formatPrice(totalAmount),
-            emailType: templateVariables.emailType || 'Order Update',
-            logoUrl: isPWA ? 
-              'https://wayofglory.com/images/logo/LogoLight.png' : 
-              `${baseUrl}/images/logo/LogoLight.png`,
-            logoNormalUrl: isPWA ? 
-              'https://wayofglory.com/images/logo/logo.png' : 
-              `${baseUrl}/images/logo/logo.png`,
-            baseUrl,
-            isPWA
-          });
+          const emailContent = generateResult.data.html || generateResult.data.content;
+          
+          if (!emailContent) {
+            throw new Error('No content generated from email generator');
+          }
 
           // Log the email
           await sql`
             INSERT INTO email_logs (order_id, subject, content, template_id)
-            VALUES (${orderId}, ${template.subject}, ${formattedHtml}, ${templateId})
+            VALUES (${orderId}, ${template.subject}, ${emailContent}, ${templateId})
           `;
 
           // Send the email with only the formatted HTML
@@ -451,8 +438,7 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
             body: JSON.stringify({ 
               email: order.email, 
               subject: template.subject, 
-              html: formattedHtml,
-              text: emailContent,
+              html: emailContent,
               isPWA
             }),
             cache: 'no-store'
