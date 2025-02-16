@@ -1,13 +1,12 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { sql } from '@vercel/postgres';
 
 export async function GET(
-  request: Request,
-  { params, searchParams }: { 
-    params: { orderId: string }, 
-    searchParams: { [key: string]: string | string[] | undefined }
-  }
+  request: NextRequest,
+  { params }: { params: { orderId: string } }
 ): Promise<Response> {
+  const searchParams = request.nextUrl.searchParams;
+
   try {
     const orderIdStr = params.orderId;
     if (!orderIdStr) {
