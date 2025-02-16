@@ -500,43 +500,215 @@ export const getEmailTemplate = (
   }
 };
 
-function getEmailStyles() {
-  return {
-    container: 'font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; width: 100% !important; max-width: 640px; margin: 0 auto; line-height: 1.6; color: #1a1a1a;',
-    header: 'text-align: center; padding: 32px 16px; background: linear-gradient(135deg, #2563eb, #1d4ed8);',
-    logo: 'width: 180px; max-width: 80%; height: auto; display: block; margin: 0 auto; filter: brightness(0) invert(1);',
-    content: 'padding: 32px 24px; background-color: #ffffff;',
-    footer: 'text-align: center; padding: 32px 24px; background-color: #f8fafc; border-top: 1px solid #e2e8f0;',
-    footerText: 'margin: 0 0 16px 0; color: #475569; font-size: 14px;',
-    footerContact: 'margin: 0; font-size: 14px; color: #475569;',
-    link: 'color: #2563eb; text-decoration: none; font-weight: 500;',
-    copyright: 'margin: 24px 0 8px 0; font-size: 13px; color: #64748b;',
-    disclaimer: 'margin: 0; font-size: 12px; color: #94a3b8;'
-  };
-}
-
 export function formatEmailContent(content: string, variables: any): string {
   const styles = getEmailStyles();
-  const finalLogoUrl = variables.isPWA ? 'https://wayofglory.com/images/logo/LogoLight.png' : variables.logoUrl;
-  
+  // Use normal logo for header and light logo for footer
+  const headerLogoUrl = variables.isPWA ? 'https://wayofglory.com/images/logo/logo.png' : '/images/logo/logo.png';
+  const footerLogoUrl = variables.isPWA ? 'https://wayofglory.com/images/logo/LogoLight.png' : '/images/logo/LogoLight.png';
+
+  // Check if content already has our wrapper
+  if (content.includes('class="way-of-glory-email"')) {
+    return content;
+  }
+
+  // Add proper styling to paragraphs and links if not already styled
+  let formattedContent = content;
+  if (!content.includes('style=')) {
+    formattedContent = content
+      .replace(/<p>/g, '<p style="margin: 1em 0; line-height: 1.6;">')
+      .replace(/<a\s+href=/g, '<a style="color: #2563eb; text-decoration: none; font-weight: 500;" href=');
+  }
+
+  // Remove any subject line that might be in the content
+  formattedContent = formattedContent.replace(/Subject:.*?\n/, '');
+
+  // Format order items if they exist
+  let orderDetailsHtml = '';
+  if (variables.order_items && variables.order_items.length > 0) {
+    const items = variables.order_items.map((item: any) => `
+      <tr>
+        <td style="padding: 12px 0; border-bottom: 1px solid #e2e8f0;">
+          <div style="font-weight: 500;">${item.title || item.product?.title || 'Product'}</div>
+          ${item.product?.description ? `<div style="color: #64748b; font-size: 14px; margin-top: 4px;">${item.product.description}</div>` : ''}
+        </td>
+        <td style="padding: 12px 0; border-bottom: 1px solid #e2e8f0; text-align: center;">${item.quantity}x</td>
+        <td style="padding: 12px 0; border-bottom: 1px solid #e2e8f0; text-align: right;">$${typeof item.price === 'number' ? item.price.toFixed(2) : item.price}</td>
+      </tr>
+    `).join('');
+
+    // Format the content by replacing newlines with proper paragraph tags
+    formattedContent = formattedContent.replace(/\n\n/g, '</p><p style="margin: 1em 0; line-height: 1.6;">');
+    formattedContent = `<p style="margin: 1em 0; line-height: 1.6;">${formattedContent}</p>`;
+
+    orderDetailsHtml = `
+      <div style="margin: 2em 0; padding: 24px; background-color: #f8fafc; border-radius: 12px;">
+        <h3 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 600; color: #1e293b;">Order Details</h3>
+        <table style="width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr style="border-bottom: 2px solid #e2e8f0;">
+              <th style="text-align: left; padding: 8px 0; color: #64748b; font-weight: 500;">Item</th>
+              <th style="text-align: center; padding: 8px 0; color: #64748b; font-weight: 500;">Quantity</th>
+              <th style="text-align: right; padding: 8px 0; color: #64748b; font-weight: 500;">Price</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${items}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="2" style="padding: 12px 0; text-align: right; font-weight: 500;">Subtotal:</td>
+              <td style="padding: 12px 0; text-align: right;">$${variables.subtotal}</td>
+            </tr>
+            ${variables.tax_amount && Number(variables.tax_amount) > 0 ? `
+              <tr>
+                <td colspan="2" style="padding: 12px 0; text-align: right; font-weight: 500;">Tax:</td>
+                <td style="padding: 12px 0; text-align: right;">$${variables.tax_amount}</td>
+              </tr>
+            ` : ''}
+            ${variables.installation_price && Number(variables.installation_price) > 0 ? `
+              <tr>
+                <td colspan="2" style="padding: 12px 0; text-align: right; font-weight: 500;">Installation:</td>
+                <td style="padding: 12px 0; text-align: right;">$${variables.installation_price}</td>
+              </tr>
+            ` : ''}
+            <tr>
+              <td colspan="2" style="padding: 16px 0 0 0; text-align: right; font-weight: 600; border-top: 2px solid #e2e8f0;">Total:</td>
+              <td style="padding: 16px 0 0 0; text-align: right; font-weight: 600; border-top: 2px solid #e2e8f0;">$${variables.totalAmount}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    `;
+  }
+
   return `
-    <div style="${styles.container}">
-      <div style="${styles.header}">
-        <img src="${finalLogoUrl}" alt="${variables.companyName}" style="${styles.logo}">
-      </div>
-      <div style="${styles.content}">
-        ${content}
-      </div>
-      <div style="${styles.footer}">
-        <p style="${styles.footerText}">Questions? Contact our support team:</p>
-        <p style="${styles.footerContact}">
-          <a href="mailto:${variables.supportEmail}" style="${styles.link}">${variables.supportEmail}</a> | 
-          <a href="tel:+13105729781" style="${styles.link}">(310) 572-9781</a> | 
-          <a href="${variables.websiteUrl}" style="${styles.link}">Visit our website</a>
-        </p>
-        <p style="${styles.copyright}">© ${variables.year} Way of Glory Media. All rights reserved.</p>
-        <p style="${styles.disclaimer}">Dedicated to serving churches and non-profits with excellence</p>
-      </div>
-    </div>
+    <table class="way-of-glory-email" width="100%" cellpadding="0" cellspacing="0" border="0" style="${styles.container}">
+      <tr>
+        <td>
+          <table width="100%" cellpadding="0" cellspacing="0" border="0">
+            <tr>
+              <td style="${styles.header}">
+                <img src="${headerLogoUrl}" alt="${variables.companyName}" style="${styles.logo}">
+              </td>
+            </tr>
+            <tr>
+              <td style="${styles.content}">
+                ${formattedContent}
+                ${orderDetailsHtml}
+              </td>
+            </tr>
+            <tr>
+              <td style="${styles.footer}">
+                <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                  <tr>
+                    <td style="${styles.footerContent}">
+                      <img src="${footerLogoUrl}" alt="${variables.companyName}" style="${styles.footerLogo}">
+                      <p style="${styles.footerText}">Questions? Contact our support team:</p>
+                      <div style="${styles.footerLinks}">
+                        <a href="mailto:${variables.supportEmail}" style="${styles.link}">${variables.supportEmail}</a>
+                        <a href="tel:+13105729781" style="${styles.link}">(310) 572-9781</a>
+                        <a href="${variables.websiteUrl}" style="${styles.link}">Visit our website</a>
+                      </div>
+                      <p style="${styles.copyright}">© ${variables.year} Way of Glory Media. All rights reserved.</p>
+                      <p style="${styles.disclaimer}">Dedicated to serving churches and non-profits with excellence</p>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
   `;
+}
+
+function getEmailStyles() {
+  return {
+    container: `
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+      max-width: 640px;
+      margin: 0 auto;
+      line-height: 1.6;
+      color: #1e293b;
+      background-color: #ffffff;
+      mso-table-lspace: 0pt;
+      mso-table-rspace: 0pt;
+    `,
+    header: `
+      text-align: center;
+      padding: 32px 16px;
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      border-radius: 16px 16px 0 0;
+      mso-line-height-rule: exactly;
+    `,
+    logo: `
+      width: 180px;
+      max-width: 80%;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+      -ms-interpolation-mode: bicubic;
+    `,
+    content: `
+      padding: 32px 24px;
+      background-color: #ffffff;
+      font-size: 16px;
+      font-weight: 400;
+      mso-line-height-rule: exactly;
+    `,
+    footer: `
+      text-align: center;
+      padding: 40px 24px;
+      background: linear-gradient(to bottom, #f8fafc, #f1f5f9);
+      border-top: 1px solid #e2e8f0;
+      border-radius: 0 0 16px 16px;
+      mso-line-height-rule: exactly;
+    `,
+    footerContent: `
+      text-align: center;
+      width: 100%;
+    `,
+    footerLogo: `
+      width: 140px;
+      height: auto;
+      display: block;
+      margin: 0 auto 32px;
+      opacity: 0.85;
+      -ms-interpolation-mode: bicubic;
+    `,
+    footerText: `
+      margin: 0 0 20px 0;
+      color: #475569;
+      font-size: 15px;
+      font-weight: 500;
+    `,
+    footerLinks: `
+      margin-bottom: 32px;
+      text-align: center;
+    `,
+    link: `
+      color: #2563eb;
+      text-decoration: none;
+      font-weight: 500;
+      padding: 8px 16px;
+      border-radius: 8px;
+      background: rgba(37, 99, 235, 0.05);
+      white-space: nowrap;
+      display: inline-block;
+      margin: 4px;
+    `,
+    copyright: `
+      margin: 0 0 8px 0;
+      font-size: 13px;
+      color: #64748b;
+      font-weight: 500;
+    `,
+    disclaimer: `
+      margin: 0;
+      font-size: 12px;
+      color: #94a3b8;
+      font-weight: 400;
+    `
+  };
 } 
