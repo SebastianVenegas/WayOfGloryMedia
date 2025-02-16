@@ -75,9 +75,26 @@ export async function POST(request: NextRequest) {
         }, { status: 500 });
       }
 
+      // Update logo URLs based on PWA status
+      const baseUrl = isPWA ? 'https://wayofglory.com' : process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+      
+      const formattedVariables = {
+        ...variables,
+        logoUrl: isPWA ? 
+          'https://wayofglory.com/images/logo/LogoLight.png' : 
+          `${baseUrl}/images/logo/LogoLight.png`,
+        logoNormalUrl: isPWA ? 
+          'https://wayofglory.com/images/logo/logo.png' : 
+          `${baseUrl}/images/logo/logo.png`,
+        baseUrl
+      };
+
+      // Format the content with proper styling
+      const formattedHtml = formatEmailContent(content, formattedVariables);
+
       return NextResponse.json({
         content,
-        html: content,
+        html: formattedHtml,
         success: true,
         isPWA
       }, { 
@@ -91,7 +108,6 @@ export async function POST(request: NextRequest) {
     } catch (error: any) {
       console.error('OpenAI API Error:', error);
       
-      // Ensure we're returning a proper JSON response
       return NextResponse.json({
         error: 'Failed to generate email content',
         details: error.message || 'Unknown error occurred',
@@ -108,7 +124,6 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('Request processing error:', error);
     
-    // Handle JSON parsing errors and other request processing errors
     return NextResponse.json({
       error: 'Failed to process request',
       details: error.message || 'Invalid request format',

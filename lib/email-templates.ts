@@ -532,38 +532,44 @@ export function formatEmailContent(content: string, variables: any): string {
   };
 
   // Ensure all image URLs are absolute
-  const headerLogoUrl = variables.logoUrl.startsWith('http') ? 
+  const headerLogoUrl = variables.logoUrl?.startsWith('http') ? 
     variables.logoUrl : 
     `${variables.baseUrl}${variables.logoUrl}`;
   
-  const footerLogoUrl = variables.logoNormalUrl.startsWith('http') ? 
+  const footerLogoUrl = variables.logoNormalUrl?.startsWith('http') ? 
     variables.logoNormalUrl : 
     `${variables.baseUrl}${variables.logoNormalUrl}`;
 
-  // Format the content with proper styling
-  // First, clean the content by removing any subject lines and split into paragraphs
-  let formattedContent = content
-    .replace(/^(?:subject:|re:|regarding:)\s*.+?\n/i, '') // Remove subject line if present
-    .trim()
-    .split(/\n{2,}/)
-    .map(paragraph => paragraph.trim())
-    .filter(paragraph => paragraph)
-    .map(paragraph => {
-      // Replace variables in the paragraph
-      const processedParagraph = paragraph.replace(/\${([^}]+)}/g, (match, key) => {
-        return variables[key] || match;
-      });
-      
-      // Wrap in paragraph tag with styles
-      return `<p style="${styles.paragraph}">${processedParagraph}</p>`;
-    })
-    .join('\n');
+  // Format the content
+  let formattedContent = content;
 
-  // Add proper styling to any links in the content
+  // If content is plain text, wrap it in paragraphs
+  if (!content.includes('<p>')) {
+    formattedContent = content
+      .split(/\n{2,}/)
+      .map(paragraph => paragraph.trim())
+      .filter(paragraph => paragraph)
+      .map(paragraph => `<p>${paragraph}</p>`)
+      .join('\n');
+  }
+
+  // Apply styles to paragraphs and replace variables
+  formattedContent = formattedContent
+    .replace(/<p>/g, `<p style="${styles.paragraph}">`)
+    .replace(/\${([^}]+)}/g, (match, key) => {
+      return variables[key] || match;
+    });
+
+  // Add proper styling to any links
   formattedContent = formattedContent.replace(
     /<a\s+(?:[^>]*?\s+)?href=(["'])(.*?)\1/g,
     `<a style="color: #2563eb; text-decoration: none; font-weight: 500;" href="$1$2$1`
   );
+
+  // Add proper styling to lists
+  formattedContent = formattedContent
+    .replace(/<ul>/g, `<ul style="margin: 16px 0; padding-left: 24px;">`)
+    .replace(/<li>/g, `<li style="margin: 8px 0; color: #334155;">`);
 
   // Create order details section if order items exist
   let orderDetailsSection = '';
@@ -681,7 +687,7 @@ export function formatEmailContent(content: string, variables: any): string {
             </div>
             <div style="${styles.footerDivider}"></div>
             <p style="${styles.footerCopyright}">
-              &copy; ${new Date().getFullYear()} ${variables.companyName}. All rights reserved.<br>
+              &copy; ${variables.year || new Date().getFullYear()} ${variables.companyName}. All rights reserved.<br>
               <span style="font-size: 12px; color: #94a3b8;">Dedicated to serving churches and ministries with excellence</span>
             </p>
           </div>
