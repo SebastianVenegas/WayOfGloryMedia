@@ -394,7 +394,8 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
           });
         }
 
-        if (!generateResult.data?.html || !generateResult.data?.content) {
+        // Ensure we have valid content from the generator
+        if (!generateResult.data?.content && !generateResult.data?.html) {
           console.error('Invalid generator response:', generateResult.data);
           return new NextResponse(JSON.stringify({
             error: 'Invalid response from email generator',
@@ -409,10 +410,11 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
             }
           });
         }
-        
+
+        // Use either the HTML content or format the raw content
         let formattedHtml;
         try {
-          formattedHtml = formatEmailContent(generateResult.data.content, {
+          formattedHtml = generateResult.data.html || formatEmailContent(generateResult.data.content, {
             ...templateVariables,
             order_items: orderItems,
             subtotal: formatPrice(subtotal),
@@ -420,17 +422,64 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
             installation_price: formatPrice(installationPrice),
             totalAmount: formatPrice(totalAmount),
             emailType: templateVariables.emailType || 'Order Update',
-            logoUrl: `${baseUrl}/images/logo/LogoLight.png`,
-            baseUrl // Add baseUrl to variables
+            logoUrl: isPWA ? 
+              'https://wayofglory.com/images/logo/LogoLight.png' : 
+              `${baseUrl}/images/logo/LogoLight.png`,
+            logoNormalUrl: isPWA ? 
+              'https://wayofglory.com/images/logo/logo.png' : 
+              `${baseUrl}/images/logo/logo.png`,
+            baseUrl,
+            isPWA
           });
+
+          // Log the email
+          await sql`
+            INSERT INTO email_logs (order_id, subject, content, template_id)
+            VALUES (${orderId}, ${template.subject}, ${formattedHtml}, ${templateId})
+          `;
+
+          // Send the email
+          const sendResult = await safeFetch(`${baseUrl}/api/admin/send-email`, {
+            method: 'POST',
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+              'Cache-Control': 'no-store'
+            },
+            body: JSON.stringify({ 
+              email: order.email, 
+              subject: template.subject, 
+              html: formattedHtml,
+              text: generateResult.data.content,
+              isPWA
+            }),
+            cache: 'no-store'
+          });
+
+          if (!sendResult.ok) {
+            throw new Error(sendResult.data?.error || sendResult.data?.details || 'Failed to send email');
+          }
+
+          return new NextResponse(JSON.stringify({ 
+            success: true,
+            isPWA,
+            message: 'Email sent successfully'
+          }), {
+            status: 200,
+            headers: {
+              'Content-Type': 'application/json',
+              'Cache-Control': 'no-store'
+            }
+          });
+
         } catch (e: any) {
-          console.error('Error formatting email content:', {
+          console.error('Error formatting or sending email:', {
             error: e.message,
             stack: e.stack,
-            content: generateResult.data.content.substring(0, 200)
+            content: generateResult.data?.content?.substring(0, 200)
           });
           return new NextResponse(JSON.stringify({
-            error: 'Failed to format email content',
+            error: 'Failed to format or send email',
             details: e.message,
             success: false,
             isPWA
@@ -442,61 +491,6 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
             }
           });
         }
-        
-        console.log('Sending formatted email:', {
-          subject: template.subject,
-          contentLength: formattedHtml.length,
-          baseUrl
-        });
-
-        const sendResult = await safeFetch(`${baseUrl}/api/admin/send-email`, {
-          method: 'POST',
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'Cache-Control': 'no-store'
-          },
-          body: JSON.stringify({ 
-            email: order.email, 
-            subject: template.subject, 
-            html: formattedHtml,
-            text: generateResult.data.content,
-            isPWA
-          }),
-          cache: 'no-store'
-        });
-
-        if (!sendResult.ok) {
-          console.error('Failed to send email:', {
-            status: sendResult.status,
-            error: sendResult.data?.error,
-            details: sendResult.data?.details
-          });
-          return new NextResponse(JSON.stringify({
-            error: 'Failed to send email',
-            details: sendResult.data?.error || sendResult.data?.details || 'Email sending failed',
-            success: false,
-            isPWA
-          }), {
-            status: sendResult.status || 500,
-            headers: {
-              'Content-Type': 'application/json',
-              'Cache-Control': 'no-store'
-            }
-          });
-        }
-        
-        return new NextResponse(JSON.stringify({ 
-          success: true,
-          isPWA,
-          message: 'Email sent successfully'
-        }), {
-          status: 200,
-          headers: {
-            'Content-Type': 'application/json',
-            'Cache-Control': 'no-store'
-          }
-        });
       } catch (error: any) {
         console.error('Error in send-template:', {
           error: error.message,
