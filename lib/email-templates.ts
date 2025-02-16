@@ -213,18 +213,23 @@ export const getEmailTemplate = (
     case 'thank_you':
       return {
         subject: `Thank You for Your Order - Way of Glory #${order.id}`,
-        ...getTemplateBase('Thank You', `Write a heartfelt thank you email with these requirements:
-          - Begin with a warm, personal greeting to ${order.first_name}
+        ...getTemplateBase('Thank You', `Write a professional thank you email to the customer with these requirements:
+          - Start with a warm greeting to ${order.first_name}
           - Write from Way of Glory Media's perspective
-          - Express genuine appreciation for choosing Way of Glory Media
-          - Acknowledge order #${order.id} with enthusiasm
-          - Share our excitement about enhancing their worship experience
-          - Outline next steps clearly:
-            * Order processing timeline
-            ${showInstallation ? '* Installation scheduling process' : '* Shipping process'}
-            ${hasTrainingService ? '* Training session coordination' : ''}
-          - Include our support contact information (help@wayofglory.com and (310) 872-9781)
-          - Close with a warm message about our ongoing partnership`)
+          - Express sincere appreciation for order #${order.id}
+          - Thank them for choosing Way of Glory Media
+          - Confirm the order details:
+            * Total amount: $${order.total_amount}
+            * Order status: ${order.status}
+          - Explain the next steps:
+            ${showInstallation ? '* Our team will contact you to schedule the installation' : '* We will process your order for shipping'}
+            ${hasTrainingService ? '* We will coordinate the training session timing' : ''}
+          - Provide our contact information:
+            * Email: help@wayofglory.com
+            * Phone: (310) 872-9781
+          - End with a warm, professional closing
+          
+          Note: Keep the email concise, professional, and focused on expressing gratitude while clearly outlining the next steps.`)
       };
 
     case 'payment_reminder':
