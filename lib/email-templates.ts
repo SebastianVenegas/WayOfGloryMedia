@@ -558,6 +558,11 @@ export function formatEmailContent(content: string, variables: any): string {
   // Clean and format the content
   let formattedContent = content.trim();
 
+  // Remove any existing footer content if present
+  formattedContent = formattedContent.replace(/<div[^>]*class="?footer"?[\s\S]*?<\/div>/g, '');
+  formattedContent = formattedContent.replace(/Questions\? Contact our support team:[\s\S]*?<\/div>/g, '');
+  formattedContent = formattedContent.replace(/Enhancing Worship Experiences[\s\S]*?<\/div>/g, '');
+
   // Replace variables in the content
   Object.keys(variables).forEach(key => {
     const value = variables[key];
