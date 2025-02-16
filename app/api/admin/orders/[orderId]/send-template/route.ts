@@ -414,7 +414,9 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
         // Use either the HTML content or format the raw content
         let formattedHtml;
         try {
-          formattedHtml = generateResult.data.html || formatEmailContent(generateResult.data.content, {
+          // Only use the content once, not both html and content
+          const emailContent = generateResult.data.content;
+          formattedHtml = formatEmailContent(emailContent, {
             ...templateVariables,
             order_items: orderItems,
             subtotal: formatPrice(subtotal),
@@ -438,7 +440,7 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
             VALUES (${orderId}, ${template.subject}, ${formattedHtml}, ${templateId})
           `;
 
-          // Send the email
+          // Send the email with only the formatted HTML
           const sendResult = await safeFetch(`${baseUrl}/api/admin/send-email`, {
             method: 'POST',
             headers: {
@@ -450,7 +452,7 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
               email: order.email, 
               subject: template.subject, 
               html: formattedHtml,
-              text: generateResult.data.content,
+              text: emailContent,
               isPWA
             }),
             cache: 'no-store'
