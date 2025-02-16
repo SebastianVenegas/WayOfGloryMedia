@@ -1015,61 +1015,71 @@ export default function OrdersPage() {
       }
       
       // Only proceed if we have a template and selected order
-      if (templateId && selectedOrder?.id) {
-        setIsGeneratingAI(true);
-        
-        console.log('Generating preview for:', {
-          templateId,
-          orderId: selectedOrder.id,
-          hasInstallation: !!selectedOrder.installation_date,
-          orderStatus: selectedOrder.status
-        });
-        
-        // Use the preview-template endpoint instead
-        const response = await fetch(`/api/admin/orders/${selectedOrder.id}/preview-template?templateId=${templateId}`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          }
-        });
-
-        const data = await response.json();
-        
-        if (!response.ok) {
-          console.error('Preview generation failed:', {
-            status: response.status,
-            statusText: response.statusText,
-            error: data.error,
-            details: data.details
-          });
-          throw new Error(data.details || data.error || 'Failed to generate preview');
-        }
-
-        if (!data.html || !data.content) {
-          console.error('Invalid preview response:', data);
-          throw new Error('Preview generation returned invalid content');
-        }
-
-        // Set the preview HTML and content
-        setPreviewHtml(data.html);
-        setEditedContent(data.content);
-        setEditedSubject(data.subject || `Order Update - Way of Glory #${selectedOrder.id}`);
-        setIsAiPromptOpen(false);
-        toast.success('Email preview generated successfully');
-      } else {
-        console.error('Missing required data:', {
-          hasTemplateId: !!templateId,
-          hasSelectedOrder: !!selectedOrder
-        });
-        toast.error('Please select an order first');
+      if (!templateId || !selectedOrder?.id) {
+        throw new Error('Please select an order first');
       }
+
+      console.log('Generating preview for:', {
+        templateId,
+        orderId: selectedOrder.id,
+        hasInstallation: !!selectedOrder.installation_date,
+        orderStatus: selectedOrder.status
+      });
+      
+      // Use the preview-template endpoint instead
+      const response = await fetch(`/api/admin/orders/${selectedOrder.id}/preview-template?templateId=${templateId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Preview generation failed:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData.error,
+          details: errorData.details
+        });
+        throw new Error(errorData.details || errorData.error || `Failed to generate preview (${response.status})`);
+      }
+
+      const data = await response.json();
+
+      // Validate the response data
+      if (!data.html) {
+        console.error('Invalid preview response - missing HTML:', data);
+        throw new Error('Preview generation returned invalid content - missing HTML');
+      }
+
+      // Set the preview HTML and content
+      setPreviewHtml(data.html);
+      setEditedContent(data.html);
+      setEditedSubject(data.subject || `Order Update - Way of Glory #${selectedOrder.id}`);
+      setViewMode('preview');
+      toast.success('Email preview generated successfully');
+      
     } catch (error) {
       console.error('Error in handleTemplateSelect:', {
         error,
         message: error instanceof Error ? error.message : 'Unknown error',
         stack: error instanceof Error ? error.stack : undefined
       });
-      toast.error(error instanceof Error ? error.message : 'Failed to generate preview. Please try again.');
+      
+      // Show a more detailed error message
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : 'Failed to generate preview. Please try again.';
+      
+      toast.error(errorMessage);
+      
+      // Reset states on error
+      setPreviewHtml('');
+      setEditedContent('');
+      setEditedSubject('');
+      setViewMode('edit');
+      
     } finally {
       setIsGeneratingAI(false);
       setIsTemplateLoading(false);

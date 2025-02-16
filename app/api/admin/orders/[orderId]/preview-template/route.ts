@@ -284,14 +284,16 @@ export async function GET(
     console.log('Response text:', JSON.stringify(generateResult.data).substring(0, 200));
     console.log('Clean response text:', JSON.stringify(generateResult.data).substring(0, 200));
 
-    if (!generateResult.data?.content) {
+    if (!generateResult.data?.html) {
       console.error('Invalid generator response:', generateResult.data);
-      return NextResponse.json({
+      return new NextResponse(JSON.stringify({
         error: 'Invalid response from email generator',
-        details: 'Missing required content in response',
+        details: 'Missing required HTML in response',
         success: false,
-        isPWA
-      }, {
+        isPWA,
+        content: null,
+        html: null
+      }), {
         status: 500,
         headers: {
           'Content-Type': 'application/json',
@@ -301,13 +303,13 @@ export async function GET(
     }
 
     // Return the generated content directly
-    return NextResponse.json({
-      subject: generateResult.data.subject || template.subject,
-      content: generateResult.data.content,
+    return new NextResponse(JSON.stringify({
+      subject: template.subject,
+      content: generateResult.data.content || '',
       html: generateResult.data.html,
       success: true,
       isPWA
-    }, {
+    }), {
       headers: {
         'Content-Type': 'application/json',
         'Cache-Control': 'no-store'
