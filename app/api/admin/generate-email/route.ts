@@ -98,9 +98,8 @@ export async function POST(request: NextRequest) {
       // Format the content with proper styling
       const formattedHtml = formatEmailContent(content, formattedVariables);
 
-      // Return both the raw content and formatted HTML
+      // Return only the formatted HTML to prevent duplication
       return NextResponse.json({
-        content: content,
         html: formattedHtml,
         success: true,
         isPWA

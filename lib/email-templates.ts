@@ -670,7 +670,7 @@ export function formatEmailContent(content: string, variables: any): string {
     `;
   }
 
-  // Combine all sections into the final email
+  // Combine all sections into the final email, ensuring content appears only once
   const emailHtml = `
     <!DOCTYPE html>
     <html>
@@ -703,15 +703,13 @@ export function formatEmailContent(content: string, variables: any): string {
             ${formattedContent}
             ${orderDetailsSection}
           </div>
-          <div style="${styles.footer}">
+          <footer style="${styles.footer}">
             <img src="${finalFooterLogoUrl}" alt="${variables.companyName}" style="${styles.footerLogo}">
             <h3 style="${styles.footerTitle}">Enhancing Worship Experiences</h3>
             <p style="${styles.footerSubtitle}">Professional Audio and Visual Solutions for Your Ministry</p>
             <div style="${styles.footerDivider}"></div>
             <div style="${styles.footerContact}">
-              <p style="margin: 0 0 16px 0;">
-                Questions? Contact our support team:
-              </p>
+              <p style="margin: 0 0 16px 0;">Questions? Contact our support team:</p>
               <p style="margin: 0;">
                 <a href="mailto:${variables.supportEmail}" style="${styles.footerLink}">${variables.supportEmail}</a>
                 <a href="tel:+13108729781" style="${styles.footerLink}">(310) 872-9781</a>
@@ -723,7 +721,7 @@ export function formatEmailContent(content: string, variables: any): string {
               &copy; ${variables.year || new Date().getFullYear()} ${variables.companyName}. All rights reserved.<br>
               <span style="font-size: 12px; color: #94a3b8;">Dedicated to serving churches and ministries with excellence</span>
             </p>
-          </div>
+          </footer>
         </div>
       </div>
     </body>
