@@ -1046,16 +1046,15 @@ export default function OrdersPage() {
         return;
       }
 
-      // Only show error if we truly have no content
-      if (!response.ok) {
-        const errorData = await response.json();
+      // Only show error if we truly have no content and the response is not ok
+      if (!response.ok && !data.html && !data.content) {
         console.error('Preview generation failed:', {
           status: response.status,
           statusText: response.statusText,
-          error: errorData.error,
-          details: errorData.details
+          error: data.error,
+          details: data.details
         });
-        throw new Error(errorData.details || errorData.error || `Failed to generate preview (${response.status})`);
+        throw new Error(data.details || data.error || `Failed to generate preview (${response.status})`);
       }
       
     } catch (error) {
@@ -1065,12 +1064,9 @@ export default function OrdersPage() {
         stack: error instanceof Error ? error.stack : undefined
       });
       
-      // Only show error toast if we have no content to display
-      if (!previewHtml) {
-        const errorMessage = error instanceof Error 
-          ? error.message 
-          : 'Failed to generate preview. Please try again.';
-        
+      // Only show error toast if we have no content to display and it's a real error
+      if (!previewHtml && error instanceof Error && error.message !== 'Failed to fetch') {
+        const errorMessage = error.message;
         toast.error(errorMessage);
       }
       

@@ -469,31 +469,36 @@ export default function EmailComposer({
         })
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to generate email');
-      }
-
       const data = await response.json();
       
       // Update content only if we received valid content
-      if (data.content) {
+      if (data.content || data.html) {
         setContent(data.html || data.content);
         if (onContentChange) onContentChange(data.html || data.content);
         if (data.subject) {
           setSubject(data.subject);
           if (onSubjectChange) onSubjectChange(data.subject);
         }
+        return;
+      }
+
+      // Only show error if we truly have no content
+      if (!response.ok && !data.content && !data.html) {
+        throw new Error('Failed to generate email');
       }
 
       // Clear the prompt after successful generation
       setAiPrompt('');
     } catch (error) {
       console.error('Error generating email:', error);
-      toast({
-        title: "Error",
-        description: "Failed to generate email. Please try again.",
-        variant: "destructive"
-      });
+      // Only show error toast if it's a real error and not a network issue
+      if (error instanceof Error && error.message !== 'Failed to fetch') {
+        toast({
+          title: "Error",
+          description: error.message || "Failed to generate email. Please try again.",
+          variant: "destructive"
+        });
+      }
     } finally {
       setIsGeneratingAI(false);
     }
