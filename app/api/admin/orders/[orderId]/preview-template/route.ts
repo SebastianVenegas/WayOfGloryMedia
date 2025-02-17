@@ -58,12 +58,8 @@ export async function GET(
   try {
     // Use absolute URLs for logos
     const baseUrl = getBaseUrl(request, isPWA);
-    const logoLightUrl = isPWA ? 
-      'https://wayofglory.com/images/logo/LogoLight.png' : 
-      `${baseUrl}/images/logo/LogoLight.png`;
-    const logoNormalUrl = isPWA ? 
-      'https://wayofglory.com/images/logo/logo.png' : 
-      `${baseUrl}/images/logo/logo.png`;
+    const logoLightUrl = 'https://wayofglory.com/images/logo/LogoLight.png';
+    const logoNormalUrl = 'https://wayofglory.com/images/logo/logo.png';
 
     if (!orderId) {
       console.error('Missing orderId in URL');
@@ -75,7 +71,10 @@ export async function GET(
         status: 400,
         headers: {
           'Content-Type': 'application/json',
-          'Cache-Control': 'no-store'
+          'Cache-Control': 'no-store',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization'
         }
       });
     }
@@ -237,11 +236,11 @@ export async function GET(
         logoUrl: logoNormalUrl,
         logoNormalUrl: logoNormalUrl,
         logoLightUrl: logoLightUrl,
-        baseUrl: isPWA ? 'https://wayofglory.com' : baseUrl,
-        isPWA
+        baseUrl: 'https://wayofglory.com',
+        isPWA: true
       },
       orderId: orderId_int,
-      isPWA
+      isPWA: true
     };
 
     let generateResult;
@@ -252,7 +251,10 @@ export async function GET(
           'Accept': 'application/json',
           'Content-Type': 'application/json',
           'Cache-Control': 'no-store',
-          'x-pwa-request': isPWA ? 'true' : 'false'
+          'x-pwa-request': 'true',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization'
         },
         body: JSON.stringify(generatePayload)
       });

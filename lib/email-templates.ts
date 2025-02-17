@@ -297,14 +297,9 @@ export const getEmailTemplate = (
 export function formatEmailContent(content: string, variables: any): string {
   const styles = getEmailStyles();
   
-  // Ensure proper URL formatting for both PWA and web modes
-  const baseUrl = variables.isPWA ? 'https://wayofglory.com' : variables.baseUrl || '';
-  
-  // Use the provided logo URLs directly if they are absolute URLs
-  const headerLogoUrl = variables.logoNormalUrl || 
-    (variables.isPWA ? 'https://wayofglory.com/images/logo/logo.png' : `${baseUrl}/images/logo/logo.png`);
-  const footerLogoUrl = variables.logoLightUrl || 
-    (variables.isPWA ? 'https://wayofglory.com/images/logo/LogoLight.png' : `${baseUrl}/images/logo/LogoLight.png`);
+  // Always use absolute URLs for logos in PWA mode
+  const headerLogoUrl = 'https://wayofglory.com/images/logo/logo.png';
+  const footerLogoUrl = 'https://wayofglory.com/images/logo/LogoLight.png';
 
   // Check if content already has our wrapper
   if (content.includes('class="way-of-glory-email"')) {

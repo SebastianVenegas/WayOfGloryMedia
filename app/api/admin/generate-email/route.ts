@@ -96,19 +96,15 @@ export async function POST(request: NextRequest) {
       const baseUrl = isPWA ? 'https://wayofglory.com' : process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
       
       // Ensure logo URLs are always absolute for PWA
-      const logoLight = isPWA ? 
-        'https://wayofglory.com/images/logo/LogoLight.png' : 
-        `${baseUrl}/images/logo/LogoLight.png`;
-      const logoNormal = isPWA ? 
-        'https://wayofglory.com/images/logo/logo.png' : 
-        `${baseUrl}/images/logo/logo.png`;
+      const logoLight = 'https://wayofglory.com/images/logo/LogoLight.png';
+      const logoNormal = 'https://wayofglory.com/images/logo/logo.png';
 
       const formattedVariables = {
         ...variables,
         logoUrl: logoNormal,
         logoNormalUrl: logoNormal,
         logoLightUrl: logoLight,
-        baseUrl,
+        baseUrl: 'https://wayofglory.com',
         companyName: 'Way of Glory Media',
         supportEmail: 'help@wayofglory.com',
         websiteUrl: 'https://wayofglory.com',
@@ -129,7 +125,10 @@ export async function POST(request: NextRequest) {
         status: 200,
         headers: {
           'Content-Type': 'application/json',
-          'Cache-Control': 'no-store'
+          'Cache-Control': 'no-store',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization'
         }
       });
 
