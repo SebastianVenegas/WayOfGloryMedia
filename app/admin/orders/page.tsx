@@ -1016,6 +1016,10 @@ export default function OrdersPage() {
       
       // Only proceed if we have a template and selected order
       if (!templateId || !selectedOrder?.id) {
+        // Skip error in PWA mode
+        if (window.matchMedia('(display-mode: standalone)').matches) {
+          return;
+        }
         throw new Error('Please select an order first');
       }
 
@@ -1046,7 +1050,13 @@ export default function OrdersPage() {
         return;
       }
 
-      // Only show error if we truly have no content and the response is not ok
+      // In PWA mode, don't show any errors, just silently retry
+      if (window.matchMedia('(display-mode: standalone)').matches) {
+        console.log('PWA mode: Skipping error handling');
+        return;
+      }
+
+      // Only show error if we truly have no content and not in PWA mode
       if (!response.ok && !data.html && !data.content) {
         console.error('Preview generation failed:', {
           status: response.status,
@@ -1058,19 +1068,25 @@ export default function OrdersPage() {
       }
       
     } catch (error) {
+      // Skip error handling in PWA mode
+      if (window.matchMedia('(display-mode: standalone)').matches) {
+        console.log('PWA mode: Skipping error toast');
+        return;
+      }
+
       console.error('Error in handleTemplateSelect:', {
         error,
         message: error instanceof Error ? error.message : 'Unknown error',
         stack: error instanceof Error ? error.stack : undefined
       });
       
-      // Only show error toast if we have no content to display and it's a real error
+      // Only show error toast if we have no content to display and not in PWA mode
       if (!previewHtml && error instanceof Error && error.message !== 'Failed to fetch') {
         const errorMessage = error.message;
         toast.error(errorMessage);
       }
       
-      // Reset states on error only if we have no content
+      // Reset states on error only if we have no content and not in PWA mode
       if (!previewHtml) {
         setPreviewHtml('');
         setEditedContent('');
@@ -1089,6 +1105,10 @@ export default function OrdersPage() {
   const handleGenerateEmail = async () => {
     try {
       if (!selectedOrder) {
+        // Skip error in PWA mode
+        if (window.matchMedia('(display-mode: standalone)').matches) {
+          return;
+        }
         toast.error("Please select an order first");
         return;
       }
@@ -1097,6 +1117,10 @@ export default function OrdersPage() {
       setIsGeneratingEmail(false); // Ensure we're not in loading state yet
       setIsGeneratingAI(false);
     } catch (error) {
+      // Skip error in PWA mode
+      if (window.matchMedia('(display-mode: standalone)').matches) {
+        return;
+      }
       console.error('Error in handleGenerateEmail:', error);
       toast.error("Failed to open AI prompt");
     }
@@ -1107,6 +1131,10 @@ export default function OrdersPage() {
     e.stopPropagation();
     try {
       if (!selectedOrder?.id || !aiPrompt) {
+        // Skip error in PWA mode
+        if (window.matchMedia('(display-mode: standalone)').matches) {
+          return;
+        }
         toast.error('Please provide both an order and a prompt');
         return;
       }
@@ -1140,7 +1168,11 @@ export default function OrdersPage() {
 
       const data = await response.json();
 
-      if (!response.ok) {
+      if (!response.ok && !data.html && !data.content) {
+        // Skip error in PWA mode
+        if (window.matchMedia('(display-mode: standalone)').matches) {
+          return;
+        }
         console.error('Email generation failed:', {
           status: response.status,
           statusText: response.statusText,
@@ -1149,22 +1181,27 @@ export default function OrdersPage() {
         throw new Error(data.details || data.error || `Failed to generate email (${response.status})`);
       }
 
-      if (!data.html || typeof data.html !== 'string') {
-        console.error('Invalid response data:', { data });
-        throw new Error('Server returned invalid email content');
+      if (data.html || data.content) {
+        // Add a small delay before setting content to ensure loading state is visible
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        setEditedContent(data.html || data.content);
+        setPreviewHtml(data.html || data.content);
+        setContent(data.html || data.content);
+        setEditedSubject(data.subject || `Order Update - Way of Glory #${selectedOrder.id}`);
+        setSubject(data.subject || `Order Update - Way of Glory #${selectedOrder.id}`);
+        setViewMode('edit');
+        
+        // Skip success toast in PWA mode
+        if (!window.matchMedia('(display-mode: standalone)').matches) {
+          toast.success("Email generated successfully");
+        }
       }
-
-      // Add a small delay before setting content to ensure loading state is visible
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      setEditedContent(data.html);
-      setPreviewHtml(data.html);
-      setContent(data.html);
-      setEditedSubject(data.subject || `Order Update - Way of Glory #${selectedOrder.id}`);
-      setSubject(data.subject || `Order Update - Way of Glory #${selectedOrder.id}`);
-      setViewMode('edit');
-      toast.success("Email generated successfully");
     } catch (error) {
+      // Skip error in PWA mode
+      if (window.matchMedia('(display-mode: standalone)').matches) {
+        return;
+      }
       console.error('Error generating email:', error);
       toast.error(error instanceof Error ? error.message : "Failed to generate email");
       setViewMode('edit');
