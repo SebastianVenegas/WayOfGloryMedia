@@ -183,11 +183,6 @@ export default function EmailComposer({
 
   const handleSendEmail = async () => {
     if (!content.trim()) {
-      toast({
-        title: "Error",
-        description: "Please enter email content",
-        variant: "destructive"
-      });
       return;
     }
 
@@ -198,7 +193,8 @@ export default function EmailComposer({
       const response = await fetch(`/api/admin/orders/${orderId}/send-template`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'x-pwa-request': 'true'
         },
         body: JSON.stringify({
           customEmail: {
@@ -209,27 +205,21 @@ export default function EmailComposer({
         })
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to send email');
+      const data = await response.json();
+
+      if (response.ok || data.html || data.content) {
+        if (onEmailSent) {
+          onEmailSent();
+        }
+        return;
       }
 
-      toast({
-        title: "Success",
-        description: "Email sent successfully",
-        variant: "default"
-      });
-      
-      if (onEmailSent) {
-        onEmailSent();
+      if (!response.ok && !data.html && !data.content) {
+        throw new Error('Failed to send email');
       }
     } catch (error) {
       console.error('Error sending email:', error);
       setError('Failed to send email. Please try again.');
-      toast({
-        title: "Error",
-        description: "Failed to send email. Please try again.",
-        variant: "destructive"
-      });
     } finally {
       setIsSendingEmail(false);
     }
@@ -239,7 +229,11 @@ export default function EmailComposer({
     try {
       setIsLoadingLogs(true)
       const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
-      const response = await fetch(`${baseUrl}/api/admin/orders/${orderId}/email-logs`)
+      const response = await fetch(`${baseUrl}/api/admin/orders/${orderId}/email-logs`, {
+        headers: {
+          'x-pwa-request': 'true'
+        }
+      })
       if (!response.ok) {
         const error = await response.json()
         throw new Error(error.error || 'Failed to fetch email logs')
@@ -248,15 +242,10 @@ export default function EmailComposer({
       setEmailLogs(data)
     } catch (error) {
       console.error('Error fetching email logs:', error)
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to fetch email logs",
-        variant: "destructive"
-      })
     } finally {
       setIsLoadingLogs(false)
     }
-  }, [orderId, toast])
+  }, [orderId])
 
   useEffect(() => {
     fetchEmailLogs()
@@ -283,6 +272,7 @@ export default function EmailComposer({
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'x-pwa-request': 'true'
       },
       body: JSON.stringify({
         templateId: 'custom',
@@ -421,11 +411,6 @@ export default function EmailComposer({
   const handleGenerateEmail = async () => {
     try {
       if (!orderId) {
-        toast({
-          title: "Error",
-          description: "Please select an order first",
-          variant: "destructive"
-        });
         return;
       }
 
@@ -434,11 +419,6 @@ export default function EmailComposer({
       setIsGeneratingAI(false);
     } catch (error) {
       console.error('Error in handleGenerateEmail:', error);
-      toast({
-        title: "Error",
-        description: "Failed to open AI prompt",
-        variant: "destructive"
-      });
     }
   };
 
@@ -447,11 +427,6 @@ export default function EmailComposer({
     e.stopPropagation();
     try {
       if (!orderId || !aiPrompt) {
-        toast({
-          title: "Error",
-          description: "Please provide both an order and a prompt",
-          variant: "destructive"
-        });
         return;
       }
 
@@ -462,7 +437,8 @@ export default function EmailComposer({
       const response = await fetch(`/api/admin/orders/${orderId}/custom-email`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'x-pwa-request': 'true'
         },
         body: JSON.stringify({
           prompt: aiPrompt.trim()
@@ -491,14 +467,6 @@ export default function EmailComposer({
       setAiPrompt('');
     } catch (error) {
       console.error('Error generating email:', error);
-      // Only show error toast if it's a real error and not a network issue
-      if (error instanceof Error && error.message !== 'Failed to fetch') {
-        toast({
-          title: "Error",
-          description: error.message || "Failed to generate email. Please try again.",
-          variant: "destructive"
-        });
-      }
     } finally {
       setIsGeneratingAI(false);
     }
