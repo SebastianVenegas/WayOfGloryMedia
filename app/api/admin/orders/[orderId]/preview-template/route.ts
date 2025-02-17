@@ -213,15 +213,13 @@ export async function GET(
     }
 
     // Generate content using the generate-email endpoint
-    const generateUrl = isPWA ? 
-      'https://wayofglory.com/api/admin/generate-email' : 
-      new URL('/api/admin/generate-email', baseUrl).toString();
+    const generateUrl = 'https://wayofglory.com/api/admin/generate-email';
     
     console.log('Generating email with:', {
       templateId,
       prompt: prompt.substring(0, 100) + '...',
       variables: template.variables,
-      isPWA,
+      isPWA: true,
       logoUrls: {
         light: logoLightUrl,
         normal: logoNormalUrl
@@ -258,77 +256,72 @@ export async function GET(
         },
         body: JSON.stringify(generatePayload)
       });
-      generateResult = response;
+
+      // Check if the response has content, even if status is not 200
+      if (response.data?.html || response.data?.content) {
+        generateResult = response;
+      } else if (!response.ok) {
+        throw new Error('Failed to generate email content');
+      } else {
+        generateResult = response;
+      }
     } catch (err) {
       console.error('Error calling generate-email:', err);
-      return NextResponse.json({ 
+      return new NextResponse(JSON.stringify({ 
         error: 'Failed to generate email content',
         details: err instanceof Error ? err.message : 'Unknown error',
         success: false,
-        isPWA
-      }, { 
-        status: 500,
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-store'
-        }
-      });
-    }
-
-    if (!generateResult.ok) {
-      console.error('Failed to generate email:', {
-        status: generateResult.status,
-        error: generateResult.data?.error,
-        details: generateResult.data?.details
-      });
-      return NextResponse.json({
-        error: 'Failed to generate email',
-        details: generateResult.data?.error || generateResult.data?.details || 'Email generation failed',
-        success: false,
-        isPWA
-      }, {
-        status: generateResult.status || 500,
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-store'
-        }
-      });
-    }
-
-    // Log the response for debugging
-    console.log('Response status:', generateResult.status);
-    console.log('Response text:', JSON.stringify(generateResult.data).substring(0, 200));
-    console.log('Clean response text:', JSON.stringify(generateResult.data).substring(0, 200));
-
-    if (!generateResult.data?.html) {
-      console.error('Invalid generator response:', generateResult.data);
-      return new NextResponse(JSON.stringify({
-        error: 'Invalid response from email generator',
-        details: 'Missing required HTML in response',
-        success: false,
-        isPWA,
+        isPWA: true,
         content: null,
         html: null
-      }), {
+      }), { 
         status: 500,
         headers: {
           'Content-Type': 'application/json',
-          'Cache-Control': 'no-store'
+          'Cache-Control': 'no-store',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization'
         }
       });
     }
 
-    // Return the generated content directly
+    // If we have content, return it regardless of status code
+    if (generateResult.data?.html || generateResult.data?.content) {
+      return new NextResponse(JSON.stringify({
+        subject: template.subject,
+        content: generateResult.data.content || '',
+        html: generateResult.data.html || '',
+        success: true,
+        isPWA: true
+      }), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-store',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+        }
+      });
+    }
+
+    // Only return error if we truly have no content
     return new NextResponse(JSON.stringify({
-      subject: template.subject,
-      content: generateResult.data.content || '',
-      html: generateResult.data.html,
-      success: true,
-      isPWA
+      error: 'Failed to generate email content',
+      details: 'No content received from generator',
+      success: false,
+      isPWA: true,
+      content: null,
+      html: null
     }), {
+      status: 500,
       headers: {
         'Content-Type': 'application/json',
-        'Cache-Control': 'no-store'
+        'Cache-Control': 'no-store',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization'
       }
     });
 

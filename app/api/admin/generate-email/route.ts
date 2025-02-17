@@ -87,15 +87,18 @@ export async function POST(request: NextRequest) {
           status: 500,
           headers: {
             'Content-Type': 'application/json',
-            'Cache-Control': 'no-store'
+            'Cache-Control': 'no-store',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization'
           }
         });
       }
 
       // Update logo URLs based on PWA status
-      const baseUrl = isPWA ? 'https://wayofglory.com' : process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+      const baseUrl = 'https://wayofglory.com';
       
-      // Ensure logo URLs are always absolute for PWA
+      // Ensure logo URLs are always absolute
       const logoLight = 'https://wayofglory.com/images/logo/LogoLight.png';
       const logoNormal = 'https://wayofglory.com/images/logo/logo.png';
 
@@ -104,11 +107,11 @@ export async function POST(request: NextRequest) {
         logoUrl: logoNormal,
         logoNormalUrl: logoNormal,
         logoLightUrl: logoLight,
-        baseUrl: 'https://wayofglory.com',
+        baseUrl,
         companyName: 'Way of Glory Media',
         supportEmail: 'help@wayofglory.com',
         websiteUrl: 'https://wayofglory.com',
-        isPWA
+        isPWA: true
       };
 
       // Format the content with proper styling
@@ -119,7 +122,7 @@ export async function POST(request: NextRequest) {
         content,
         html: formattedHtml,
         success: true,
-        isPWA,
+        isPWA: true,
         message: 'Email content generated successfully'
       }), { 
         status: 200,
