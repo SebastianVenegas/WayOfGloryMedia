@@ -1031,9 +1031,22 @@ export default function OrdersPage() {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
+          'x-pwa-request': 'true'
         }
       });
 
+      const data = await response.json();
+
+      // If we have HTML content, use it regardless of status
+      if (data.html) {
+        setPreviewHtml(data.html);
+        setEditedContent(data.html);
+        setEditedSubject(data.subject || `Order Update - Way of Glory #${selectedOrder.id}`);
+        setViewMode('preview');
+        return;
+      }
+
+      // Only show error if we truly have no content
       if (!response.ok) {
         const errorData = await response.json();
         console.error('Preview generation failed:', {
@@ -1044,21 +1057,6 @@ export default function OrdersPage() {
         });
         throw new Error(errorData.details || errorData.error || `Failed to generate preview (${response.status})`);
       }
-
-      const data = await response.json();
-
-      // Validate the response data
-      if (!data.html) {
-        console.error('Invalid preview response - missing HTML:', data);
-        throw new Error('Preview generation returned invalid content - missing HTML');
-      }
-
-      // Set the preview HTML and content
-      setPreviewHtml(data.html);
-      setEditedContent(data.html);
-      setEditedSubject(data.subject || `Order Update - Way of Glory #${selectedOrder.id}`);
-      setViewMode('preview');
-      toast.success('Email preview generated successfully');
       
     } catch (error) {
       console.error('Error in handleTemplateSelect:', {
@@ -1067,18 +1065,22 @@ export default function OrdersPage() {
         stack: error instanceof Error ? error.stack : undefined
       });
       
-      // Show a more detailed error message
-      const errorMessage = error instanceof Error 
-        ? error.message 
-        : 'Failed to generate preview. Please try again.';
+      // Only show error toast if we have no content to display
+      if (!previewHtml) {
+        const errorMessage = error instanceof Error 
+          ? error.message 
+          : 'Failed to generate preview. Please try again.';
+        
+        toast.error(errorMessage);
+      }
       
-      toast.error(errorMessage);
-      
-      // Reset states on error
-      setPreviewHtml('');
-      setEditedContent('');
-      setEditedSubject('');
-      setViewMode('edit');
+      // Reset states on error only if we have no content
+      if (!previewHtml) {
+        setPreviewHtml('');
+        setEditedContent('');
+        setEditedSubject('');
+        setViewMode('edit');
+      }
       
     } finally {
       setIsGeneratingAI(false);
@@ -1278,24 +1280,32 @@ export default function OrdersPage() {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
+          'x-pwa-request': 'true'
         }
       });
 
       const data = await response.json();
       
+      // If we have content, use it regardless of status
+      if (data.html || data.content) {
+        setEditedContent(data.content || '');
+        setPreviewHtml(data.html || '');
+        setEditedSubject(data.subject || '');
+        setIsAiPromptOpen(false);
+        return;
+      }
+      
+      // Only show error if we truly have no content
       if (!response.ok) {
         throw new Error(data.error || 'Failed to generate preview');
       }
 
-      // Set the email content
-      setEditedContent(data.content || '');
-      setPreviewHtml(data.html || '');
-      setEditedSubject(data.subject || '');
-      setIsAiPromptOpen(false);
-      toast.success('Email preview generated successfully');
     } catch (error) {
       console.error('Error generating preview:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to generate preview');
+      // Only show error if we have no content
+      if (!previewHtml || previewHtml === '<p>Generating your email content...</p>') {
+        toast.error(error instanceof Error ? error.message : 'Failed to generate preview');
+      }
     } finally {
       setIsGeneratingAI(false);
       setIsTemplateLoading(false);
