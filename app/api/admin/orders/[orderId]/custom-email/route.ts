@@ -42,8 +42,7 @@ PROFESSIONAL STRUCTURE (maintain this structure while incorporating the prompt):
 4. Contact Information
    - Email: help@wayofglory.com
    - Phone: (310) 872-9781
-   - Website: wayofglory.com
-   - Always include all three
+   - Always include both
 
 5. Professional Closing
    - Warm but professional
@@ -191,11 +190,7 @@ export async function POST(
       createdAt: orderData.created_at,
       companyName: 'Way of Glory Media',
       supportEmail: 'help@wayofglory.com',
-      websiteUrl: 'https://wayofglory.com',
-      logoUrl: 'https://wayofglory.com/images/logo/LogoLight.png',
-      logoNormalUrl: 'https://wayofglory.com/images/logo/logo.png',
-      year: new Date().getFullYear(),
-      baseUrl: 'https://wayofglory.com'
+      logoUrl: '/images/logo/LogoLight.png'
     };
 
     // Log request details
@@ -283,11 +278,10 @@ Write the email exactly as requested in the prompt while naturally incorporating
       emailType: subject.replace(' - Way of Glory', '').replace(` #${variables.orderId}`, ''),
       companyName: 'Way of Glory Media',
       supportEmail: 'help@wayofglory.com',
-      websiteUrl: 'https://wayofglory.com',
-      logoUrl: 'https://wayofglory.com/images/logo/LogoLight.png',
-      logoNormalUrl: 'https://wayofglory.com/images/logo/logo.png',
+      logoUrl: '/images/logo/LogoLight.png',
+      logoNormalUrl: '/images/logo/logo.png',
       year: new Date().getFullYear(),
-      baseUrl: 'https://wayofglory.com'
+      baseUrl: process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
     });
 
     // Return the response

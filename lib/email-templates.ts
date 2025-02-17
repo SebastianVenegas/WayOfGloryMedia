@@ -401,8 +401,8 @@ export function formatEmailContent(content: string, variables: any): string {
                       <p style="${styles.footerText}">Questions? Contact our support team:</p>
                       <div style="${styles.footerLinks}">
                         <a href="mailto:${variables.supportEmail}" style="${styles.link}">${variables.supportEmail}</a>
-                        <a href="tel:+13105729781" style="${styles.link}">(310) 572-9781</a>
-                        <a href="${variables.websiteUrl}" style="${styles.link}">Visit our website</a>
+                        <a href="tel:+13108729781" style="${styles.link}">(310) 872-9781</a>
+                        <a href="https://wayofglory.com" style="${styles.link}">wayofglory.com</a>
                       </div>
                       <p style="${styles.copyright}">© ${variables.year} Way of Glory Media. All rights reserved.</p>
                       <p style="${styles.disclaimer}">Dedicated to serving churches and non-profits with excellence</p>
