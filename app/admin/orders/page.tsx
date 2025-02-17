@@ -241,41 +241,37 @@ const calculateOrderTotalWithTax = (order: Order): number => {
 const handleResendEmail = async (orderId: number) => {
   try {
     const response = await fetch(`/api/admin/orders/${orderId}/resend-email`, {
-      method: 'POST',
+      method: 'POST'
     });
 
     if (response.ok) {
-      toast.success(`Order confirmation email has been resent for order #${orderId}`);
+      showToast(`Order confirmation email has been resent for order #${orderId}`);
     } else {
       throw new Error('Failed to resend email');
     }
   } catch (error) {
     console.error('Error resending email:', error);
-    toast.error("Failed to resend email. Please try again.");
+    showToast("Failed to resend email. Please try again.", 'error');
   }
-}
+};
 
 const handleDeleteOrder = async (orderId: number, orders: Order[], setOrders: React.Dispatch<React.SetStateAction<Order[]>>) => {
-  if (!window.confirm('Are you sure you want to delete this order? This action cannot be undone.')) {
-    return;
-  }
-
   try {
     const response = await fetch(`/api/admin/orders/${orderId}`, {
-      method: 'DELETE',
+      method: 'DELETE'
     });
 
     if (response.ok) {
       setOrders(orders.filter((order: Order) => order.id !== orderId));
-      toast.success(`Order #${orderId} has been deleted successfully`);
+      showToast(`Order #${orderId} has been deleted successfully`);
     } else {
       throw new Error('Failed to delete order');
     }
   } catch (error) {
     console.error('Error deleting order:', error);
-    toast.error("Failed to delete order. Please try again.");
+    showToast("Failed to delete order. Please try again.", 'error');
   }
-}
+};
 
 const getStatusVariant = (status: string) => {
   switch (status) {
@@ -545,6 +541,25 @@ interface EmailLog {
   preview?: string;
 }
 
+// Add this at the top of the file after imports
+const isPWA = () => {
+  if (typeof window === 'undefined') return false;
+  return window.matchMedia('(display-mode: standalone)').matches;
+};
+
+// Add this utility function to safely show toasts
+const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+  if (isPWA()) {
+    console.log(`PWA mode - suppressing toast: ${type}:`, message);
+    return;
+  }
+  if (type === 'success') {
+    toast.success(message);
+  } else {
+    toast.error(message);
+  }
+};
+
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([])
@@ -779,52 +794,34 @@ export default function OrdersPage() {
 
   const updateOrderStatus = async (orderId: number, newStatus: OrderStatusUpdate) => {
     try {
-      // Validate orderId
-      if (!orderId || isNaN(orderId) || orderId <= 0) {
-        throw new Error('Invalid order ID');
-      }
-
       const response = await fetch(`/api/admin/orders/${orderId}/status`, {
-        method: 'PATCH',
+        method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({ status: newStatus })
       });
 
-      let data;
-      const contentType = response.headers.get('content-type');
-      
-      try {
-        // Only try to parse as JSON if the content type is application/json
-        if (contentType?.includes('application/json')) {
-          data = await response.json();
-        } else {
-          const text = await response.text();
-          throw new Error(`Unexpected response format: ${text}`);
-        }
-      } catch (parseError) {
-        console.error('Error parsing response:', parseError);
-        throw new Error('Failed to parse server response');
-      }
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to update order status');
+        throw new Error(data.error || 'Failed to update status');
       }
 
-      // Update the orders list
-      setOrders(orders.map(order => 
-        order.id === orderId 
-          ? { ...order, status: newStatus }
-          : order
-      ));
+      // Update local state
+      setOrders(prevOrders => 
+        prevOrders.map(order => 
+          order.id === orderId 
+            ? { ...order, status: newStatus }
+            : order
+        )
+      );
 
-      toast.success(data.message || `Order #${orderId} status has been updated to ${newStatus}`);
+      showToast(data.message || `Order #${orderId} status has been updated to ${newStatus}`);
       setIsStatusOpen(false);
     } catch (error) {
       console.error('Error updating order status:', error);
-      toast.error(error instanceof Error ? error.message : "Failed to update order status");
+      showToast(error instanceof Error ? error.message : "Failed to update order status", 'error');
     }
   };
 
@@ -1003,7 +1000,6 @@ export default function OrdersPage() {
   const handleTemplateSelect = async (templateId: string) => {
     try {
       const template = emailTemplates.find(t => t.id === templateId);
-      // Clear existing content first
       clearEmailState();
       setSelectedTemplate(templateId);
       setIsTemplateLoading(true);
@@ -1014,23 +1010,10 @@ export default function OrdersPage() {
         return;
       }
       
-      // Only proceed if we have a template and selected order
       if (!templateId || !selectedOrder?.id) {
-        // Skip error in PWA mode
-        if (window.matchMedia('(display-mode: standalone)').matches) {
-          return;
-        }
         throw new Error('Please select an order first');
       }
 
-      console.log('Generating preview for:', {
-        templateId,
-        orderId: selectedOrder.id,
-        hasInstallation: !!selectedOrder.installation_date,
-        orderStatus: selectedOrder.status
-      });
-      
-      // Use the preview-template endpoint instead
       const response = await fetch(`/api/admin/orders/${selectedOrder.id}/preview-template?templateId=${templateId}`, {
         method: 'GET',
         headers: {
@@ -1041,7 +1024,6 @@ export default function OrdersPage() {
 
       const data = await response.json();
 
-      // If we have HTML content, use it regardless of status
       if (data.html) {
         setPreviewHtml(data.html);
         setEditedContent(data.html);
@@ -1050,79 +1032,40 @@ export default function OrdersPage() {
         return;
       }
 
-      // In PWA mode, don't show any errors, just silently retry
-      if (window.matchMedia('(display-mode: standalone)').matches) {
-        console.log('PWA mode: Skipping error handling');
-        return;
-      }
-
-      // Only show error if we truly have no content and not in PWA mode
       if (!response.ok && !data.html && !data.content) {
-        console.error('Preview generation failed:', {
-          status: response.status,
-          statusText: response.statusText,
-          error: data.error,
-          details: data.details
-        });
         throw new Error(data.details || data.error || `Failed to generate preview (${response.status})`);
       }
       
     } catch (error) {
-      // Skip error handling in PWA mode
-      if (window.matchMedia('(display-mode: standalone)').matches) {
-        console.log('PWA mode: Skipping error toast');
-        return;
-      }
-
-      console.error('Error in handleTemplateSelect:', {
-        error,
-        message: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : undefined
-      });
+      console.error('Error in handleTemplateSelect:', error);
+      showToast(error instanceof Error ? error.message : 'Failed to generate preview', 'error');
       
-      // Only show error toast if we have no content to display and not in PWA mode
-      if (!previewHtml && error instanceof Error && error.message !== 'Failed to fetch') {
-        const errorMessage = error.message;
-        toast.error(errorMessage);
-      }
-      
-      // Reset states on error only if we have no content and not in PWA mode
       if (!previewHtml) {
         setPreviewHtml('');
         setEditedContent('');
         setEditedSubject('');
         setViewMode('edit');
       }
-      
     } finally {
       setIsGeneratingAI(false);
       setIsTemplateLoading(false);
       setLoadingTemplateName('');
     }
-  }
+  };
 
   // Handle email generation
   const handleGenerateEmail = async () => {
     try {
       if (!selectedOrder) {
-        // Skip error in PWA mode
-        if (window.matchMedia('(display-mode: standalone)').matches) {
-          return;
-        }
-        toast.error("Please select an order first");
+        showToast("Please select an order first", 'error');
         return;
       }
-      // Just open the AI prompt dialog, don't start generation yet
       setIsAiPromptOpen(true);
-      setIsGeneratingEmail(false); // Ensure we're not in loading state yet
+      setIsGeneratingEmail(false);
       setIsGeneratingAI(false);
     } catch (error) {
-      // Skip error in PWA mode
-      if (window.matchMedia('(display-mode: standalone)').matches) {
-        return;
-      }
       console.error('Error in handleGenerateEmail:', error);
-      toast.error("Failed to open AI prompt");
+      showToast("Failed to open AI prompt", 'error');
     }
   };
 
@@ -1131,34 +1074,17 @@ export default function OrdersPage() {
     e.stopPropagation();
     try {
       if (!selectedOrder?.id || !aiPrompt) {
-        // Skip error in PWA mode
-        if (window.matchMedia('(display-mode: standalone)').matches) {
-          return;
-        }
-        toast.error('Please provide both an order and a prompt');
+        showToast('Please provide both an order and a prompt', 'error');
         return;
       }
 
-      // Set loading states before closing the prompt
       setIsGeneratingAI(true);
       setIsGeneratingEmail(true);
       setIsTemplateLoading(true);
       setLoadingTemplateName('Generating Custom Email...');
       
-      // Close AI prompt and show email composer
       setIsAiPromptOpen(false);
       setShowEmailComposer(true);
-
-      // Store current content for fallback
-      const previousContent = content;
-
-      // Format order items with proper price calculation
-      const formattedOrderItems = selectedOrder.order_items.map(item => ({
-        title: item.product?.title || 'Product',
-        quantity: Number(item.quantity) || 0,
-        price_at_time: Number(item.price_at_time) || 0,
-        product: item.product
-      }));
 
       const response = await fetch(`/api/admin/orders/${selectedOrder.id}/custom-email`, {
         method: 'POST',
@@ -1169,20 +1095,10 @@ export default function OrdersPage() {
       const data = await response.json();
 
       if (!response.ok && !data.html && !data.content) {
-        // Skip error in PWA mode
-        if (window.matchMedia('(display-mode: standalone)').matches) {
-          return;
-        }
-        console.error('Email generation failed:', {
-          status: response.status,
-          statusText: response.statusText,
-          error: data
-        });
         throw new Error(data.details || data.error || `Failed to generate email (${response.status})`);
       }
 
       if (data.html || data.content) {
-        // Add a small delay before setting content to ensure loading state is visible
         await new Promise(resolve => setTimeout(resolve, 1000));
 
         setEditedContent(data.html || data.content);
@@ -1192,22 +1108,14 @@ export default function OrdersPage() {
         setSubject(data.subject || `Order Update - Way of Glory #${selectedOrder.id}`);
         setViewMode('edit');
         
-        // Skip success toast in PWA mode
-        if (!window.matchMedia('(display-mode: standalone)').matches) {
-          toast.success("Email generated successfully");
-        }
+        showToast("Email generated successfully");
       }
     } catch (error) {
-      // Skip error in PWA mode
-      if (window.matchMedia('(display-mode: standalone)').matches) {
-        return;
-      }
       console.error('Error generating email:', error);
-      toast.error(error instanceof Error ? error.message : "Failed to generate email");
+      showToast(error instanceof Error ? error.message : "Failed to generate email", 'error');
       setViewMode('edit');
       setShowEmailComposer(true);
     } finally {
-      // Add a small delay before clearing loading states
       setTimeout(() => {
         setIsGeneratingEmail(false);
         setIsGeneratingAI(false);
@@ -1220,19 +1128,19 @@ export default function OrdersPage() {
   // Handle sending email
   const handleSendEmail = async () => {
     if (!selectedOrder?.id) {
-      toast.error('No order selected')
-      return
+      showToast('No order selected', 'error');
+      return;
     }
 
     try {
-      setIsSendingEmail(true)  // This will show the loading indicator on the send button
+      setIsSendingEmail(true);
       
       // Use fallback values if email content or subject are missing
       const finalContent = editedContent || '<p>No email content was generated.</p>';
       const finalSubject = editedSubject || `Your Way of Glory Order #${selectedOrder.id}`;
 
       if(!editedContent || !editedSubject) {
-        toast('Some fields were missing. Fallback values have been used.');
+        showToast('Some fields were missing. Fallback values have been used.');
       }
 
       console.log('Email content state:', {
@@ -1241,7 +1149,7 @@ export default function OrdersPage() {
         hasEditedSubject: !!editedSubject,
         editedSubject: editedSubject,
         finalContent: finalContent?.slice(0, 100) + '...' // Log first 100 chars
-      })
+      });
 
       // Send the email using the send-template endpoint
       const response = await fetch(`/api/admin/orders/${selectedOrder.id}/send-template`, {
@@ -1256,41 +1164,41 @@ export default function OrdersPage() {
             content: finalContent,
             html: previewHtml  // Use the previewHtml which contains the fully formatted content
           },
-          isPWA: false
+          isPWA: isPWA()
         }),
-      })
+      });
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (!response.ok) {
         console.error('Send email failed:', {
           status: response.status,
           data: data
-        })
-        throw new Error(data.details || data.error || 'Failed to send email')
+        });
+        throw new Error(data.details || data.error || 'Failed to send email');
       }
 
-      toast.success('Email sent successfully')
+      showToast('Email sent successfully');
       
       // Reset all states
-      clearEmailState()
-      setPreviewHtml('')
-      setViewMode('edit')
-      setIsEmailTemplatesOpen(false)
-      setTemplateVars({})
-      setIsGeneratingAI(false)
-      setAiPrompt('')
-      setIsAiPromptOpen(false)
-      setShippingStatus('')
-      setIsShippingPromptOpen(false)
+      clearEmailState();
+      setPreviewHtml('');
+      setViewMode('edit');
+      setIsEmailTemplatesOpen(false);
+      setTemplateVars({});
+      setIsGeneratingAI(false);
+      setAiPrompt('');
+      setIsAiPromptOpen(false);
+      setShippingStatus('');
+      setIsShippingPromptOpen(false);
       
     } catch (error) {
-      console.error('Error in handleSendEmail:', error)
-      toast.error(error instanceof Error ? error.message : 'Failed to send email')
+      console.error('Error in handleSendEmail:', error);
+      showToast(error instanceof Error ? error.message : 'Failed to send email', 'error');
     } finally {
-      setIsSendingEmail(false)  // Clear the loading state
+      setIsSendingEmail(false);  // Clear the loading state
     }
-  }
+  };
 
   // Handle quick generate
   const handleQuickGenerate = async (templateId: string) => {
