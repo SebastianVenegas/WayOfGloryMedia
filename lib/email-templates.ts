@@ -267,19 +267,6 @@ export const getEmailTemplate = (
           - End with an enthusiastic closing`)
       };
 
-    case 'shipping_update':
-      return {
-        subject: `Shipping Update - Way of Glory Order #${order.id}`,
-        ...getTemplateBase('Shipping Update', `Write a shipping update email with these requirements:
-          - Start with a friendly greeting to ${order.first_name}
-          - Write from Way of Glory Media's perspective
-          - Provide clear status update for order #${order.id}
-          - Include any special delivery instructions or requirements
-          - Explain next steps after delivery
-          - Include our support contact information (help@wayofglory.com and (310) 872-9781)
-          - End with an assuring message about their order's progress`)
-      };
-
     default:
       return {
         subject: `Order Status Update - Way of Glory #${order.id}`,
