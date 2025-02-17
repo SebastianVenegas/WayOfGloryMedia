@@ -441,13 +441,7 @@ export default function EmailComposer({
           'x-pwa-request': 'true'
         },
         body: JSON.stringify({
-          templateId: 'custom',
-          customPrompt: aiPrompt.trim(),
-          prompt: aiPrompt.trim(),
-          customEmail: {
-            subject: subject || `Order Update - Way of Glory #${orderId}`,
-            formatOnly: false
-          }
+          prompt: aiPrompt.trim()
         })
       });
 
