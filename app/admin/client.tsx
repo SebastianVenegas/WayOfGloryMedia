@@ -6,7 +6,7 @@ import { SidebarProvider, useSidebar } from "@/contexts/SidebarContext"
 import { Toaster } from "sonner"
 import { cn } from "@/lib/utils"
 import { AdminPWARegister } from './pwa'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 
 interface AdminClientProps {
   children: React.ReactNode
@@ -17,6 +17,8 @@ function AdminContent({ children }: AdminClientProps) {
   const router = useRouter()
   const { isExpanded, toggleSidebar } = useSidebar()
   const isLoginPage = pathname === '/admin/login'
+  const [userEmail, setUserEmail] = useState('')
+  const [userName, setUserName] = useState('')
 
   // Check authentication on mount and route change
   useEffect(() => {
@@ -27,12 +29,20 @@ function AdminContent({ children }: AdminClientProps) {
         })
         
         if (!res.ok && !isLoginPage) {
-          router.push('/admin/login')
+          window.location.href = '/admin/login'
+        } else {
+          // Get user data from localStorage
+          const email = localStorage.getItem('admin_email')
+          const name = localStorage.getItem('admin_name')
+          if (email && name) {
+            setUserEmail(email)
+            setUserName(name)
+          }
         }
       } catch (error) {
         console.error('Auth check failed:', error)
         if (!isLoginPage) {
-          router.push('/admin/login')
+          window.location.href = '/admin/login'
         }
       }
     }
@@ -47,12 +57,13 @@ function AdminContent({ children }: AdminClientProps) {
         credentials: 'include'
       })
       
-      localStorage.removeItem('auth_token')
-      localStorage.removeItem('user')
-      router.push('/admin/login')
+      localStorage.removeItem('admin_token')
+      localStorage.removeItem('admin_email')
+      localStorage.removeItem('admin_name')
+      window.location.href = '/admin/login'
     } catch (error) {
       console.error('Logout failed:', error)
-      router.push('/admin/login')
+      window.location.href = '/admin/login'
     }
   }
 
@@ -65,6 +76,8 @@ function AdminContent({ children }: AdminClientProps) {
           toggleSidebar={toggleSidebar}
           pathname={pathname}
           handleLogout={handleLogout}
+          userEmail={userEmail}
+          userName={userName}
         />
       )}
       <main className={cn(
