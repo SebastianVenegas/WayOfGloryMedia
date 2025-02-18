@@ -64,6 +64,10 @@ export default function ProductsHeader({
       }}
       className={cn(
         "fixed top-0 right-0 transition-all duration-300",
+        "md:fixed md:top-0 md:right-0",
+        "w-full md:w-auto",
+        "left-0 md:left-auto",
+        "mt-20 md:mt-0",
         isCheckoutOpen 
           ? "z-[40] bg-white/40 backdrop-blur-xl border-transparent opacity-50 pointer-events-none"
           : "z-[44] bg-white/90 backdrop-blur-md shadow-sm"
@@ -72,11 +76,12 @@ export default function ProductsHeader({
       {/* Main Header Row */}
       <div className={cn(
         "flex h-20 items-center gap-4 px-6 border-b border-gray-100",
+        "overflow-x-auto",
         isCheckoutOpen && "opacity-50"
       )}>
         {/* Left side - Search and Categories */}
-        <div className="flex items-center gap-4 flex-1">
-          <div className="w-[280px] relative group">
+        <div className="flex items-center gap-4 flex-1 min-w-0">
+          <div className="w-full md:w-[280px] relative group">
             <Search className="h-5 w-5 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2 group-focus-within:text-blue-500 transition-colors duration-200" />
             <Input
               type="text"
@@ -97,14 +102,15 @@ export default function ProductsHeader({
             )}
           </div>
 
-          <div className="flex items-center bg-gray-100/80 backdrop-blur-sm rounded-xl p-1.5 shadow-sm">
+          <div className="flex items-center bg-gray-100/80 backdrop-blur-sm rounded-xl p-1.5 shadow-sm min-w-0 overflow-x-auto no-scrollbar">
             {['all', 'Audio Gear', 'Streaming Gear', 'Services'].map((category) => (
-              <div key={category} className="relative">
+              <div key={category} className="relative flex-shrink-0">
                 <Button
                   variant={selectedCategory.startsWith(category) ? 'default' : 'ghost'}
                   onClick={() => setSelectedCategory(category)}
                   className={cn(
                     "h-9 px-4 text-sm font-medium rounded-lg relative whitespace-nowrap transition-all duration-200",
+                    "flex-shrink-0",
                     selectedCategory.startsWith(category)
                       ? "bg-white text-blue-600 shadow-sm" 
                       : "text-gray-600 hover:text-blue-500 hover:bg-white/50"
@@ -118,7 +124,7 @@ export default function ProductsHeader({
         </div>
 
         {/* Right side - View options and Bundle */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-shrink-0">
           <Button
             variant="ghost"
             size="icon"
@@ -152,9 +158,9 @@ export default function ProductsHeader({
 
       {/* Subcategories Row */}
       {isAudioCategory && (
-        <div className="h-14 px-6 border-b border-gray-100 bg-white/80 backdrop-blur-md">
+        <div className="h-14 px-6 border-b border-gray-100 bg-white/80 backdrop-blur-md overflow-x-auto">
           <div className="h-full flex items-center gap-2 overflow-x-auto no-scrollbar">
-            <div className="flex items-center bg-gray-100/80 backdrop-blur-sm rounded-xl p-1.5 shadow-sm">
+            <div className="flex items-center bg-gray-100/80 backdrop-blur-sm rounded-xl p-1.5 shadow-sm min-w-0 overflow-x-auto no-scrollbar">
               {CATEGORIES['Audio Gear'].subcategories.map((subcat) => {
                 const Icon = subcat.icon;
                 return (
@@ -164,12 +170,13 @@ export default function ProductsHeader({
                     onClick={() => setSelectedCategory(subcat.path)}
                     className={cn(
                       "h-9 px-4 text-sm font-medium rounded-lg relative whitespace-nowrap transition-all duration-200",
+                      "flex-shrink-0",
                       selectedCategory === subcat.path
                         ? "bg-white text-blue-600 shadow-sm" 
                         : "text-gray-600 hover:text-blue-500 hover:bg-white/50"
                     )}
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-shrink-0">
                       {Icon && <Icon className="h-4 w-4 flex-shrink-0" />}
                       {subcat.name}
                     </div>
