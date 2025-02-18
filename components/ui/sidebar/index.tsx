@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
+import { useSidebar } from '@/contexts/SidebarContext'
 
 const navigation = [
   {
@@ -79,7 +80,7 @@ interface SidebarProps {
 }
 
 export function SidebarLayout({ children }: { children: React.ReactNode }) {
-  const [isExpanded, setIsExpanded] = useState(false)
+  const { isExpanded, toggleSidebar } = useSidebar()
   const [isMobile, setIsMobile] = useState(false)
   const [userEmail, setUserEmail] = useState('')
   const [userName, setUserName] = useState('')
@@ -105,10 +106,8 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
       }
     }
 
-    // Check auth immediately
     checkAuth()
 
-    // Set up storage event listener to handle auth state changes
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'admin_token' || e.key === 'admin_email' || e.key === 'admin_name') {
         checkAuth()
@@ -116,14 +115,11 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
     }
 
     window.addEventListener('storage', handleStorageChange)
-
-    // Custom event for auth state changes
-    const handleAuthChange = () => checkAuth()
-    window.addEventListener('authStateChange', handleAuthChange)
+    window.addEventListener('authStateChange', checkAuth)
 
     return () => {
       window.removeEventListener('storage', handleStorageChange)
-      window.removeEventListener('authStateChange', handleAuthChange)
+      window.removeEventListener('authStateChange', checkAuth)
     }
   }, [router, pathname])
 
@@ -135,17 +131,13 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
     window.addEventListener('resize', checkMobile)
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
-
-  const toggleSidebar = () => setIsExpanded(prev => !prev)
   
   const handleLogout = async () => {
     try {
-      // Clear admin data from localStorage
       localStorage.removeItem('admin_email')
       localStorage.removeItem('admin_name')
       localStorage.removeItem('admin_token')
       
-      // Make API call to logout
       const response = await fetch('/api/auth/logout', {
         method: 'POST',
         credentials: 'include'
@@ -155,11 +147,8 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
         throw new Error('Logout failed')
       }
 
-      // Show success message
       toast.success('Signed out successfully')
       setIsAuthenticated(false)
-      
-      // Force navigation to login page
       window.location.href = '/admin/login'
     } catch (error) {
       console.error('Logout error:', error)
@@ -167,7 +156,6 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
     }
   }
 
-  // Don't render sidebar if not authenticated
   if (!isAuthenticated) {
     return <div className="min-h-screen bg-gray-50">{children}</div>
   }
@@ -254,7 +242,7 @@ export function Sidebar({ isExpanded, toggleSidebar, pathname, handleLogout, use
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60]"
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[49]"
             onClick={toggleSidebar}
           />
         )}
@@ -274,7 +262,7 @@ export function Sidebar({ isExpanded, toggleSidebar, pathname, handleLogout, use
               mass: 0.8
             }}
             className={cn(
-              "fixed left-0 top-0 bottom-0 z-[70] bg-white flex flex-col shadow-xl",
+              "fixed left-0 top-0 bottom-0 z-[50] bg-white flex flex-col shadow-xl",
               isMobile && "w-[85%] max-w-[360px]"
             )}
           >
@@ -312,10 +300,10 @@ export function Sidebar({ isExpanded, toggleSidebar, pathname, handleLogout, use
             {/* Desktop Header - Only show on desktop */}
             {!isMobile && (
               <div 
-                className="flex items-center h-28 border-b border-gray-100 bg-white cursor-pointer"
+                className="flex items-center h-28 border-b border-gray-100 bg-white cursor-pointer relative group"
                 onClick={toggleSidebar}
               >
-                <div className="flex items-center justify-between w-full px-2">
+                <div className="flex items-center w-full px-2">
                   <div className="flex items-center gap-2">
                     <div className="w-16 h-16 relative flex items-center justify-center">
                       <Image
@@ -341,24 +329,15 @@ export function Sidebar({ isExpanded, toggleSidebar, pathname, handleLogout, use
                       Way of Glory
                     </motion.span>
                   </div>
-                  <motion.div
-                    initial={false}
-                    animate={{ rotate: isExpanded ? 0 : 180 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        toggleSidebar()
-                      }}
-                      className="h-10 w-10 hover:bg-gray-100 rounded-xl text-gray-500"
-                    >
-                      <ChevronLeft className="h-5 w-5" />
-                    </Button>
-                  </motion.div>
                 </div>
+                <motion.div
+                  initial={false}
+                  animate={{ rotate: isExpanded ? 180 : 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="absolute right-0 top-1/2 -translate-y-1/2 h-full w-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <ChevronRight className="h-4 w-4 text-gray-400" />
+                </motion.div>
               </div>
             )}
 

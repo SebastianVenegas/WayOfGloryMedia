@@ -58,19 +58,13 @@ export default function ProductsHeader({
 
   return (
     <div 
-      style={{
-        width: `calc(100% - ${isExpanded ? '280px' : '80px'})`,
-        marginLeft: isExpanded ? '280px' : '80px'
-      }}
       className={cn(
-        "fixed top-0 right-0 transition-all duration-300",
-        "md:fixed md:top-0 md:right-0",
-        "w-full md:w-auto",
-        "left-0 md:left-auto",
-        "mt-20 md:mt-0",
-        isCheckoutOpen 
-          ? "z-[40] bg-white/40 backdrop-blur-xl border-transparent opacity-50 pointer-events-none"
-          : "z-[44] bg-white/90 backdrop-blur-md shadow-sm"
+        "fixed top-0 right-0 transition-all duration-200",
+        "md:w-[calc(100%-80px)] md:left-[80px]",
+        isExpanded && "md:w-[calc(100%-280px)] md:left-[280px]",
+        "w-full bg-white/90 backdrop-blur-md shadow-sm",
+        "z-[35]",
+        isCheckoutOpen && "z-[30] bg-white/40 backdrop-blur-xl border-transparent opacity-50 pointer-events-none"
       )}
     >
       {/* Main Header Row */}
