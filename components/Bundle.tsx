@@ -251,6 +251,7 @@ export default function Bundle({ products, onRemove, onUpdateQuantity, isOpen, s
           contactOnSitePhone: formData.contactOnSitePhone || '',
           paymentMethod: formData.paymentMethod || 'invoice',
           signature: formData.signature || '',
+          contractNumber: formData.contractNumber,
           products: products.map(product => ({
             id: product.id,
             title: product.title,

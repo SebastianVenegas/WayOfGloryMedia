@@ -1,115 +1,97 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { SignJWT } from 'jose'
 import { sql } from '@vercel/postgres'
 import bcrypt from 'bcrypt'
+import * as jose from 'jose'
 
-interface LoginRequest {
-  email: string
-  password: string
-}
+const JWT_SECRET = new TextEncoder().encode(
+  process.env.JWT_SECRET || 'your-secret-key'
+)
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('[Login] Starting login process')
+    const { email, password } = await request.json()
 
-    if (!process.env.JWT_SECRET) {
-      console.error('[Login] JWT_SECRET is missing in environment variables')
-      return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
-    }
+    console.log('Login attempt for email:', email)
 
-    const body = await request.json()
-    console.log('[Login] Request body:', { email: body.email, hasPassword: !!body.password })
-
-    const { email, password } = body as LoginRequest
-
+    // Validate input
     if (!email || !password) {
-      console.error('[Login] Missing email or password')
-      return NextResponse.json({ 
-        error: 'Please provide both email and password' 
-      }, { status: 400 })
+      console.log('Missing email or password')
+      return NextResponse.json(
+        { error: 'Email and password are required' },
+        { status: 400 }
+      )
     }
 
-    console.log('[Login] Querying database for user')
     // Get user from database
     const { rows } = await sql`
       SELECT * FROM admin_users 
       WHERE email = ${email.toLowerCase()}
     `
-    console.log('[Login] Database query result:', { userFound: rows.length > 0 })
 
-    if (rows.length === 0) {
-      console.error('[Login] No user found with email:', email)
-      return NextResponse.json({ 
-        error: 'Invalid email or password' 
-      }, { status: 401 })
-    }
+    console.log('Found users:', rows.length)
 
     const user = rows[0]
-    console.log('[Login] Verifying password')
 
-    // Verify password
-    const passwordMatch = await bcrypt.compare(password, user.password_hash)
-    console.log('[Login] Password verification result:', { passwordMatch })
-    
-    if (!passwordMatch) {
-      console.error('[Login] Password does not match')
-      return NextResponse.json({ 
-        error: 'Invalid email or password' 
-      }, { status: 401 })
+    // Check if user exists
+    if (!user) {
+      console.log('No user found with email:', email)
+      return NextResponse.json(
+        { error: 'Invalid email or password' },
+        { status: 401 }
+      )
     }
 
-    console.log('[Login] Creating JWT token')
-    // Create JWT token with 3-hour expiration
-    const token = await new SignJWT({
+    // Verify password
+    const isValidPassword = await bcrypt.compare(password, user.password_hash)
+    
+    console.log('Password verification result:', isValidPassword)
+    
+    if (!isValidPassword) {
+      console.log('Invalid password for user:', email)
+      return NextResponse.json(
+        { error: 'Invalid email or password' },
+        { status: 401 }
+      )
+    }
+
+    // Create JWT token
+    const token = await new jose.SignJWT({
       email: user.email,
-      role: user.role,
-      name: user.name
+      name: user.name,
+      role: user.role
     })
       .setProtectedHeader({ alg: 'HS256' })
-      .setIssuedAt()
-      .setExpirationTime('3h')  // 3 hour expiration
-      .sign(new TextEncoder().encode(process.env.JWT_SECRET))
+      .setExpirationTime('3h')
+      .sign(JWT_SECRET)
 
-    console.log('[Login] Token created successfully')
+    console.log('Generated token for user:', email)
 
-    // Create the response with CORS headers
+    // Create response with token
     const response = NextResponse.json({
       success: true,
-      user: {
-        email: user.email,
-        role: user.role,
-        name: user.name
-      }
+      token,
+      email: user.email,
+      name: user.name
     })
 
-    // Get domain from request for cookie settings
-    const domain = request.headers.get('host')?.split(':')[0] || undefined
-
-    console.log('[Login] Setting auth cookie with domain:', domain)
-    // Set cookie with production-friendly settings
+    // Set cookies
     response.cookies.set({
-      name: 'auth_token',
+      name: 'admin_token',
       value: token,
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      path: '/',
-      domain: domain === 'localhost' ? undefined : domain,
       maxAge: 60 * 60 * 3 // 3 hours
     })
 
-    // Set CORS headers
-    response.headers.set('Access-Control-Allow-Credentials', 'true')
-    response.headers.set('Access-Control-Allow-Origin', request.headers.get('origin') || '*')
-    response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-    response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-
-    console.log('[Login] Login successful')
+    console.log('Login successful for user:', email)
     return response
+
   } catch (error) {
-    console.error('[Login] Unexpected error:', error)
-    return NextResponse.json({ 
-      error: 'An error occurred while trying to log in. Please try again.' 
-    }, { status: 500 })
+    console.error('Login error:', error)
+    return NextResponse.json(
+      { error: 'Failed to login' },
+      { status: 500 }
+    )
   }
 } 

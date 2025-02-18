@@ -770,9 +770,9 @@ export default function ProductsPage() {
             data-main-content
             layout
             className={cn(
-              "flex-1 p-6 transition-all duration-300",
-              isCartOpen ? "mr-[350px]" : "",
-              isAudioCategory ? "pt-[8.5rem]" : "pt-24"
+              "flex-1 p-4 md:p-6 transition-all duration-300",
+              isCartOpen ? "md:mr-[350px]" : "",
+              isAudioCategory ? "pt-[8.5rem] md:pt-[8.5rem]" : "pt-32 md:pt-24"
             )}
           >
             {selectedCategory === 'Services' && (
@@ -799,12 +799,12 @@ export default function ProductsPage() {
               animate="show"
               layout
               className={cn(
-                "grid gap-4 transition-all duration-300",
+                "grid gap-3 md:gap-4 transition-all duration-300",
                 isListView 
                   ? 'grid-cols-1' 
                   : isCartOpen
                     ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
-                    : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5'
+                    : 'grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5'
               )}
             >
               {currentProducts.map((product) => (

@@ -29,63 +29,33 @@ async function verifyToken(token: string) {
   }
 }
 
-export async function middleware(request: NextRequest) {
-  console.log('[Middleware] Processing request:', request.nextUrl.pathname)
-  const pathname = request.nextUrl.pathname
+export function middleware(request: NextRequest) {
+  // Get the pathname
+  const path = request.nextUrl.pathname
 
-  // Only handle admin routes
-  if (!pathname.startsWith('/admin')) {
-    return NextResponse.next()
-  }
+  // Check if it's an admin path
+  const isAdminPath = path.startsWith('/admin')
+  const isLoginPath = path === '/admin/login'
 
-  // Skip auth check for login page and API routes
-  if (pathname === '/admin/login' || pathname.startsWith('/admin/api/')) {
-    return NextResponse.next()
-  }
+  // Get the token from cookies
+  const token = request.cookies.get('admin_token')?.value
 
-  // Get token from cookie
-  const token = request.cookies.get('auth_token')?.value
-  console.log('[Middleware] Token from cookie:', token ? 'present' : 'missing')
-
-  // If no token, redirect to login
-  if (!token) {
-    console.log('[Middleware] No token found, redirecting to login')
+  // If trying to access admin pages without token
+  if (isAdminPath && !token && !isLoginPath) {
     const loginUrl = new URL('/admin/login', request.url)
-    loginUrl.searchParams.set('from', pathname)
     return NextResponse.redirect(loginUrl)
   }
 
-  // Verify token
-  const isValidToken = await verifyToken(token)
-  console.log('[Middleware] Token validation result:', isValidToken)
-
-  if (!isValidToken) {
-    console.log('[Middleware] Invalid token, redirecting to login')
-    const response = NextResponse.redirect(new URL('/admin/login', request.url))
-    response.cookies.delete('auth_token')
-    return response
+  // If trying to access login page with valid token
+  if (isLoginPath && token) {
+    const dashboardUrl = new URL('/admin', request.url)
+    return NextResponse.redirect(dashboardUrl)
   }
 
-  // Get domain from request for cookie settings
-  const domain = request.headers.get('host')?.split(':')[0] || undefined
-  console.log('[Middleware] Setting cookie with domain:', domain)
-
-  // Set cookie with production-friendly settings
-  const response = NextResponse.next()
-  response.cookies.set({
-    name: 'auth_token',
-    value: token,
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    path: '/',
-    domain: domain === 'localhost' ? undefined : domain,
-    maxAge: 60 * 60 * 3 // 3 hours
-  })
-
-  return response
+  return NextResponse.next()
 }
 
+// Configure the paths that should be protected
 export const config = {
   matcher: ['/admin/:path*']
 } 

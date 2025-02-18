@@ -122,6 +122,7 @@ interface Order {
   status: 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'delayed'
   created_at: string
   order_items: OrderItem[]
+  contract_number: string
 }
 
 const TAX_RATE = 0.0775 // 7.75% for Riverside, CA
@@ -658,7 +659,8 @@ export default function OrdersPage() {
         order.first_name.toLowerCase().includes(searchLower) ||
         order.last_name.toLowerCase().includes(searchLower) ||
         order.email.toLowerCase().includes(searchLower) ||
-        order.id.toString().includes(searchLower)
+        order.id.toString().includes(searchLower) ||
+        (order.contract_number && order.contract_number.toLowerCase().includes(searchLower))
       )
     }
 
@@ -1643,10 +1645,10 @@ export default function OrdersPage() {
               <div className="bg-blue-600 rounded-xl p-2.5 shadow-lg shadow-blue-200">
                 <PackageSearch className="h-6 w-6 text-white" />
               </div>
-          <div>
+              <div>
                 <h1 className="text-3xl font-bold text-gray-900">
-              Sales & Orders
-            </h1>
+                  Sales & Orders
+                </h1>
                 <p className="mt-1.5 text-gray-500">
                   Manage your orders, installations, and customer communications
                 </p>
@@ -1666,21 +1668,6 @@ export default function OrdersPage() {
                 <span className="font-medium">${(stats.profit.products + stats.profit.services + stats.profit.installation).toFixed(2)} Profit</span>
               </div>
             </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <Button 
-              variant="outline" 
-              className="gap-2 bg-white shadow-sm border-gray-200 hover:bg-gray-50/80 transition-all"
-            >
-              <FileText className="h-4 w-4 text-gray-500" />
-              Export Data
-            </Button>
-            <Button 
-              className="gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md transition-all"
-            >
-              <Plus className="h-4 w-4" />
-              New Order
-            </Button>
           </div>
         </div>
       </div>
@@ -2071,6 +2058,11 @@ export default function OrdersPage() {
                       <span className="text-sm font-bold text-blue-600">
                         #{order.id}
                       </span>
+                      {order.contract_number && (
+                        <span className="text-xs font-mono text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded mt-1 w-fit">
+                          {order.contract_number}
+                        </span>
+                      )}
                       <span className="text-sm text-gray-600 mt-1">
                         {new Date(order.created_at).toLocaleDateString('en-US', {
                           year: 'numeric',
@@ -2206,24 +2198,37 @@ export default function OrdersPage() {
           {selectedOrder && (
             <>
               {/* Header */}
-            <div className="sticky top-0 z-50 bg-white border-b">
+              <div className="sticky top-0 z-50 bg-white border-b">
                 <div className="px-8 py-6 bg-gradient-to-br from-gray-50 via-white to-gray-50">
                   <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4">
                       <div className="bg-blue-600 p-2.5 rounded-xl shadow-lg shadow-blue-100">
                         <Package className="h-6 w-6 text-white" />
-                    </div>
+                      </div>
                       <div>
                         <h2 className="text-2xl font-semibold text-gray-900">Order #{selectedOrder.id}</h2>
-                        <p className="text-gray-500 mt-1">
-                          Created on {new Date(selectedOrder.created_at).toLocaleDateString('en-US', {
-                            weekday: 'long',
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric'
-                          })}
-                        </p>
-                    </div>
+                        <div className="flex items-center gap-2 mt-1">
+                          <p className="text-gray-500">
+                            Created on {new Date(selectedOrder.created_at).toLocaleDateString('en-US', {
+                              weekday: 'long',
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric'
+                            })}
+                          </p>
+                          {selectedOrder.contract_number && (
+                            <>
+                              <span className="text-gray-400">•</span>
+                              <p className="text-gray-500 flex items-center gap-2">
+                                Contract #
+                                <span className="font-mono bg-gray-100 px-2 py-1 rounded text-gray-700">
+                                  {selectedOrder.contract_number}
+                                </span>
+                              </p>
+                            </>
+                          )}
+                        </div>
+                      </div>
                     </div>
                     <div className="flex items-center gap-3">
                       <Badge

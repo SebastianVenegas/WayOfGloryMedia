@@ -41,6 +41,7 @@ interface ContractData {
   details: {
     [key: string]: string | number | boolean;
   };
+  contractNumber: string;
 }
 
 interface ContractError {
@@ -139,7 +140,8 @@ export async function POST(request: NextRequest) {
         product_subtotal,
         service_subtotal,
         tax_amount,
-        total_profit
+        total_profit,
+        contract_number
       ) VALUES (
         ${data.firstName},
         ${data.lastName},
@@ -169,7 +171,8 @@ export async function POST(request: NextRequest) {
         ${productSubtotal},
         ${serviceSubtotal},
         ${tax},
-        ${totalProfit}
+        ${totalProfit},
+        ${data.contractNumber}
       ) RETURNING id`;
 
     const orderId = rows[0].id;

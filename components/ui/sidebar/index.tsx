@@ -4,7 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from "../button"
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
+import Image from 'next/image'
 import { 
   LayoutGrid, 
   Package, 
@@ -14,10 +15,13 @@ import {
   Users,
   ClipboardList,
   BarChart,
-  Speaker,
   LogOut,
-  Mic2
+  Mic2,
+  Menu,
+  X
 } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 
 const navigation = [
   {
@@ -69,127 +73,414 @@ interface SidebarProps {
   toggleSidebar: () => void
   pathname: string
   handleLogout: () => void
+  children?: React.ReactNode
+  userEmail: string
+  userName: string
 }
 
-export function Sidebar({ isExpanded, toggleSidebar, pathname, handleLogout }: SidebarProps) {
+export function SidebarLayout({ children }: { children: React.ReactNode }) {
+  const [isExpanded, setIsExpanded] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+  const [userEmail, setUserEmail] = useState('')
+  const [userName, setUserName] = useState('')
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
   const router = useRouter()
+  const pathname = usePathname()
+
+  useEffect(() => {
+    const checkAuth = () => {
+      const token = localStorage.getItem('admin_token')
+      const email = localStorage.getItem('admin_email')
+      const name = localStorage.getItem('admin_name')
+
+      if (token && email && name) {
+        setIsAuthenticated(true)
+        setUserEmail(email)
+        setUserName(name)
+      } else {
+        setIsAuthenticated(false)
+        if (pathname !== '/admin/login') {
+          window.location.href = '/admin/login'
+        }
+      }
+    }
+
+    // Check auth immediately
+    checkAuth()
+
+    // Set up storage event listener to handle auth state changes
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'admin_token' || e.key === 'admin_email' || e.key === 'admin_name') {
+        checkAuth()
+      }
+    }
+
+    window.addEventListener('storage', handleStorageChange)
+
+    // Custom event for auth state changes
+    const handleAuthChange = () => checkAuth()
+    window.addEventListener('authStateChange', handleAuthChange)
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange)
+      window.removeEventListener('authStateChange', handleAuthChange)
+    }
+  }, [router, pathname])
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
+  const toggleSidebar = () => setIsExpanded(prev => !prev)
+  
+  const handleLogout = async () => {
+    try {
+      // Clear admin data from localStorage
+      localStorage.removeItem('admin_email')
+      localStorage.removeItem('admin_name')
+      localStorage.removeItem('admin_token')
+      
+      // Make API call to logout
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include'
+      })
+
+      if (!response.ok) {
+        throw new Error('Logout failed')
+      }
+
+      // Show success message
+      toast.success('Signed out successfully')
+      setIsAuthenticated(false)
+      
+      // Force navigation to login page
+      window.location.href = '/admin/login'
+    } catch (error) {
+      console.error('Logout error:', error)
+      toast.error('Failed to sign out. Please try again.')
+    }
+  }
+
+  // Don't render sidebar if not authenticated
+  if (!isAuthenticated) {
+    return <div className="min-h-screen bg-gray-50">{children}</div>
+  }
+
+  return (
+    <div className="relative min-h-screen bg-gray-50">
+      <Sidebar
+        isExpanded={isExpanded}
+        toggleSidebar={toggleSidebar}
+        pathname={pathname}
+        handleLogout={handleLogout}
+        userEmail={userEmail}
+        userName={userName}
+      />
+      <div 
+        className={cn(
+          "absolute top-0 right-0 min-h-screen w-full transition-all duration-200",
+          "md:w-[calc(100%-80px)] md:left-[80px]",
+          isExpanded && "md:w-[calc(100%-280px)] md:left-[280px]",
+          "pt-16 md:pt-0"
+        )}
+      >
+        <div className="h-full w-full px-4 md:px-6 lg:px-8 py-6">
+          {children}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export function Sidebar({ isExpanded, toggleSidebar, pathname, handleLogout, userEmail, userName }: SidebarProps & { userEmail: string, userName: string }) {
+  const router = useRouter()
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   const handleNavigation = (href: string) => {
-    // Navigate immediately
     router.push(href)
-    // Only toggle sidebar on mobile after navigation
-    if (window.innerWidth < 768) {
+    if (isMobile) {
       setTimeout(() => toggleSidebar(), 100)
     }
   }
 
   return (
-    <div
-      className={cn(
-        "fixed left-0 top-0 bottom-0 z-[40] bg-white border-r border-gray-100 flex flex-col shadow-sm select-none",
-        isExpanded ? "w-[280px]" : "w-[64px] md:w-[80px]"
-      )}
-      style={{ 
-        transition: 'width 100ms ease-in-out',
-        WebkitTapHighlightColor: 'transparent'
-      }}
-    >
-      {/* Header */}
-      <div 
-        className="flex items-center h-16 md:h-20 px-3 md:px-4 border-b border-gray-100 bg-white"
-        onClick={toggleSidebar}
-      >
-        <div className="flex items-center gap-3 flex-1">
-          <div className="p-2 md:p-2.5 rounded-xl bg-gradient-to-tr from-blue-600 to-blue-700">
-            <Speaker className="h-4 w-4 md:h-5 md:w-5 text-white" />
-          </div>
-          <span className={cn(
-            "font-semibold text-gray-900 text-base md:text-lg tracking-tight transition-opacity duration-100",
-            isExpanded ? "opacity-100" : "opacity-0 hidden"
-          )}>
-            Way of Glory
-          </span>
-        </div>
+    <>
+      {/* Mobile Header */}
+      <div className="fixed top-0 left-0 right-0 h-20 bg-white border-b border-gray-100 flex items-center px-4 md:hidden z-[48]">
         <Button
           variant="ghost"
           size="icon"
-          onClick={(e) => {
-            e.stopPropagation()
-            toggleSidebar()
-          }}
-          className="h-9 w-9 md:h-10 md:w-10 hover:bg-gray-100 rounded-xl text-gray-500 hidden md:flex"
+          onClick={toggleSidebar}
+          className="h-10 w-10 rounded-xl text-gray-500 hover:bg-gray-50"
         >
-          {isExpanded ? <ChevronLeft className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+          <Menu className="h-5 w-5" />
         </Button>
-      </div>
-
-      {/* Navigation */}
-      <nav className="flex-1 p-2 md:p-3 space-y-1 overflow-y-auto">
-        {navigation.map((item) => {
-          const isActive = pathname === item.href
-          return (
-            <div
-              key={item.name}
-              onClick={() => handleNavigation(item.href)}
-              className={cn(
-                "w-full group flex items-center gap-3 px-2 md:px-3 py-2 md:py-2.5 rounded-xl text-sm font-medium cursor-pointer active:scale-[0.98] transition-transform",
-                isActive 
-                  ? "bg-white text-gray-900 shadow-sm" 
-                  : "text-gray-600 hover:text-gray-900 hover:bg-white active:bg-gray-50"
-              )}
-            >
-              <div className={cn(
-                "p-1.5 md:p-2 rounded-lg",
-                isActive 
-                  ? "bg-blue-50 text-blue-600" 
-                  : "text-gray-500 group-hover:text-blue-600 bg-gray-50/80 group-hover:bg-blue-50"
-              )}>
-                <item.icon className="h-4 w-4 md:h-5 md:w-5" />
-              </div>
-              <span className={cn(
-                "truncate transition-opacity duration-100 text-sm",
-                isExpanded ? "opacity-100" : "opacity-0 hidden"
-              )}>
-                {item.name}
-              </span>
-              {isActive && (
-                <div className="absolute inset-0 bg-white -z-10" />
-              )}
-            </div>
-          )
-        })}
-      </nav>
-
-      {/* User Section */}
-      <div className="p-2 md:p-3 border-t border-gray-100 bg-white">
-        <div className={cn(
-          "flex items-center gap-3 px-2 md:px-3 py-2 md:py-2.5 rounded-xl hover:bg-gray-50 active:bg-gray-100 cursor-pointer transition-colors",
-          isExpanded && "cursor-pointer"
-        )}
-        onClick={toggleSidebar}
-        >
-          <div className="relative w-8 h-8 md:w-10 md:h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-blue-700 flex items-center justify-center text-white font-medium">
-            W
+        <div className="flex items-center gap-3 ml-3">
+          <div className="w-14 h-14 relative p-1.5">
+            <Image
+              src="/images/logo/Icon/Logo icon.png"
+              alt="Way of Glory Logo"
+              fill
+              className="object-contain"
+              priority
+            />
           </div>
-          <div className={cn(
-            "flex-1 min-w-0 transition-opacity duration-100",
-            isExpanded ? "opacity-100" : "opacity-0 hidden"
-          )}>
-            <p className="text-sm font-medium text-gray-900 truncate">Staff Account</p>
-            <p className="text-xs text-gray-500 truncate">staff@wayofglory.com</p>
-          </div>
+          <span className="font-semibold text-gray-900 text-lg tracking-tight">
+            Way of Glory
+          </span>
         </div>
-        {isExpanded && (
-          <Button
-            variant="ghost"
-            className="w-full mt-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 active:bg-gray-100 justify-start gap-2 rounded-xl h-10 md:h-11 text-sm transition-colors"
-            onClick={handleLogout}
-          >
-            <LogOut className="h-4 w-4" />
-            Sign out
-          </Button>
-        )}
       </div>
-    </div>
+
+      {/* Mobile Menu Overlay */}
+      <AnimatePresence>
+        {isExpanded && isMobile && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60]"
+            onClick={toggleSidebar}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Sidebar Content */}
+      <AnimatePresence mode="wait">
+        {(isExpanded || !isMobile) && (
+          <motion.div
+            initial={isMobile ? { x: '-100%' } : false}
+            animate={isMobile ? { x: 0 } : { width: isExpanded ? 280 : 80 }}
+            exit={isMobile ? { x: '-100%' } : undefined}
+            transition={{
+              type: "spring",
+              stiffness: 300,
+              damping: 30,
+              mass: 0.8
+            }}
+            className={cn(
+              "fixed left-0 top-0 bottom-0 z-[70] bg-white flex flex-col shadow-xl",
+              isMobile && "w-[85%] max-w-[360px]"
+            )}
+          >
+            {/* Mobile Menu Header */}
+            {isMobile && (
+              <div className="relative h-32 bg-gradient-to-br from-blue-600 to-blue-700 px-6 flex items-center">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={toggleSidebar}
+                  className="absolute right-4 top-4 h-8 w-8 rounded-full bg-white/10 text-white hover:bg-white/20"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+                <div className="flex items-center gap-3">
+                  <div className="w-16 h-16 relative flex items-center justify-center">
+                    <Image
+                      src="/images/logo/Icon/Logo icon.png"
+                      alt="Way of Glory Logo"
+                      fill
+                      className="object-contain p-2"
+                      priority
+                    />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="font-semibold text-white text-lg tracking-tight">
+                      Way of Glory
+                    </span>
+                    <span className="text-sm text-blue-100">Admin Dashboard</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Desktop Header - Only show on desktop */}
+            {!isMobile && (
+              <div 
+                className="flex items-center h-28 border-b border-gray-100 bg-white cursor-pointer"
+                onClick={toggleSidebar}
+              >
+                <div className="flex items-center justify-between w-full px-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-16 h-16 relative flex items-center justify-center">
+                      <Image
+                        src="/images/logo/Icon/Logo icon.png"
+                        alt="Way of Glory Logo"
+                        fill
+                        className="object-contain p-2"
+                        priority
+                      />
+                    </div>
+                    <motion.span
+                      initial={false}
+                      animate={{ 
+                        opacity: isExpanded ? 1 : 0,
+                        width: isExpanded ? 'auto' : 0 
+                      }}
+                      transition={{
+                        opacity: { duration: 0.2 },
+                        width: { duration: 0.2 }
+                      }}
+                      className="font-semibold text-gray-900 text-xl tracking-tight whitespace-nowrap overflow-hidden"
+                    >
+                      Way of Glory
+                    </motion.span>
+                  </div>
+                  <motion.div
+                    initial={false}
+                    animate={{ rotate: isExpanded ? 0 : 180 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        toggleSidebar()
+                      }}
+                      className="h-10 w-10 hover:bg-gray-100 rounded-xl text-gray-500"
+                    >
+                      <ChevronLeft className="h-5 w-5" />
+                    </Button>
+                  </motion.div>
+                </div>
+              </div>
+            )}
+
+            {/* Navigation */}
+            <nav className={cn(
+              "flex-1 overflow-y-auto",
+              isMobile ? "px-4 py-6" : "p-3"
+            )}>
+              <div className="space-y-1">
+                {navigation.map((item) => {
+                  const isActive = pathname === item.href
+                  return (
+                    <motion.div
+                      key={item.name}
+                      onClick={() => handleNavigation(item.href)}
+                      className={cn(
+                        "w-full group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium cursor-pointer transition-all",
+                        isActive 
+                          ? "bg-blue-50 text-blue-600" 
+                          : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                      )}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <div className={cn(
+                        "p-2 rounded-lg",
+                        isActive 
+                          ? "bg-blue-100 text-blue-600" 
+                          : "text-gray-500 group-hover:text-blue-600 bg-gray-50/80 group-hover:bg-blue-50"
+                      )}>
+                        <item.icon className="h-5 w-5" />
+                      </div>
+                      <motion.span
+                        initial={false}
+                        animate={{ 
+                          opacity: isExpanded || isMobile ? 1 : 0,
+                          width: isExpanded || isMobile ? 'auto' : 0 
+                        }}
+                        transition={{
+                          opacity: { duration: 0.2 },
+                          width: { duration: 0.2 }
+                        }}
+                        className="truncate whitespace-nowrap overflow-hidden"
+                      >
+                        {item.name}
+                      </motion.span>
+                    </motion.div>
+                  )
+                })}
+              </div>
+            </nav>
+
+            {/* User Section */}
+            <div className={cn(
+              "border-t border-gray-100 bg-white",
+              isMobile ? "px-4 py-6" : "p-3"
+            )}>
+              <div className={cn(
+                "group flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-gray-50/80 transition-all duration-200",
+                (isExpanded || isMobile) && "cursor-pointer"
+              )}
+              onClick={isMobile ? undefined : toggleSidebar}
+              >
+                <motion.div 
+                  className="relative shrink-0"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-blue-500 flex items-center justify-center text-white font-medium shadow-sm group-hover:shadow-md group-hover:from-blue-500 group-hover:to-blue-400 transition-all duration-200">
+                    {userName.split(' ').map(name => name[0]).join('')}
+                  </div>
+                  <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white bg-green-500 shadow-sm" />
+                </motion.div>
+                <motion.div
+                  initial={false}
+                  animate={{ 
+                    opacity: isExpanded || isMobile ? 1 : 0,
+                    width: isExpanded || isMobile ? 'auto' : 0 
+                  }}
+                  transition={{
+                    opacity: { duration: 0.2 },
+                    width: { duration: 0.2 }
+                  }}
+                  className="flex-1 min-w-0 whitespace-nowrap overflow-hidden"
+                >
+                  <p className="text-sm font-semibold text-gray-900 tracking-tight truncate group-hover:text-blue-600 transition-colors">
+                    {userName}
+                  </p>
+                  <p className="text-xs text-gray-500 truncate mt-0.5">
+                    {userEmail}
+                  </p>
+                </motion.div>
+                {(isExpanded || isMobile) && (
+                  <div className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <ChevronRight className="w-4 h-4 text-gray-400" />
+                  </div>
+                )}
+              </div>
+              <motion.div
+                initial={false}
+                animate={{ 
+                  opacity: isExpanded || isMobile ? 1 : 0,
+                  height: isExpanded || isMobile ? 'auto' : 0 
+                }}
+                transition={{
+                  opacity: { duration: 0.2 },
+                  height: { duration: 0.2 }
+                }}
+                className="overflow-hidden px-1"
+              >
+                <Button
+                  variant="ghost"
+                  className="w-full mt-2 text-gray-600 hover:text-red-600 hover:bg-red-50 justify-start gap-2 rounded-xl h-10 text-sm font-medium transition-all"
+                  onClick={handleLogout}
+                >
+                  <LogOut className="h-4 w-4" />
+                  Sign out
+                </Button>
+              </motion.div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   )
 } 

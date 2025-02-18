@@ -27,7 +27,8 @@ export async function POST(req: Request) {
       totalAmount,
       installationPrice,
       signature,
-      products
+      products,
+      contractNumber
     } = await req.json();
 
     // Calculate subtotals and tax
@@ -96,7 +97,8 @@ export async function POST(req: Request) {
         product_subtotal,
         service_subtotal,
         tax_amount,
-        total_profit
+        total_profit,
+        contract_number
       ) VALUES (
         ${firstName},
         ${lastName},
@@ -126,7 +128,8 @@ export async function POST(req: Request) {
         ${productSubtotal},
         ${serviceSubtotal},
         ${tax},
-        ${totalProfit}
+        ${totalProfit},
+        ${contractNumber}
       ) RETURNING id
     `;
 

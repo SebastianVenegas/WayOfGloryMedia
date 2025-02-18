@@ -37,26 +37,47 @@ async function setupDatabase() {
     `
     console.log('✅ Email logs table created')
 
-    console.log('Checking for existing admin user...')
-    
-    // Check if default admin exists
-    const { rows } = await sql`
-      SELECT * FROM admin_users WHERE email = 'admin@wayofglory.com'
-    `
+    // Get admin users from environment variables
+    const adminEmails = process.env.ADMIN_EMAILS ? process.env.ADMIN_EMAILS.split(',') : []
+    const adminPasswords = process.env.ADMIN_PASSWORDS ? process.env.ADMIN_PASSWORDS.split(',') : []
+    const adminNames = process.env.ADMIN_NAMES ? process.env.ADMIN_NAMES.split(',') : []
 
-    if (rows.length === 0) {
-      console.log('Creating default admin user...')
-      // Create default admin user
-      const passwordHash = await bcryptLib.hash('admin123', 10)
-      await sql`
-        INSERT INTO admin_users (email, password_hash, name, role)
-        VALUES ('admin@wayofglory.com', ${passwordHash}, 'Admin User', 'admin')
+    if (adminEmails.length !== adminPasswords.length || adminEmails.length !== adminNames.length) {
+      console.error('Error: Mismatch in admin credentials configuration')
+      process.exit(1)
+    }
+
+    console.log('Adding admin users...')
+    for (let i = 0; i < adminEmails.length; i++) {
+      const email = adminEmails[i].trim()
+      const password = adminPasswords[i].trim()
+      const name = adminNames[i].trim()
+
+      // Check if user already exists
+      const { rows } = await sql`
+        SELECT * FROM admin_users WHERE email = ${email.toLowerCase()}
       `
-      console.log('✅ Created default admin user')
-      console.log('Email: admin@wayofglory.com')
-      console.log('Password: admin123')
-    } else {
-      console.log('✅ Admin user already exists')
+      
+      if (rows.length === 0) {
+        // Create new admin user
+        const passwordHash = await bcryptLib.hash(password, 10)
+        await sql`
+          INSERT INTO admin_users (email, password_hash, name, role)
+          VALUES (${email.toLowerCase()}, ${passwordHash}, ${name}, 'admin')
+        `
+        console.log(`✅ Created admin user: ${email}`)
+      } else {
+        // Update existing user's password
+        const passwordHash = await bcryptLib.hash(password, 10)
+        await sql`
+          UPDATE admin_users 
+          SET password_hash = ${passwordHash},
+              name = ${name},
+              updated_at = CURRENT_TIMESTAMP
+          WHERE email = ${email.toLowerCase()}
+        `
+        console.log(`Updated admin user: ${email}`)
+      }
     }
 
     console.log('Database setup completed successfully')
