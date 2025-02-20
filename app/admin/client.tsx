@@ -19,6 +19,7 @@ function AdminContent({ children }: AdminClientProps) {
   const isLoginPage = pathname === '/admin/login'
   const [userEmail, setUserEmail] = useState('')
   const [userName, setUserName] = useState('')
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
 
   // Check authentication on mount and route change
   useEffect(() => {
@@ -29,18 +30,24 @@ function AdminContent({ children }: AdminClientProps) {
         })
         
         if (!res.ok && !isLoginPage) {
+          setIsAuthenticated(false)
           window.location.href = '/admin/login'
         } else {
           // Get user data from localStorage
           const email = localStorage.getItem('admin_email')
           const name = localStorage.getItem('admin_name')
-          if (email && name) {
+          const token = localStorage.getItem('admin_token')
+          if (email && name && token) {
             setUserEmail(email)
             setUserName(name)
+            setIsAuthenticated(true)
+          } else {
+            setIsAuthenticated(false)
           }
         }
       } catch (error) {
         console.error('Auth check failed:', error)
+        setIsAuthenticated(false)
         if (!isLoginPage) {
           window.location.href = '/admin/login'
         }
@@ -60,6 +67,7 @@ function AdminContent({ children }: AdminClientProps) {
       localStorage.removeItem('admin_token')
       localStorage.removeItem('admin_email')
       localStorage.removeItem('admin_name')
+      setIsAuthenticated(false)
       window.location.href = '/admin/login'
     } catch (error) {
       console.error('Logout failed:', error)
@@ -67,22 +75,38 @@ function AdminContent({ children }: AdminClientProps) {
     }
   }
 
+  if (isLoginPage || !isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-50/50">
+        <AdminPWARegister />
+        <main>
+          {children}
+        </main>
+        <Toaster 
+          position="bottom-center"
+          duration={2000}
+          className="mb-4"
+          closeButton
+          richColors
+        />
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gray-50/50">
       <AdminPWARegister />
-      {!isLoginPage && (
-        <Sidebar 
-          isExpanded={isExpanded}
-          toggleSidebar={toggleSidebar}
-          pathname={pathname}
-          handleLogout={handleLogout}
-          userEmail={userEmail}
-          userName={userName}
-        />
-      )}
+      <Sidebar 
+        isExpanded={isExpanded}
+        toggleSidebar={toggleSidebar}
+        pathname={pathname}
+        handleLogout={handleLogout}
+        userEmail={userEmail}
+        userName={userName}
+      />
       <main className={cn(
         "relative transition-all duration-300",
-        !isLoginPage && (isExpanded ? 'ml-[280px]' : 'ml-[80px]')
+        isExpanded ? 'ml-[280px]' : 'ml-[80px]'
       )}>
         {children}
       </main>

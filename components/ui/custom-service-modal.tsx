@@ -951,7 +951,7 @@ export default function CustomServiceModal({
                   </div>
                 </div>
 
-                <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm space-y-4">
+                <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="text-base font-medium text-gray-900 flex items-center gap-2">
@@ -1087,60 +1087,6 @@ export default function CustomServiceModal({
                     </div>
                   </div>
                 </div>
-
-                <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    {hasChanges && (
-                      <span className="text-sm text-yellow-600 flex items-center gap-1.5">
-                        <AlertCircle className="h-4 w-4" />
-                        Unsaved changes
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Button
-                      type="button"
-                      onClick={handleImproveService}
-                      variant="outline"
-                      size="sm"
-                      disabled={isImproving}
-                      className="h-9 bg-white text-blue-600 hover:text-blue-700 border-blue-200 hover:border-blue-300 hover:bg-blue-50/50 shadow-sm"
-                    >
-                      {isImproving ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Improving...
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="h-4 w-4 mr-2" />
-                          Improve with AI
-                        </>
-                      )}
-                    </Button>
-                    <Button
-                      type="submit"
-                      size="sm"
-                      disabled={isSaving || !hasChanges}
-                      className={cn(
-                        "h-9 bg-blue-600 hover:bg-blue-700 text-white shadow-sm",
-                        (!hasChanges || isSaving) && "opacity-50 cursor-not-allowed"
-                      )}
-                    >
-                      {isSaving ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Saving...
-                        </>
-                      ) : (
-                        <>
-                          <Save className="h-4 w-4 mr-2" />
-                          Save Service
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </div>
               </div>
             </form>
           </div>
@@ -1148,39 +1094,49 @@ export default function CustomServiceModal({
       case 'preview':
       default:
         return (
-          <div className="p-8 bg-gray-50/50">
+          <div className="p-8 bg-gradient-to-br from-gray-50 to-white">
+            {/* Action Buttons Header */}
+            <div className="flex items-center mb-6 bg-white rounded-2xl p-4 border border-gray-200 shadow-sm">
+              <span className="flex items-center gap-1.5 text-yellow-600 bg-yellow-50 px-3 py-1.5 rounded-full text-sm font-medium border border-yellow-200">
+                <AlertCircle className="h-4 w-4" />
+                Preview Mode
+              </span>
+            </div>
+
             <div className="grid grid-cols-3 gap-8">
               <div className="col-span-2">
                 <motion.div 
-                  className="bg-white rounded-xl p-8 space-y-8 border border-gray-200 shadow-sm"
+                  className="bg-white rounded-2xl p-8 space-y-8 border border-gray-200 shadow-sm relative overflow-hidden"
                   initial={fadeIn.initial}
                   animate={fadeIn.animate}
                   exit={fadeIn.exit}
                 >
-                  <div className="space-y-6">
+                  <div className="absolute top-0 right-0 w-[120%] h-[200px] bg-gradient-to-br from-blue-600 to-blue-700 -rotate-6 -translate-y-1/2 translate-x-1/4 opacity-[0.03] pointer-events-none" />
+                  
+                  <div className="space-y-6 relative">
                     <div className="flex items-start justify-between">
                       <div className="space-y-4">
-                        <h3 className="text-2xl font-semibold text-gray-900">
-                          {formData.title || 'Untitled Service'}
+                        <h3 className="text-2xl font-bold text-gray-900 tracking-tight">
+                          {formData.title || 'Service Agreement'}
                         </h3>
-                        <div className="flex items-center gap-2">
-                          <span className="px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 rounded-full border border-blue-100">
-                            {formData.category || 'Custom Service'}
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="px-3 py-1.5 text-sm font-medium text-blue-700 bg-gradient-to-r from-blue-50 to-blue-100 rounded-full border border-blue-200 shadow-sm">
+                            {formData.category || 'Professional Service'}
                           </span>
                           {formData.metadata?.tier && (
-                            <span className="px-3 py-1.5 text-sm font-medium text-emerald-700 bg-emerald-50 rounded-full border border-emerald-100">
-                              {formData.metadata.tier} Tier
+                            <span className="px-3 py-1.5 text-sm font-medium text-emerald-700 bg-gradient-to-r from-emerald-50 to-emerald-100 rounded-full border border-emerald-200 shadow-sm">
+                              {formData.metadata.tier} Service Level
                             </span>
                           )}
                           {formData.metadata?.duration && (
-                            <span className="px-3 py-1.5 text-sm font-medium text-purple-700 bg-purple-50 rounded-full border border-purple-100">
-                              {formData.metadata.duration}
+                            <span className="px-3 py-1.5 text-sm font-medium text-purple-700 bg-gradient-to-r from-purple-50 to-purple-100 rounded-full border border-purple-200 shadow-sm">
+                              {formData.metadata.duration} Engagement
                             </span>
                           )}
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-3xl font-bold text-gray-900">
+                        <div className="text-4xl font-bold bg-gradient-to-br from-blue-600 to-blue-800 bg-clip-text text-transparent">
                           ${typeof formData.price === 'string' ? parseFloat(formData.price).toFixed(2) : formData.price.toFixed(2)}
                           <span className="ml-1 text-sm font-medium text-gray-500">USD</span>
                         </div>
@@ -1191,167 +1147,95 @@ export default function CustomServiceModal({
                     </div>
 
                     <div className="prose prose-blue max-w-none">
-                      <p className="text-gray-600 leading-relaxed text-lg">
-                        {formData.description || 'No description provided.'}
-                      </p>
+                      <div className="text-gray-600 leading-relaxed text-lg space-y-4">
+                        <h4 className="text-lg font-semibold text-gray-900">Scope of Services</h4>
+                        <p>{formData.description || 'Service description and specifications to be provided.'}</p>
+                      </div>
                     </div>
-                  </div>
 
-                  {formData.features.filter(f => f.trim()).length > 0 && (
-                    <div className="space-y-6">
-                      <h4 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                        <Check className="h-5 w-5 text-blue-500" />
-                        Key Features & Benefits
-                      </h4>
-                      <div className="grid grid-cols-2 gap-4">
-                        {formData.features.filter(f => f.trim()).map((feature, index) => (
+                    <div className="space-y-4">
+                      <h4 className="text-lg font-semibold text-gray-900">Service Specifications</h4>
+                      <div className="grid gap-3">
+                        {formData.features.map((feature, index) => (
                           <motion.div
                             key={index}
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: index * 0.1 }}
-                            className="flex items-start gap-4 p-4 rounded-xl bg-gradient-to-br from-gray-50 to-white border border-gray-200 group hover:border-blue-200 hover:from-blue-50/50 hover:to-blue-50/30 transition-all"
+                            className="flex items-center gap-4 p-4 rounded-xl bg-blue-50/50 border border-blue-100 hover:border-blue-200 transition-colors"
                           >
-                            <div className="h-8 w-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0 group-hover:bg-blue-200 transition-colors">
+                            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
                               <Check className="h-4 w-4 text-blue-600" />
                             </div>
-                            <span className="text-gray-600 group-hover:text-gray-900 transition-colors">{feature}</span>
+                            <p className="text-gray-700">{feature}</p>
                           </motion.div>
                         ))}
                       </div>
                     </div>
-                  )}
+                  </div>
                 </motion.div>
               </div>
 
               <div className="space-y-6">
                 <motion.div
-                  className="bg-gradient-to-br from-blue-50 to-blue-100/20 rounded-xl p-6 border border-blue-200 shadow-sm"
+                  className="bg-gradient-to-br from-blue-50 to-white rounded-2xl p-6 border border-blue-200 shadow-sm relative overflow-hidden"
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                 >
-                  <h4 className="text-lg font-semibold text-blue-900 mb-4">Service Overview</h4>
-                  <dl className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <dt className="text-sm font-medium text-blue-700">Category</dt>
-                      <dd className="text-sm text-gray-900">{formData.category}</dd>
+                  <div className="absolute inset-0 bg-[url('/images/noise.png')] opacity-[0.1] mix-blend-overlay" />
+                  <h4 className="text-lg font-semibold text-blue-900 mb-6 flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-xl bg-blue-100 flex items-center justify-center">
+                      <Settings className="h-5 w-5 text-blue-600" />
                     </div>
-                    {formData.metadata?.duration && (
-                      <div className="flex items-center justify-between">
-                        <dt className="text-sm font-medium text-blue-700">Duration</dt>
-                        <dd className="text-sm text-gray-900">{formData.metadata.duration}</dd>
-                      </div>
-                    )}
-                    {formData.metadata?.maxCapacity && (
-                      <div className="flex items-center justify-between">
-                        <dt className="text-sm font-medium text-blue-700">Max Capacity</dt>
-                        <dd className="text-sm text-gray-900">{formData.metadata.maxCapacity} people</dd>
-                      </div>
-                    )}
-                    {formData.metadata?.tier && (
-                      <div className="flex items-center justify-between">
-                        <dt className="text-sm font-medium text-blue-700">Service Tier</dt>
-                        <dd className="text-sm text-gray-900">{formData.metadata.tier}</dd>
-                      </div>
-                    )}
-                  </dl>
-                </motion.div>
+                    Service Agreement Details
+                  </h4>
 
-                {formData.metadata?.tags && formData.metadata.tags.length > 0 && (
-                  <motion.div
-                    className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm"
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.1 }}
-                  >
-                    <h4 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                      <Tags className="h-4 w-4 text-blue-500" />
-                      Service Tags
-                    </h4>
-                    <div className="flex flex-wrap gap-2">
-                      {formData.metadata.tags.map((tag, index) => (
-                        <span
-                          key={index}
-                          className="px-3 py-1.5 rounded-full bg-gray-50 text-gray-700 text-sm font-medium border border-gray-200 hover:bg-gray-100 hover:border-gray-300 transition-all"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
-
-                <motion.div
-                  className="bg-gradient-to-br from-emerald-50 to-emerald-100/20 rounded-xl p-6 border border-emerald-200/80 shadow-sm"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.2 }}
-                >
-                  <h4 className="text-lg font-semibold text-emerald-900 mb-4">Booking Information</h4>
-                  <ul className="space-y-4">
-                    <li className="flex items-center gap-3 text-sm text-emerald-800">
-                      <div className="h-8 w-8 rounded-lg bg-emerald-100 flex items-center justify-center">
-                        <Clock className="h-4 w-4 text-emerald-600" />
-                      </div>
-                      <span>Flexible scheduling available</span>
-                    </li>
-                    <li className="flex items-center gap-3 text-sm text-emerald-800">
-                      <div className="h-8 w-8 rounded-lg bg-emerald-100 flex items-center justify-center">
-                        <Calendar className="h-4 w-4 text-emerald-600" />
-                      </div>
-                      <span>{formData.metadata?.duration || 'Custom'} duration</span>
-                    </li>
-                    {formData.metadata?.maxCapacity && (
-                      <li className="flex items-center gap-3 text-sm text-emerald-800">
-                        <div className="h-8 w-8 rounded-lg bg-emerald-100 flex items-center justify-center">
-                          <Users className="h-4 w-4 text-emerald-600" />
+                  <div className="space-y-4">
+                    <div className="p-4 rounded-xl bg-white border border-blue-100">
+                      <h5 className="text-sm font-medium text-gray-900 mb-2">Service Classification</h5>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <span className="text-sm text-gray-500">Category</span>
+                          <p className="text-sm font-medium text-gray-900">{formData.category}</p>
                         </div>
-                        <span>Up to {formData.metadata.maxCapacity} people</span>
-                      </li>
-                    )}
-                  </ul>
-                </motion.div>
+                        <div>
+                          <span className="text-sm text-gray-500">Service Level</span>
+                          <p className="text-sm font-medium text-gray-900">{formData.metadata?.tier || 'Standard'}</p>
+                        </div>
+                      </div>
+                    </div>
 
-                <Button
-                  onClick={async () => {
-                    setIsSaving(true);
-                    try {
-                      const serviceData = {
-                        ...formData,
-                        features: formData.features.filter(f => f.trim() !== "")
-                      };
-                      
-                      await onSave(serviceData);
-                      toast({
-                        title: "Success!",
-                        description: "Service added to bundle",
-                      });
-                      onClose();
-                    } catch (error) {
-                      toast({
-                        title: "Error",
-                        description: "Failed to add service to bundle. Please try again.",
-                        variant: "destructive",
-                      });
-                    } finally {
-                      setIsSaving(false);
-                    }
-                  }}
-                  disabled={isSaving || !isFormValid()}
-                  className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg hover:shadow-xl transition-all duration-200 rounded-xl py-6 text-base font-medium"
-                >
-                  {isSaving ? (
-                    <>
-                      <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                      Adding to Bundle...
-                    </>
-                  ) : (
-                    <>
-                      <Plus className="h-5 w-5 mr-2" />
-                      Add to Bundle
-                    </>
-                  )}
-                </Button>
+                    <div className="p-4 rounded-xl bg-white border border-blue-100">
+                      <h5 className="text-sm font-medium text-gray-900 mb-2">Engagement Terms</h5>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <span className="text-sm text-gray-500">Duration Type</span>
+                          <p className="text-sm font-medium text-gray-900">{formData.metadata?.duration || 'Project-based'}</p>
+                        </div>
+                        <div>
+                          <span className="text-sm text-gray-500">Capacity</span>
+                          <p className="text-sm font-medium text-gray-900">{formData.metadata?.maxCapacity ? `Up to ${formData.metadata.maxCapacity} units` : 'As specified'}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {formData.metadata?.tags && formData.metadata.tags.length > 0 && (
+                      <div className="p-4 rounded-xl bg-white border border-blue-100">
+                        <h5 className="text-sm font-medium text-gray-900 mb-2">Service Categories</h5>
+                        <div className="flex flex-wrap gap-2">
+                          {formData.metadata.tags.map((tag, index) => (
+                            <span
+                              key={index}
+                              className="px-2.5 py-1 rounded-full bg-gray-50 text-gray-600 text-xs font-medium border border-gray-200"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
               </div>
             </div>
           </div>
@@ -1374,11 +1258,11 @@ export default function CustomServiceModal({
               </DialogTitle>
               <div className="flex items-center gap-3">
                 <span className="inline-flex items-center px-4 py-2 rounded-full bg-gradient-to-r from-blue-50 to-blue-100 text-blue-700 text-sm font-medium shadow-sm">
-                  <Clock className="h-4 w-4 mr-2 text-blue-600" />
+                  <Clock className="h-4 mr-2 text-blue-600" />
                   Flexible Schedule
                 </span>
                 <span className="inline-flex items-center px-4 py-2 rounded-full bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-700 text-sm font-medium shadow-sm">
-                  <Check className="h-4 w-4 mr-2 text-emerald-600" />
+                  <Check className="h-4 mr-2 text-emerald-600" />
                   Professional Service
                 </span>
               </div>
@@ -1472,6 +1356,60 @@ export default function CustomServiceModal({
               {renderTabContent()}
             </div>
           )}
+        </div>
+
+        {/* Fixed Action Bar */}
+        <div className="flex-shrink-0 border-t border-gray-200 bg-white p-4 px-8">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {hasChanges && (
+                <span className="flex items-center gap-1.5 text-yellow-600 bg-yellow-50 px-3 py-1.5 rounded-full text-sm font-medium border border-yellow-200">
+                  <AlertCircle className="h-4 w-4" />
+                  Unsaved changes
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-3">
+              <Button
+                onClick={handleImproveService}
+                variant="outline"
+                className="h-10 bg-white text-blue-600 hover:text-blue-700 border-blue-200 hover:border-blue-300 hover:bg-blue-50/50 shadow-sm gap-2 px-4"
+                disabled={isImproving}
+              >
+                {isImproving ? (
+                  <>
+                    <Loader2 className="h-4 animate-spin" />
+                    Improving...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4" />
+                    Improve with AI
+                  </>
+                )}
+              </Button>
+              <Button
+                onClick={handleSubmit}
+                disabled={isSaving || !isFormValid()}
+                className={cn(
+                  "h-10 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-sm gap-2 px-4",
+                  (isSaving || !isFormValid()) && "opacity-50 cursor-not-allowed"
+                )}
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="h-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4" />
+                    Save Service
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

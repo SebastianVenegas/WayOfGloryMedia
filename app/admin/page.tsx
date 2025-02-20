@@ -95,6 +95,15 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState<Stats>(defaultStats)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [userName, setUserName] = useState('')
+
+  useEffect(() => {
+    // Get user name from localStorage
+    const name = localStorage.getItem('admin_name')
+    if (name) {
+      setUserName(name)
+    }
+  }, [])
 
   useEffect(() => {
     const fetchData = async () => {
@@ -297,27 +306,13 @@ export default function AdminDashboard() {
         <div className="absolute inset-0 bg-[url('/images/noise.png')] opacity-[0.03] mix-blend-overlay" />
         <div className="absolute inset-0 bg-gradient-to-br from-blue-400/10 to-blue-600/10" />
         <div className="relative space-y-4">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight">
-                Welcome Back
-              </h1>
-              <p className="mt-2 text-blue-100 text-sm md:text-base">
-                Here's what's happening with your business today
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <Button variant="secondary" className="bg-white/10 hover:bg-white/20 text-white border-0 h-9 md:h-10">
-                <Calendar className="h-4 w-4 mr-2" />
-                <span className="hidden md:inline">Export Reports</span>
-                <span className="md:hidden">Export</span>
-              </Button>
-              <Button className="bg-white text-blue-600 hover:bg-white/90 h-9 md:h-10">
-                <Activity className="h-4 w-4 mr-2" />
-                <span className="hidden md:inline">View Analytics</span>
-                <span className="md:hidden">Analytics</span>
-              </Button>
-            </div>
+          <div>
+            <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight">
+              Welcome back, {userName}
+            </h1>
+            <p className="mt-2 text-blue-100 text-sm md:text-base">
+              Here's what's happening with your business today
+            </p>
           </div>
         </div>
       </div>

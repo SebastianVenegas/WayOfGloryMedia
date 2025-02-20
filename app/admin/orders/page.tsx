@@ -2308,7 +2308,7 @@ The Way of Glory Media Team`
                     </Badge>
                   </td>
                   <td className="p-6">
-                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all duration-200">
+                    <div className="flex items-center gap-2">
                       <Button
                         variant="ghost"
                         size="sm"

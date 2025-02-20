@@ -9,14 +9,10 @@ import Image from 'next/image'
 import { 
   LayoutGrid, 
   Package, 
-  Settings, 
   ChevronLeft, 
   ChevronRight,
-  Users,
   ClipboardList,
-  BarChart,
   LogOut,
-  Mic2,
   Menu,
   X
 } from 'lucide-react'
@@ -38,33 +34,9 @@ const navigation = [
     color: 'text-blue-500'
   },
   {
-    name: 'Services',
-    href: '/admin/services',
-    icon: Mic2,
-    color: 'text-blue-500'
-  },
-  {
     name: 'Orders',
     href: '/admin/orders',
     icon: ClipboardList,
-    color: 'text-blue-500'
-  },
-  {
-    name: 'Customers',
-    href: '/admin/customers',
-    icon: Users,
-    color: 'text-blue-500'
-  },
-  {
-    name: 'Analytics',
-    href: '/admin/analytics',
-    icon: BarChart,
-    color: 'text-blue-500'
-  },
-  {
-    name: 'Settings',
-    href: '/admin/settings',
-    icon: Settings,
     color: 'text-blue-500'
   }
 ]
@@ -87,6 +59,7 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const router = useRouter()
   const pathname = usePathname()
+  const isLoginPage = pathname === '/admin/login'
 
   useEffect(() => {
     const checkAuth = () => {
@@ -100,7 +73,7 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
         setUserName(name)
       } else {
         setIsAuthenticated(false)
-        if (pathname !== '/admin/login') {
+        if (!isLoginPage) {
           window.location.href = '/admin/login'
         }
       }
@@ -121,7 +94,7 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
       window.removeEventListener('storage', handleStorageChange)
       window.removeEventListener('authStateChange', checkAuth)
     }
-  }, [router, pathname])
+  }, [router, pathname, isLoginPage])
 
   useEffect(() => {
     const checkMobile = () => {
@@ -156,7 +129,7 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
     }
   }
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || isLoginPage) {
     return <div className="min-h-screen bg-gray-50">{children}</div>
   }
 

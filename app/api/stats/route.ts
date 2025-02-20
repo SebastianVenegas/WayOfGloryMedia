@@ -21,7 +21,7 @@ export async function GET(request: Request) {
         daysAgo = 7
     }
 
-    // Get current period stats with default values
+    // Get current period stats with default values using proper parameter binding
     const { rows } = await sql`
       WITH current_period AS (
         SELECT 
@@ -33,9 +33,9 @@ export async function GET(request: Request) {
           COALESCE(COUNT(CASE WHEN contains_services THEN 1 END), 0) as active_services,
           COALESCE(COUNT(DISTINCT email), 0) as active_customers
         FROM orders
-        WHERE created_at >= NOW() - INTERVAL '${daysAgo} days'
+        WHERE created_at >= NOW() - INTERVAL '1 day' * ${daysAgo}
       ),
-      previous_period AS (
+      previous_period AS (      
         SELECT 
           COALESCE(SUM(total_amount), 0) as total_revenue,
           COALESCE(COUNT(*), 0) as total_orders,
@@ -43,8 +43,8 @@ export async function GET(request: Request) {
           COALESCE(COUNT(DISTINCT email), 0) as active_customers
         FROM orders
         WHERE 
-          created_at >= NOW() - INTERVAL '${daysAgo * 2} days' AND
-          created_at < NOW() - INTERVAL '${daysAgo} days'
+          created_at >= NOW() - INTERVAL '1 day' * ${daysAgo * 2} AND
+          created_at < NOW() - INTERVAL '1 day' * ${daysAgo}
       )
       SELECT 
         COALESCE(cp.total_revenue, 0) as total_revenue,
@@ -111,4 +111,4 @@ export async function GET(request: Request) {
       { status: 500 }
     )
   }
-} 
+}
