@@ -48,17 +48,32 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const orderId = request.nextUrl.pathname.split('/')[4];
   
   // Enhanced PWA detection
-  const isPWA = request.headers.get('x-pwa-request') === 'true';
-  const baseUrl = getBaseUrl(request, isPWA);
+  const isPWA = request.headers.get('x-pwa-request') === 'true' || 
+                process.env.NEXT_PUBLIC_PWA === 'true';
   
+  // Common response headers
+  const headers = {
+    'Content-Type': 'application/json',
+    'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0',
+    'Surrogate-Control': 'no-store',
+    'Access-Control-Allow-Origin': isPWA ? 'https://wayofglory.com' : '*',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-pwa-request',
+    'Access-Control-Allow-Credentials': 'true'
+  };
+
+  // Handle OPTIONS request for CORS
+  if (request.method === 'OPTIONS') {
+    return new NextResponse(null, { headers });
+  }
+
   try {
     if (!orderId) {
       return NextResponse.json({ error: 'Order ID is required' }, { 
         status: 400,
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-store'
-        }
+        headers
       });
     }
 
@@ -66,10 +81,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     if (!templateId) {
       return NextResponse.json({ error: 'Template ID is required' }, { 
         status: 400,
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-store'
-        }
+        headers
       });
     }
 
@@ -98,10 +110,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     if (result.rows.length === 0) {
       return NextResponse.json({ error: 'Order not found' }, { 
         status: 404,
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-store'
-        }
+        headers
       });
     }
 
@@ -140,10 +149,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     if (!template) {
       return NextResponse.json({ error: 'Invalid template ID' }, { 
         status: 400,
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-store'
-        }
+        headers
       });
     }
 
@@ -167,7 +173,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       logoUrl: 'https://wayofglory.com/images/logo/LogoLight.png',
       logoNormalUrl: 'https://wayofglory.com/images/logo/logo.png',
       year: new Date().getFullYear(),
-      baseUrl
+      baseUrl: isPWA ? 'https://wayofglory.com' : request.nextUrl.origin
     };
 
     // Generate content
@@ -175,7 +181,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
-      const generateResponse = await safeFetch(`${baseUrl}/api/admin/generate-email`, {
+      const generateResponse = await safeFetch(`${isPWA ? 'https://wayofglory.com' : request.nextUrl.origin}/api/admin/generate-email`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -209,10 +215,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         success: true
       }, {
         status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-store'
-        }
+        headers
       });
 
     } catch (error) {
@@ -222,10 +225,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         success: false
       }, {
         status: 500,
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-store'
-        }
+        headers
       });
     }
 
@@ -236,10 +236,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       success: false
     }, {
       status: 500,
-      headers: {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'no-store'
-      }
+      headers
     });
   }
 }

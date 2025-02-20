@@ -1345,28 +1345,48 @@ The Way of Glory Media Team`
       setIsTemplateLoading(true)
       setLoadingTemplateName(template?.title || 'Email Template')
 
-      // Use the preview-template endpoint with PWA header
-      const response = await fetch(`/api/admin/orders/${selectedOrder.id}/preview-template?templateId=${templateId}`, {
+      // Determine if we're in PWA mode
+      const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
+                   // @ts-ignore: Checking for iOS standalone mode
+                   window.navigator.standalone === true ||
+                   document.referrer.includes('android-app://') ||
+                   process.env.NEXT_PUBLIC_PWA === 'true';
+
+      const baseUrl = isPWA ? 'https://wayofglory.com' : '';
+      
+      // Use the preview-template endpoint with proper headers
+      const response = await fetch(`${baseUrl}/api/admin/orders/${selectedOrder.id}/preview-template?templateId=${templateId}`, {
         method: 'GET',
         headers: {
+          'Accept': 'application/json',
           'Content-Type': 'application/json',
           'x-pwa-request': 'true',
-          'Cache-Control': 'no-cache, no-store'
-        }
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        },
+        credentials: 'include'
       })
 
       if (!response.ok) {
-        const errorText = await response.text()
-        console.error('Template generation error:', {
-          status: response.status,
-          statusText: response.statusText,
-          body: errorText
-        })
-        throw new Error(`Failed to generate template: ${response.statusText}`)
+        let errorMessage = 'Failed to generate template';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch (e) {
+          console.error('Error parsing error response:', e);
+        }
+        throw new Error(errorMessage);
       }
 
-      const data = await response.json()
+      const data = await response.json().catch(error => {
+        console.error('Error parsing response:', error);
+        throw new Error('Invalid response from server');
+      });
       
+      if (!data) {
+        throw new Error('No data received from server');
+      }
+
       // If we have content, use it
       if (data.html || data.content) {
         setEditedContent(data.content || '')
