@@ -54,23 +54,23 @@ export async function POST(req: Request) {
 
     try {
       // Create the order in the database
-      const order = await prisma.order.create({
+      const orderData = {
+      const order = await prisma.orders.create({
         data: {
           contract_number: orderId,
           first_name: customerInfo.fullName.split(' ')[0],
-          last_name: customerInfo.fullName.split(' ').slice(1).join(' '),
+          last_name: customerInfo.fullName.split(' ')[1],
           email: customerInfo.email,
           phone: customerInfo.phone,
           shipping_address: customerInfo.shippingAddress,
+          shipping_city: customerInfo.shippingCity,
+          shipping_state: customerInfo.shippingState,
+          shipping_zip: customerInfo.shippingZip,
           payment_method: paymentMethod,
           total_amount: totalPrice,
-          total_paid: initialPayment.amount,
+          total_paid: totalPrice,
           payment_status: initialPayment.payment_type === 'full' ? 'completed' : 'partial',
           status: 'pending',
-          paymentPlan,
-          dueToday: parseFloat(dueToday.toString()),
-          totalDueAfterFirst: parseFloat(totalDueAfterFirst.toString()),
-          paymentFrequency,
           order_items: {
             create: cartItems.map((item: CartItem) => ({
               product_id: item.id,
@@ -83,16 +83,19 @@ export async function POST(req: Request) {
 
       // Create payment record for the initial payment
       if (initialPayment.amount > 0) {
-        await prisma.payment.create({
+        await prisma.paymentRecord.create({
           data: {
             order_id: order.id,
-            amount: parseFloat(initialPayment.amount.toString()),
-            payment_method: paymentMethod,
+            amount: initialPayment.amount,
+            payment_method: initialPayment.method,
             payment_type: initialPayment.payment_type,
-            notes: initialPayment.payment_type === 'full' 
-              ? 'Full payment received' 
-              : 'Initial installment payment received',
-            status: 'completed'
+            notes: initialPayment.notes,
+            confirmation_details: {},
+            installment_amount: initialPayment.installment_amount,
+            number_of_installments: initialPayment.number_of_installments,
+            down_payment: initialPayment.down_payment,
+            payment_plan: initialPayment.payment_plan,
+            total_amount: totalPrice,
           }
         });
       }
