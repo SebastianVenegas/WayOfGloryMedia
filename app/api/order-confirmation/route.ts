@@ -54,38 +54,33 @@ export async function POST(req: Request) {
 
     try {
       // Create the order in the database
-      const orderData = {
-      const order = await prisma.orders.create({
-        data: {
-          contract_number: orderId,
-          first_name: customerInfo.fullName.split(' ')[0],
-          last_name: customerInfo.fullName.split(' ')[1],
-          email: customerInfo.email,
-          phone: customerInfo.phone,
-          shipping_address: customerInfo.shippingAddress,
-          shipping_city: customerInfo.shippingCity,
-          shipping_state: customerInfo.shippingState,
-          shipping_zip: customerInfo.shippingZip,
-          payment_method: paymentMethod,
-          total_amount: totalPrice,
-          total_paid: totalPrice,
-          payment_status: initialPayment.payment_type === 'full' ? 'completed' : 'partial',
-          status: 'pending',
-          order_items: {
-            create: cartItems.map((item: CartItem) => ({
-              product_id: item.id,
-              quantity: item.quantity,
-              price_at_time: item.price
-            }))
-          }
-        }
-      });
+      let orderData: any = {
+        contract_number: orderId,
+        first_name: customerInfo.fullName.split(' ')[0],
+        last_name: customerInfo.fullName.split(' ')[1],
+        email: customerInfo.email,
+        phone: customerInfo.phone,
+        shipping_address: customerInfo.shippingAddress,
+        shipping_city: customerInfo.shippingCity,
+        shipping_state: customerInfo.shippingState,
+        shipping_zip: customerInfo.shippingZip,
+        payment_method: paymentMethod,
+        total_amount: totalPrice,
+        total_paid: totalPrice,
+        payment_status: initialPayment.payment_type === 'full' ? 'completed' : 'partial',
+        status: 'pending',
+        order_items: {
+          create: cartItems.map((item: CartItem) => ({
+            product_id: item.id,
+            quantity: item.quantity,
+            price_at_time: item.price
+          }))
+        },
+      };
 
-      // Create payment record for the initial payment
       if (initialPayment.amount > 0) {
-        await prisma.paymentRecord.create({
-          data: {
-            order_id: order.id,
+        orderData.payments = {
+          create: {
             amount: initialPayment.amount,
             payment_method: initialPayment.method,
             payment_type: initialPayment.payment_type,
@@ -95,10 +90,12 @@ export async function POST(req: Request) {
             number_of_installments: initialPayment.number_of_installments,
             down_payment: initialPayment.down_payment,
             payment_plan: initialPayment.payment_plan,
-            total_amount: totalPrice,
+            total_amount: totalPrice
           }
-        });
+        };
       }
+
+      const order = await prisma.orders.create({ data: orderData as any });
 
       // Send confirmation email
       try {
