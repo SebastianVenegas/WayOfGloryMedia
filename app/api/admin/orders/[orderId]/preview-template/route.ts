@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@vercel/postgres';
 import { getEmailTemplate, formatEmailContent, type Order } from '@/lib/email-templates';
-import fs from 'fs/promises';
-import path from 'path';
 import { safeFetch } from '@/lib/safeFetch';
 
 // Add price formatting helper
@@ -31,15 +29,15 @@ interface OrderItem {
 }
 
 // Add the getBaseUrl helper to dynamically compute the base URL
-function getBaseUrl(request: NextRequest, isPWA: boolean): string {
+function getBaseUrl(request: NextRequest): string {
+  // Use environment variable if set
   if (process.env.NEXT_PUBLIC_BASE_URL) {
     return process.env.NEXT_PUBLIC_BASE_URL;
   }
-  if (process.env.NODE_ENV === 'production' || isPWA) {
-    return 'https://wayofglory.com';
-  }
+  
+  // Otherwise construct from request
   const host = request.headers.get('host') || 'localhost:3000';
-  const protocol = request.headers.get('x-forwarded-proto') || 'https';
+  const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
   return `${protocol}://${host}`;
 }
 
@@ -47,18 +45,22 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const searchParams = request.nextUrl.searchParams;
   const orderId = request.nextUrl.pathname.split('/')[4];
   
-  // Enhanced PWA detection
+  // Enhanced PWA detection - check header and environment variable
   const isPWA = request.headers.get('x-pwa-request') === 'true' || 
                 process.env.NEXT_PUBLIC_PWA === 'true';
   
-  // Common response headers
+  // Get base URL for the current environment
+  const baseUrl = getBaseUrl(request);
+  
+  // Common response headers - more permissive for PWA
   const headers = {
     'Content-Type': 'application/json',
     'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
     'Pragma': 'no-cache',
     'Expires': '0',
     'Surrogate-Control': 'no-store',
-    'Access-Control-Allow-Origin': isPWA ? 'https://wayofglory.com' : '*',
+    // Allow requests from any origin in PWA mode
+    'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-pwa-request',
     'Access-Control-Allow-Credentials': 'true'
@@ -169,63 +171,104 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       installation_price: formatPrice(installationPrice),
       companyName: 'Way of Glory Media',
       supportEmail: 'help@wayofglory.com',
-      websiteUrl: 'https://wayofglory.com',
-      logoUrl: 'https://wayofglory.com/images/logo/LogoLight.png',
-      logoNormalUrl: 'https://wayofglory.com/images/logo/logo.png',
+      websiteUrl: baseUrl,
+      logoUrl: `${baseUrl}/images/logo/LogoLight.png`,
+      logoNormalUrl: `${baseUrl}/images/logo/logo.png`,
       year: new Date().getFullYear(),
-      baseUrl: isPWA ? 'https://wayofglory.com' : request.nextUrl.origin
+      baseUrl: baseUrl
     };
 
     // Generate content
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // Reduced timeout to 15 seconds
 
-      const generateResponse = await safeFetch(`${isPWA ? 'https://wayofglory.com' : request.nextUrl.origin}/api/admin/generate-email`, {
+      // Log request details in production
+      if (process.env.NODE_ENV === 'production') {
+        console.log('Generating email template:', {
+          orderId,
+          templateId,
+          isPWA,
+          baseUrl
+        });
+      }
+
+      const generateResponse = await safeFetch(`${baseUrl}/api/admin/generate-email`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-pwa-request': 'true'
+          'Cache-Control': 'no-cache, no-store',
+          'Pragma': 'no-cache',
+          ...(isPWA && { 
+            'x-pwa-request': 'true',
+            'x-pwa-version': '1.0'
+          })
         },
         body: JSON.stringify({
           prompt: template.prompt,
           variables: template.variables,
           orderId: order.id,
-          isPWA: true
+          isPWA,
+          timestamp: Date.now() // Add timestamp to prevent caching
         }),
-        signal: controller.signal
+        signal: controller.signal,
+        cache: 'no-store'
       });
 
       clearTimeout(timeoutId);
 
+      // Check if the response is valid
       if (!generateResponse.ok) {
-        throw new Error(generateResponse.data?.error || 'Failed to generate email content');
+        const errorData = generateResponse.data?.error || 'Failed to generate email content';
+        console.error('Generate email error:', errorData);
+        throw new Error(errorData);
       }
 
       const generateResult = generateResponse.data;
 
       if (!generateResult.html && !generateResult.content) {
-        throw new Error('Invalid template response');
+        console.error('Invalid template response:', generateResult);
+        throw new Error('Invalid template response structure');
+      }
+
+      // Log success in production
+      if (process.env.NODE_ENV === 'production') {
+        console.log('Email template generated successfully:', {
+          orderId,
+          templateId,
+          hasHtml: !!generateResult.html,
+          hasContent: !!generateResult.content
+        });
       }
 
       return NextResponse.json({
         subject: template.subject,
         content: generateResult.content || '',
         html: generateResult.html || '',
-        success: true
+        success: true,
+        timestamp: Date.now() // Add timestamp to response
       }, {
         status: 200,
-        headers
+        headers: {
+          ...headers,
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Pragma': 'no-cache'
+        }
       });
 
     } catch (error) {
       console.error('Error generating email:', error);
       return NextResponse.json({
         error: error instanceof Error ? error.message : 'Failed to generate email content',
-        success: false
+        success: false,
+        timestamp: Date.now()
       }, {
         status: 500,
-        headers
+        headers: {
+          ...headers,
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Pragma': 'no-cache'
+        }
       });
     }
 
