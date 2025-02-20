@@ -22,66 +22,45 @@ interface FormattedEmailLog {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { orderId: string } }
+  context: { params: { [key: string]: string } }
 ): Promise<NextResponse> {
-  try {
-    const orderIdNum = parseInt(params.orderId);
+  const { params } = context;
+  const orderIdNum = parseInt(params.orderId);
 
-    if (isNaN(orderIdNum)) {
-      return NextResponse.json(
-        { error: 'Invalid order ID format' },
-        { status: 400 }
-      );
-    }
-
-    const emailLogs = await prisma.email_logs.findMany({
-      where: {
-        order_id: orderIdNum
-      },
-      orderBy: {
-        sent_at: 'desc'
-      },
-      select: {
-        id: true,
-        subject: true,
-        content: true,
-        sent_at: true,
-        template_id: true,
-        created_at: true
-      }
-    });
-
-    // Format the logs to match the expected structure
-    const formattedLogs: FormattedEmailLog[] = emailLogs.map((log: EmailLog) => ({
-      id: log.id,
-      subject: log.subject || '',
-      content: log.content || '',
-      sent_at: log.sent_at?.toISOString() || log.created_at?.toISOString() || new Date().toISOString(),
-      template_id: log.template_id || undefined,
-      status: 'sent',
-      preview: log.content?.substring(0, 150) || ''
-    }));
-
-    return NextResponse.json(formattedLogs);
-  } catch (error) {
-    console.error('Error fetching email logs:', error);
-    
-    if (error instanceof Error && error.message.includes('prisma')) {
-      return NextResponse.json(
-        { 
-          error: 'Database error occurred',
-          details: error.message
-        },
-        { status: 500 }
-      );
-    }
-
+  if (isNaN(orderIdNum)) {
     return NextResponse.json(
-      { 
-        error: 'Failed to fetch email logs',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
+      { error: 'Invalid order ID format' },
+      { status: 400 }
     );
   }
+
+  const emailLogs = await prisma.email_logs.findMany({
+    where: {
+      order_id: orderIdNum
+    },
+    orderBy: {
+      sent_at: 'desc'
+    },
+    select: {
+      id: true,
+      subject: true,
+      content: true,
+      sent_at: true,
+      template_id: true,
+      created_at: true
+    }
+  });
+
+  // Format the logs to match the expected structure
+  const formattedLogs: FormattedEmailLog[] = emailLogs.map((log: EmailLog) => ({
+    id: log.id,
+    subject: log.subject || '',
+    content: log.content || '',
+    sent_at: log.sent_at?.toISOString() || log.created_at?.toISOString() || new Date().toISOString(),
+    template_id: log.template_id || undefined,
+    status: 'sent',
+    preview: log.content?.substring(0, 150) || ''
+  }));
+
+  return NextResponse.json(formattedLogs);
 } 
