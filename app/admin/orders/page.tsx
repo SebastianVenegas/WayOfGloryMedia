@@ -1340,10 +1340,14 @@ The Way of Glory Media Team`
 
       const template = emailTemplates.find(t => t.id === templateId)
       clearEmailState()
-      setPreviewHtml('<div class="flex items-center justify-center min-h-[400px]"><div class="text-center"><div class="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent mx-auto mb-4"></div><p class="text-gray-500">Loading template...</p></div></div>')
+      
+      // Set initial loading states
       setIsGeneratingAI(true)
       setIsTemplateLoading(true)
       setLoadingTemplateName(template?.title || 'Email Template')
+      
+      // Show loading state in preview
+      setPreviewHtml('<div class="flex items-center justify-center min-h-[400px]"><div class="text-center"><div class="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent mx-auto mb-4"></div><p class="text-gray-500">Loading template...</p></div></div>')
 
       // Determine if we're in PWA mode
       const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
@@ -1352,30 +1356,47 @@ The Way of Glory Media Team`
                    document.referrer.includes('android-app://') ||
                    process.env.NEXT_PUBLIC_PWA === 'true';
 
-      // Set up request options
-      const requestOptions = {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'x-pwa-request': 'true',
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache'
-        },
-        credentials: 'include' as const
+      // Set up request options with retry mechanism
+      const makeRequest = async (retryCount = 0): Promise<Response> => {
+        const requestOptions = {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'x-pwa-request': isPWA ? 'true' : 'false',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'x-retry-count': retryCount.toString()
+          },
+          credentials: 'include' as const
+        };
+
+        const baseUrl = isPWA ? 'https://wayofglory.com' : '';
+        const url = `${baseUrl}/api/admin/orders/${selectedOrder.id}/preview-template?templateId=${templateId}&timestamp=${Date.now()}`;
+
+        try {
+          const response = await fetch(url, requestOptions);
+          
+          // If response is not ok and we haven't retried too many times
+          if (!response.ok && retryCount < 2) {
+            console.log(`Attempt ${retryCount + 1} failed, retrying...`);
+            await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1))); // Exponential backoff
+            return makeRequest(retryCount + 1);
+          }
+          
+          return response;
+        } catch (error) {
+          if (retryCount < 2) {
+            console.log(`Network error on attempt ${retryCount + 1}, retrying...`);
+            await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+            return makeRequest(retryCount + 1);
+          }
+          throw error;
+        }
       };
 
-      // First, try the direct API call
-      let response = await fetch(`/api/admin/orders/${selectedOrder.id}/preview-template?templateId=${templateId}`, requestOptions);
-      
-      // If that fails and we're in PWA mode, try with the full URL
-      if (!response.ok && isPWA) {
-        console.log('Retrying with full URL in PWA mode...');
-        response = await fetch(
-          `https://wayofglory.com/api/admin/orders/${selectedOrder.id}/preview-template?templateId=${templateId}`,
-          requestOptions
-        );
-      }
+      // Make the request with retry logic
+      const response = await makeRequest();
 
       if (!response.ok) {
         let errorMessage = 'Failed to generate template';
@@ -1398,26 +1419,32 @@ The Way of Glory Media Team`
         throw new Error('No data received from server');
       }
 
+      // Clear loading states before updating content
+      setIsGeneratingAI(false);
+      setIsTemplateLoading(false);
+      setLoadingTemplateName('');
+
       // If we have content, use it
       if (data.html || data.content) {
-        setEditedContent(data.content || '')
-        setPreviewHtml(data.html || data.content || '')
-        setEditedSubject(data.subject || '')
-        setIsAiPromptOpen(false)
-        showToast('Template generated successfully')
+        setEditedContent(data.content || '');
+        setPreviewHtml(data.html || data.content || '');
+        setEditedSubject(data.subject || '');
+        setIsAiPromptOpen(false);
+        showToast('Template generated successfully');
       } else {
         // Show error if we have no content
-        throw new Error('No content received from template generation')
+        throw new Error('No content received from template generation');
       }
 
     } catch (err) {
-      console.error('Error generating template:', err)
-      setPreviewHtml('')
-      showToast(err instanceof Error ? err.message : 'Failed to generate email template. Please try again.', 'error')
+      console.error('Error generating template:', err);
+      setPreviewHtml('');
+      showToast(err instanceof Error ? err.message : 'Failed to generate email template. Please try again.', 'error');
     } finally {
-      setIsGeneratingAI(false)
-      setIsTemplateLoading(false)
-      setLoadingTemplateName('')
+      // Ensure loading states are cleared in case of error
+      setIsGeneratingAI(false);
+      setIsTemplateLoading(false);
+      setLoadingTemplateName('');
     }
   }
 

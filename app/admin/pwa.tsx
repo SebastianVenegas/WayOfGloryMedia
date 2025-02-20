@@ -25,7 +25,7 @@ export function AdminPWARegister() {
     if ('serviceWorker' in navigator && window.location.hostname !== 'localhost') {
       window.addEventListener('load', async function() {
         try {
-          // Unregister any existing service workers first
+          // Unregister any existing service workers first to ensure clean state
           const registrations = await navigator.serviceWorker.getRegistrations()
           for (const registration of registrations) {
             await registration.unregister()
@@ -47,6 +47,10 @@ export function AdminPWARegister() {
                 if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
                   // New content is available, refresh the page
                   if (window.confirm('New version available! Click OK to update.')) {
+                    // Clear caches before reloading
+                    caches.keys().then(function(names) {
+                      for (let name of names) caches.delete(name);
+                    });
                     window.location.reload();
                   }
                 }
@@ -56,14 +60,87 @@ export function AdminPWARegister() {
 
           // Force immediate activation if waiting
           if (registration.waiting) {
+            // Clear caches before activating new service worker
+            await caches.keys().then(function(names) {
+              return Promise.all(names.map(function(name) {
+                return caches.delete(name);
+              }));
+            });
             registration.waiting.postMessage({ type: 'SKIP_WAITING' });
           }
 
           // Listen for controller change
           navigator.serviceWorker.addEventListener('controllerchange', () => {
-            // Reload the page when the service worker takes control
+            // Clear caches and reload the page when the service worker takes control
+            caches.keys().then(function(names) {
+              for (let name of names) caches.delete(name);
+            });
             window.location.reload();
           });
+
+          // Add custom event listener for network errors and retries
+          window.addEventListener('fetch', function(event: Event) {
+            if (event instanceof ErrorEvent) {
+              console.error('Fetch error:', event.error);
+              
+              // Handle the fetch error
+              const handleFetchError = async (request: Request) => {
+                try {
+                  // Check if this is an email template request
+                  if (request.url.includes('/preview-template') || request.url.includes('/generate-email')) {
+                    console.log('Retrying email template request:', request.url);
+                    
+                    // Add PWA headers and prevent caching
+                    const retryResponse = await fetch(request.url, {
+                      method: request.method,
+                      headers: {
+                        ...Object.fromEntries(request.headers.entries()),
+                        'x-pwa-request': 'true',
+                        'x-pwa-version': '1.0',
+                        'Cache-Control': 'no-cache, no-store',
+                        'Pragma': 'no-cache'
+                      },
+                      body: request.method !== 'GET' ? await request.clone().text() : undefined,
+                      cache: 'no-store',
+                      credentials: 'include'
+                    });
+
+                    if (!retryResponse.ok) {
+                      throw new Error(`Retry failed with status ${retryResponse.status}`);
+                    }
+
+                    return retryResponse;
+                  }
+
+                  // For other requests, just retry with PWA header
+                  return await fetch(request.url, {
+                    ...request,
+                    headers: {
+                      ...Object.fromEntries(request.headers.entries()),
+                      'x-pwa-request': 'true'
+                    }
+                  });
+                } catch (error) {
+                  console.error('Retry failed:', error);
+                  return new Response(
+                    JSON.stringify({ 
+                      error: 'Network error', 
+                      details: error instanceof Error ? error.message : 'Unknown error'
+                    }),
+                    { 
+                      status: 503,
+                      headers: { 'Content-Type': 'application/json' }
+                    }
+                  );
+                }
+              };
+
+              if (event.target instanceof Request) {
+                event.preventDefault();
+                return handleFetchError(event.target);
+              }
+            }
+          }, true);
 
         } catch (err) {
           console.error('Admin ServiceWorker registration failed: ', err)
@@ -81,6 +158,8 @@ export function AdminPWARegister() {
       <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
       <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
       <link rel="manifest" href="/site.webmanifest" />
+      <meta name="theme-color" content="#ffffff" />
+      <meta name="background-color" content="#ffffff" />
     </Head>
   )
 }
