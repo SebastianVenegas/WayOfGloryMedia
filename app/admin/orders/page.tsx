@@ -1352,10 +1352,8 @@ The Way of Glory Media Team`
                    document.referrer.includes('android-app://') ||
                    process.env.NEXT_PUBLIC_PWA === 'true';
 
-      const baseUrl = isPWA ? 'https://wayofglory.com' : '';
-      
-      // Use the preview-template endpoint with proper headers
-      const response = await fetch(`${baseUrl}/api/admin/orders/${selectedOrder.id}/preview-template?templateId=${templateId}`, {
+      // Set up request options
+      const requestOptions = {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
@@ -1364,13 +1362,26 @@ The Way of Glory Media Team`
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache'
         },
-        credentials: 'include'
-      })
+        credentials: 'include' as const
+      };
+
+      // First, try the direct API call
+      let response = await fetch(`/api/admin/orders/${selectedOrder.id}/preview-template?templateId=${templateId}`, requestOptions);
+      
+      // If that fails and we're in PWA mode, try with the full URL
+      if (!response.ok && isPWA) {
+        console.log('Retrying with full URL in PWA mode...');
+        response = await fetch(
+          `https://wayofglory.com/api/admin/orders/${selectedOrder.id}/preview-template?templateId=${templateId}`,
+          requestOptions
+        );
+      }
 
       if (!response.ok) {
         let errorMessage = 'Failed to generate template';
         try {
           const errorData = await response.json();
+          console.error('Error response:', errorData);
           errorMessage = errorData.error || errorData.message || errorMessage;
         } catch (e) {
           console.error('Error parsing error response:', e);
