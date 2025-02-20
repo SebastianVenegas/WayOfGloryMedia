@@ -43,6 +43,7 @@ import {
   ChevronsLeft,
   ChevronLeft,
   ChevronsRight,
+  CheckSquare,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -699,16 +700,37 @@ export default function OrdersPage() {
 
   const emailTemplates = [
     {
-      id: 'payment_reminder',
-      title: 'Payment Reminder',
-      subject: 'Payment Reminder for Your Way of Glory Order',
-      description: 'Remind customer about pending payment',
-      icon: DollarSign,
+      id: 'order_confirmation',
+      title: 'Order Confirmation',
+      subject: 'Order Confirmation - Way of Glory Order',
+      description: 'Confirm receipt of new order',
+      icon: CheckSquare,
+    },
+    {
+      id: 'order_shipped',
+      title: 'Order Shipped',
+      subject: 'Shipping Confirmation - Way of Glory Order',
+      description: 'Notify customer of shipment',
+      icon: Package,
+    },
+    {
+      id: 'order_delayed',
+      title: 'Order Delayed',
+      subject: 'Delay Notification - Way of Glory Order',
+      description: 'Inform customer about delay',
+      icon: Clock,
+    },
+    {
+      id: 'order_completed',
+      title: 'Order Completed',
+      subject: 'Order Completed - Way of Glory Order',
+      description: 'Confirm order completion',
+      icon: CheckCircle2,
     },
     {
       id: 'installation_confirmation',
       title: 'Installation Confirmation',
-      subject: 'Installation Details for Your Way of Glory Order',
+      subject: 'Installation Confirmation - Way of Glory Order',
       description: 'Confirm installation date and details',
       icon: Wrench,
     },
@@ -720,19 +742,56 @@ export default function OrdersPage() {
       icon: Truck,
     },
     {
+      id: 'payment_reminder',
+      title: 'Payment Reminder',
+      subject: 'Payment Reminder - Way of Glory Order',
+      description: 'Send payment reminder',
+      icon: DollarSign,
+    },
+    {
       id: 'thank_you',
       title: 'Thank You',
-      subject: 'Thank You for Your Way of Glory Order',
+      subject: 'Thank You for Your Order - Way of Glory',
       description: 'Send a thank you note after completion',
       icon: CheckCircle2,
     },
   ]
 
   const getEmailTemplate = (templateId: string, order: Order): { subject: string, content?: string } => {
-    // Return empty template - actual content will come from server
-    return {
-      subject: `Order #${order.id} Update`
-    };
+    switch (templateId) {
+      case 'order_confirmation':
+        return {
+          subject: `Order Confirmation - Way of Glory Order #${order.id}`
+        };
+      case 'order_shipped':
+        return {
+          subject: `Shipping Confirmation - Way of Glory Order #${order.id}`
+        };
+      case 'order_delayed':
+        return {
+          subject: `Delay Notification - Way of Glory Order #${order.id}`
+        };
+      case 'order_completed':
+        return {
+          subject: `Order Completed - Way of Glory Order #${order.id}`
+        };
+      case 'thank_you':
+        return {
+          subject: `Thank You for Your Order - Way of Glory #${order.id}`
+        };
+      case 'payment_reminder':
+        return {
+          subject: `Payment Reminder - Way of Glory Order #${order.id}`
+        };
+      case 'installation_confirmation':
+        return {
+          subject: `Installation Confirmation - Way of Glory Order #${order.id}`
+        };
+      default:
+        return {
+          subject: `Order #${order.id} Update`
+        };
+    }
   };
 
   const filterAndSortOrders = useCallback(() => {
@@ -1103,34 +1162,35 @@ export default function OrdersPage() {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'x-pwa-request': 'true'
-        }
+          'x-pwa-request': 'true',
+          'x-timestamp': Date.now().toString()
+        },
+        cache: 'no-store'
       })
 
       if (!response.ok) {
-        const errorText = await response.text()
-        console.error('Template generation error:', {
-          status: response.status,
-          statusText: response.statusText,
-          body: errorText
-        })
         throw new Error(`Failed to generate template: ${response.statusText}`)
       }
 
       const data = await response.json()
-      
-      // If we have content, use it
-      if (data.html || data.content) {
-        setEditedContent(data.content || '')
-        setPreviewHtml(data.html || data.content || '')
-        setEditedSubject(data.subject || '')
-        setIsAiPromptOpen(false)
-        showToast('Template generated successfully')
-      } else {
-        // Show error if we have no content
-        throw new Error('No content received from template generation')
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to generate template')
       }
 
+      // Set the content and preview HTML
+      if (data.html) {
+        setPreviewHtml(data.html)
+      }
+      if (data.content) {
+        setEditedContent(data.content)
+      }
+      if (data.subject) {
+        setEditedSubject(data.subject)
+      }
+
+      setSelectedTemplate(templateId)
+      setViewMode('preview')
     } catch (err) {
       console.error('Error generating template:', err)
       setPreviewHtml('')
@@ -1310,132 +1370,50 @@ export default function OrdersPage() {
       setIsGeneratingAI(true)
       setIsTemplateLoading(true)
       setLoadingTemplateName(template?.title || 'Email Template')
-      
-      // Show loading state in preview
-      setPreviewHtml('<div class="flex items-center justify-center min-h-[400px]"><div class="text-center"><div class="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent mx-auto mb-4"></div><p class="text-gray-500">Loading template...</p></div></div>')
 
-      // Determine if we're in PWA mode
-      const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
-                   // @ts-ignore: Checking for iOS standalone mode
-                   window.navigator.standalone === true ||
-                   document.referrer.includes('android-app://') ||
-                   process.env.NEXT_PUBLIC_PWA === 'true';
-
-      // Set up request options with retry mechanism
-      const makeRequest = async (retryCount = 0): Promise<Response> => {
-        const requestOptions = {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'x-pwa-request': isPWA ? 'true' : 'false',
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache',
-            'x-retry-count': retryCount.toString(),
-            'x-timestamp': Date.now().toString()
-          },
-          credentials: 'include' as const,
-          cache: 'no-store' as const
-        };
-
-        const baseUrl = isPWA ? window.location.origin : '';
-        const url = `${baseUrl}/api/admin/orders/${selectedOrder.id}/preview-template?templateId=${templateId}&timestamp=${Date.now()}`;
-
-        try {
-          const response = await fetch(url, requestOptions);
-          
-          // Log response details in development
-          if (process.env.NODE_ENV === 'development') {
-            console.log('Template request:', {
-              url,
-              headers: requestOptions.headers,
-              status: response.status,
-              statusText: response.statusText,
-              isPWA,
-              retryCount
-            });
-          }
-
-          // If response is not ok and we haven't retried too many times
-          if (!response.ok && retryCount < 2) {
-            console.log(`Attempt ${retryCount + 1} failed (${response.status}), retrying...`);
-            await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1))); // Exponential backoff
-            return makeRequest(retryCount + 1);
-          }
-          
-          return response;
-        } catch (error) {
-          console.error(`Network error on attempt ${retryCount + 1}:`, error);
-          if (retryCount < 2) {
-            await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
-            return makeRequest(retryCount + 1);
-          }
-          throw error;
-        }
-      };
-
-      // Make the request with retry logic
-      const response = await makeRequest();
-      const contentType = response.headers.get('content-type')?.toLowerCase() || '';
+      // Use the API to generate the content
+      const response = await fetch(`/api/admin/orders/${selectedOrder.id}/preview-template?templateId=${templateId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-pwa-request': 'true',
+          'x-timestamp': Date.now().toString()
+        },
+        cache: 'no-store'
+      })
 
       if (!response.ok) {
-        let errorMessage = 'Failed to generate template';
-        try {
-          if (contentType.includes('application/json')) {
-            const errorData = await response.json();
-            console.error('Error response:', errorData);
-            errorMessage = errorData.error || errorData.message || errorMessage;
-          } else {
-            const text = await response.text();
-            console.error('Non-JSON error response:', text);
-          }
-        } catch (e) {
-          console.error('Error parsing error response:', e);
-        }
-        throw new Error(errorMessage);
+        throw new Error(`Failed to generate template: ${response.statusText}`)
       }
 
-      let data;
-      try {
-        if (!contentType.includes('application/json')) {
-          throw new Error('Invalid content type: ' + contentType);
-        }
-        data = await response.json();
-      } catch (error) {
-        console.error('Error parsing response:', error);
-        throw new Error('Invalid response from server');
-      }
-      
-      if (!data) {
-        throw new Error('No data received from server');
+      const data = await response.json()
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to generate template')
       }
 
-      // Clear loading states before updating content
-      setIsGeneratingAI(false);
-      setIsTemplateLoading(false);
-      setLoadingTemplateName('');
-
-      // If we have content, use it
-      if (data.html || data.content) {
-        setEditedContent(data.content || '');
-        setPreviewHtml(data.html || data.content || '');
-        setEditedSubject(data.subject || '');
-        setIsAiPromptOpen(false);
-        showToast('Template generated successfully');
-      } else {
-        // Show error if we have no content
-        throw new Error('No content received from template generation');
+      // Set the content and preview HTML
+      if (data.html) {
+        setPreviewHtml(data.html)
+      }
+      if (data.content) {
+        setEditedContent(data.content)
+      }
+      if (data.subject) {
+        setEditedSubject(data.subject)
       }
 
+      setSelectedTemplate(templateId)
+      setViewMode('preview')
+      setShowEmailComposer(true)
     } catch (err) {
-      console.error('Error generating template:', err);
-      setPreviewHtml('');
-      showToast(err instanceof Error ? err.message : 'Failed to generate email template. Please try again.', 'error');
+      console.error('Error in quick generate:', err)
+      setPreviewHtml('')
+      showToast(err instanceof Error ? err.message : 'Failed to generate email template. Please try again.', 'error')
     } finally {
-      // Ensure loading states are cleared in case of error
-      setIsGeneratingAI(false);
-      setIsTemplateLoading(false);
-      setLoadingTemplateName('');
+      setIsGeneratingAI(false)
+      setIsTemplateLoading(false)
+      setLoadingTemplateName('')
     }
   }
 
