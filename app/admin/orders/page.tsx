@@ -1366,28 +1366,42 @@ The Way of Glory Media Team`
             'x-pwa-request': isPWA ? 'true' : 'false',
             'Cache-Control': 'no-cache, no-store, must-revalidate',
             'Pragma': 'no-cache',
-            'x-retry-count': retryCount.toString()
+            'x-retry-count': retryCount.toString(),
+            'x-timestamp': Date.now().toString()
           },
-          credentials: 'include' as const
+          credentials: 'include' as const,
+          cache: 'no-store' as const
         };
 
-        const baseUrl = isPWA ? 'https://wayofglory.com' : '';
+        const baseUrl = isPWA ? window.location.origin : '';
         const url = `${baseUrl}/api/admin/orders/${selectedOrder.id}/preview-template?templateId=${templateId}&timestamp=${Date.now()}`;
 
         try {
           const response = await fetch(url, requestOptions);
           
+          // Log response details in development
+          if (process.env.NODE_ENV === 'development') {
+            console.log('Template request:', {
+              url,
+              headers: requestOptions.headers,
+              status: response.status,
+              statusText: response.statusText,
+              isPWA,
+              retryCount
+            });
+          }
+
           // If response is not ok and we haven't retried too many times
           if (!response.ok && retryCount < 2) {
-            console.log(`Attempt ${retryCount + 1} failed, retrying...`);
+            console.log(`Attempt ${retryCount + 1} failed (${response.status}), retrying...`);
             await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1))); // Exponential backoff
             return makeRequest(retryCount + 1);
           }
           
           return response;
         } catch (error) {
+          console.error(`Network error on attempt ${retryCount + 1}:`, error);
           if (retryCount < 2) {
-            console.log(`Network error on attempt ${retryCount + 1}, retrying...`);
             await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
             return makeRequest(retryCount + 1);
           }
@@ -1397,23 +1411,35 @@ The Way of Glory Media Team`
 
       // Make the request with retry logic
       const response = await makeRequest();
+      const contentType = response.headers.get('content-type')?.toLowerCase() || '';
 
       if (!response.ok) {
         let errorMessage = 'Failed to generate template';
         try {
-          const errorData = await response.json();
-          console.error('Error response:', errorData);
-          errorMessage = errorData.error || errorData.message || errorMessage;
+          if (contentType.includes('application/json')) {
+            const errorData = await response.json();
+            console.error('Error response:', errorData);
+            errorMessage = errorData.error || errorData.message || errorMessage;
+          } else {
+            const text = await response.text();
+            console.error('Non-JSON error response:', text);
+          }
         } catch (e) {
           console.error('Error parsing error response:', e);
         }
         throw new Error(errorMessage);
       }
 
-      const data = await response.json().catch(error => {
+      let data;
+      try {
+        if (!contentType.includes('application/json')) {
+          throw new Error('Invalid content type: ' + contentType);
+        }
+        data = await response.json();
+      } catch (error) {
         console.error('Error parsing response:', error);
         throw new Error('Invalid response from server');
-      });
+      }
       
       if (!data) {
         throw new Error('No data received from server');

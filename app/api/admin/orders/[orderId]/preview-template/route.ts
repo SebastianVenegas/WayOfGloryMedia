@@ -55,15 +55,15 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   // Common response headers - more permissive for PWA
   const headers = {
     'Content-Type': 'application/json',
-    'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+    'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
     'Pragma': 'no-cache',
     'Expires': '0',
     'Surrogate-Control': 'no-store',
-    // Allow requests from any origin in PWA mode
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-pwa-request',
-    'Access-Control-Allow-Credentials': 'true'
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-pwa-request, x-retry-count, x-timestamp',
+    'Access-Control-Allow-Credentials': 'true',
+    'Vary': 'Origin, Accept-Encoding'
   };
 
   // Handle OPTIONS request for CORS
@@ -72,6 +72,17 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   }
 
   try {
+    // Log request details in production for debugging
+    if (process.env.NODE_ENV === 'production') {
+      console.log('Template request received:', {
+        orderId,
+        isPWA,
+        headers: Object.fromEntries(request.headers.entries()),
+        url: request.url,
+        timestamp: new Date().toISOString()
+      });
+    }
+
     if (!orderId) {
       return NextResponse.json({ error: 'Order ID is required' }, { 
         status: 400,
@@ -181,7 +192,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // Generate content
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // Reduced timeout to 15 seconds
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
       // Log request details in production
       if (process.env.NODE_ENV === 'production') {
@@ -189,7 +200,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           orderId,
           templateId,
           isPWA,
-          baseUrl
+          baseUrl,
+          timestamp: new Date().toISOString()
         });
       }
 
@@ -197,11 +209,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache, no-store',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache',
           ...(isPWA && { 
             'x-pwa-request': 'true',
-            'x-pwa-version': '1.0'
+            'x-pwa-version': '1.0',
+            'x-timestamp': Date.now().toString()
           })
         },
         body: JSON.stringify({
@@ -209,7 +222,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           variables: template.variables,
           orderId: order.id,
           isPWA,
-          timestamp: Date.now() // Add timestamp to prevent caching
+          timestamp: Date.now()
         }),
         signal: controller.signal,
         cache: 'no-store'
@@ -217,7 +230,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
       clearTimeout(timeoutId);
 
-      // Check if the response is valid
       if (!generateResponse.ok) {
         const errorData = generateResponse.data?.error || 'Failed to generate email content';
         console.error('Generate email error:', errorData);
@@ -237,7 +249,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           orderId,
           templateId,
           hasHtml: !!generateResult.html,
-          hasContent: !!generateResult.content
+          hasContent: !!generateResult.content,
+          timestamp: new Date().toISOString()
         });
       }
 
@@ -246,12 +259,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         content: generateResult.content || '',
         html: generateResult.html || '',
         success: true,
-        timestamp: Date.now() // Add timestamp to response
+        timestamp: Date.now()
       }, {
         status: 200,
         headers: {
           ...headers,
-          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
           'Pragma': 'no-cache'
         }
       });
@@ -276,7 +289,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     console.error('Error in preview-template:', error);
     return NextResponse.json({
       error: error instanceof Error ? error.message : 'An unexpected error occurred',
-      success: false
+      success: false,
+      timestamp: Date.now()
     }, {
       status: 500,
       headers
