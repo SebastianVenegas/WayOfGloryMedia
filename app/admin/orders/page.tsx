@@ -1345,12 +1345,13 @@ The Way of Glory Media Team`
       setIsTemplateLoading(true)
       setLoadingTemplateName(template?.title || 'Email Template')
 
-      // Use the preview-template endpoint
+      // Use the preview-template endpoint with PWA header
       const response = await fetch(`/api/admin/orders/${selectedOrder.id}/preview-template?templateId=${templateId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'x-pwa-request': 'true'
+          'x-pwa-request': 'true',
+          'Cache-Control': 'no-cache, no-store'
         }
       })
 
