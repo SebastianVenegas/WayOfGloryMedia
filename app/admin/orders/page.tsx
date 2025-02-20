@@ -729,43 +729,8 @@ export default function OrdersPage() {
   ]
 
   const getEmailTemplate = (templateId: string, order: Order): { subject: string, content?: string } => {
-    const templates = {
-      thank_you: {
-        subject: `Thank You for Your Order #${order.id}`,
-        content: `Dear ${order.first_name},
-
-We wanted to take a moment to thank you for choosing Way of Glory Media. Your trust in our services means a lot to us.
-
-Your order #${order.id} has been received and is being processed by our team. We'll keep you updated on its progress.
-
-If you have any questions, our support team is here to help:
-- Email: help@wayofglory.com
-- Phone: (310) 872-9781
-
-Thank you again for your business!
-
-Best regards,
-The Way of Glory Media Team`
-      },
-      payment_confirmation: {
-        subject: `Payment Confirmation - Order #${order.id}`,
-        content: `Dear ${order.first_name},
-
-This email confirms that we've received your payment for order #${order.id}. Thank you for your prompt payment.
-
-Order Details:
-- Order Number: #${order.id}
-- Total Amount: $${order.total_amount}
-${order.installation_date ? `- Installation Date: ${order.installation_date}` : ''}
-
-If you have any questions about your order, please don't hesitate to contact us.
-
-Best regards,
-The Way of Glory Media Team`
-      }
-    };
-
-    return templates[templateId as keyof typeof templates] || {
+    // Return empty template - actual content will come from server
+    return {
       subject: `Order #${order.id} Update`
     };
   };
