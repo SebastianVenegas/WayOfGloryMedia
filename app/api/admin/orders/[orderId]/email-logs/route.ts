@@ -20,10 +20,7 @@ interface FormattedEmailLog {
   preview: string;
 }
 
-export async function GET(
-  request: NextRequest,
-  context: { params: { [key: string]: string } }
-): Promise<NextResponse> {
+export async function GET(request: NextRequest, context: any): Promise<NextResponse> {
   const { params } = context;
   const orderIdNum = parseInt(params.orderId);
 
@@ -59,7 +56,7 @@ export async function GET(
     sent_at: log.sent_at?.toISOString() || log.created_at?.toISOString() || new Date().toISOString(),
     template_id: log.template_id || undefined,
     status: 'sent',
-    preview: log.content?.substring(0, 150) || ''
+    preview: log.content ? log.content.substring(0, 150) : ''
   }));
 
   return NextResponse.json(formattedLogs);
