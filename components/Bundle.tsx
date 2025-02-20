@@ -224,6 +224,15 @@ export default function Bundle({ products, onRemove, onUpdateQuantity, isOpen, s
       const installationAmount = installationSelected ? installationPrice : 0;
       const totalAmount = productSubtotal + tax + installationAmount;
 
+      // Log the data being sent
+      console.log('Sending contract data:', {
+        formData,
+        products,
+        totalAmount,
+        paymentPlan: formData.paymentPlan,
+        dueToday: formData.dueToday || totalAmount
+      });
+
       const response = await fetch('/api/contracts', {
         method: 'POST',
         headers: {
@@ -250,8 +259,13 @@ export default function Bundle({ products, onRemove, onUpdateQuantity, isOpen, s
           contactOnSite: formData.contactOnSite || '',
           contactOnSitePhone: formData.contactOnSitePhone || '',
           paymentMethod: formData.paymentMethod || 'invoice',
+          paymentPlan: formData.paymentPlan || 'full',
+          dueToday: formData.dueToday || totalAmount,
+          totalDueAfterFirst: formData.totalDueAfterFirst || 0,
+          paymentFrequency: formData.paymentFrequency || 'Monthly',
           signature: formData.signature || '',
           contractNumber: formData.contractNumber,
+          order_creator: formData.firstName + ' ' + formData.lastName,
           products: products.map(product => ({
             id: product.id,
             title: product.title,
@@ -259,7 +273,8 @@ export default function Bundle({ products, onRemove, onUpdateQuantity, isOpen, s
             our_price: product.our_price,
             quantity: product.quantity,
             is_custom: product.is_custom,
-            is_service: product.is_service
+            is_service: product.is_service,
+            category: product.category
           })),
           productSubtotal: productSubtotal,
           tax: tax,
@@ -268,10 +283,28 @@ export default function Bundle({ products, onRemove, onUpdateQuantity, isOpen, s
         })
       });
 
-      const data = await response.json();
+      // Log the raw response for debugging
+      const responseText = await response.text();
+      console.log('Raw response:', responseText);
+
+      // Try to parse the response as JSON
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('Error parsing response:', parseError);
+        throw new Error('Invalid response from server');
+      }
+
+      // Log the parsed response for debugging
+      console.log('Contract API Response:', {
+        status: response.status,
+        ok: response.ok,
+        data
+      });
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to create contract');
+        throw new Error(data.error || data.details || 'Failed to create contract');
       }
 
       // Success toast
@@ -288,16 +321,19 @@ Total: $${totalAmount.toFixed(2)}`,
       });
 
       // Clear the cart and close modals
+      if (clearCart) clearCart();
       setIsCheckoutOpen(false);
       setIsOpen(false);
       return data;
     } catch (error) {
       console.error('Error creating contract:', error);
       
-      // Error toast
+      // Error toast with more detailed message
       toast({
         title: "Error Creating Contract",
-        description: error instanceof Error ? error.message : "Failed to create contract. Please try again or contact support if the issue persists.",
+        description: error instanceof Error 
+          ? `Error: ${error.message}. Please try again or contact support if the issue persists.`
+          : "Failed to create contract. Please try again or contact support if the issue persists.",
         variant: "destructive",
         duration: 7000,
         className: "border-red-100",
@@ -576,56 +612,44 @@ Total: $${totalAmount.toFixed(2)}`,
       </div>
 
       {/* Quote Dialog */}
-      {isQuoteDialogOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="bg-white rounded-xl shadow-lg w-full max-w-[450px] mx-4">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                  <Mail className="h-6 w-6 text-blue-500" />
-                  <h2 className="text-xl font-semibold">Generate Quote</h2>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setIsQuoteDialogOpen(false)}
-                  className="rounded-full h-8 w-8 hover:bg-gray-100"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-              <div className="space-y-5">
-                <div className="space-y-3">
-                  <label className="text-base font-medium text-gray-700">
-                    Email Address
-                  </label>
-                  <Input
-                    type="email"
-                    value={quoteEmail}
-                    onChange={(e) => setQuoteEmail(e.target.value)}
-                    placeholder="Enter email address"
-                    className="h-14 text-base rounded-xl"
-                  />
-                </div>
-                <Button
-                  onClick={handleGenerateQuote}
-                  disabled={isGeneratingQuote || !quoteEmail}
-                  className="w-full h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-base font-medium"
-                >
-                  {isGeneratingQuote ? (
-                    <>
-                      <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent mr-3" />
-                      Generating...
-                    </>
-                  ) : (
-                    'Send Quote'
-                  )}
-                </Button>
-              </div>
+      <Dialog open={isQuoteDialogOpen} onOpenChange={setIsQuoteDialogOpen}>
+        <DialogContent className="sm:max-w-[450px] bg-white">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3">
+              <Mail className="h-6 w-6 text-blue-500" />
+              <span>Generate Quote</span>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-5">
+            <div className="space-y-3">
+              <label className="text-base font-medium text-gray-700">
+                Email Address
+              </label>
+              <Input
+                type="email"
+                value={quoteEmail}
+                onChange={(e) => setQuoteEmail(e.target.value)}
+                placeholder="Enter email address"
+                className="h-14 text-base rounded-xl"
+              />
             </div>
+            <Button
+              onClick={handleGenerateQuote}
+              disabled={isGeneratingQuote || !quoteEmail}
+              className="w-full h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-base font-medium"
+            >
+              {isGeneratingQuote ? (
+                <>
+                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent mr-3" />
+                  Generating...
+                </>
+              ) : (
+                'Send Quote'
+              )}
+            </Button>
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
 
       {/* Checkout Modal */}
       <AnimatePresence>

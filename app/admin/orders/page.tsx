@@ -37,6 +37,12 @@ import {
   Calendar,
   Loader2,
   Wand2,
+  Minimize2,
+  Maximize2,
+  Receipt,
+  ChevronsLeft,
+  ChevronLeft,
+  ChevronsRight,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -69,6 +75,7 @@ import { type DialogProps } from "@radix-ui/react-dialog"
 import { FC } from "react"
 import EmailPreview from '@/components/email-preview'
 import { Textarea } from "@/components/ui/textarea"
+import PaymentManager from '@/components/admin/PaymentManager'
 
 const Editor = dynamic(() => import('@/components/ui/editor'), { ssr: false })
 
@@ -123,6 +130,13 @@ interface Order {
   created_at: string
   order_items: OrderItem[]
   contract_number: string
+  order_creator: string
+  payment_status: 'pending' | 'partial' | 'completed';
+  // New installment payment fields
+  paymentPlan: 'full' | 'installments';
+  dueToday?: number;
+  totalDueAfterFirst?: number;
+  paymentFrequency?: 'Weekly' | 'Bi-Weekly' | 'Monthly' | 'Quarterly';
 }
 
 const TAX_RATE = 0.0775 // 7.75% for Riverside, CA
@@ -305,6 +319,7 @@ function formatEmailPreview({ subject, content, order }: {
   content: string
   order: any
 }): string {
+  // Check if content is already HTML
   // Ensure proper content formatting
   const formattedContent = content
     .split('\n')
@@ -341,17 +356,26 @@ function formatEmailPreview({ subject, content, order }: {
             overflow: hidden;
           }
           .header {
-            background: linear-gradient(to right, #2563eb, #3b82f6);
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
             padding: 32px 40px;
-            color: white;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+          }
+          .logo {
+            width: 180px;
+            height: auto;
+            margin-bottom: 24px;
           }
           .header h1 {
             margin: 0;
+            color: #ffffff;
             font-size: 24px;
             font-weight: 600;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
           }
           .content-wrapper {
             padding: 40px;
+            background-color: #ffffff;
           }
           .content {
             color: #374151;
@@ -365,14 +389,16 @@ function formatEmailPreview({ subject, content, order }: {
             background-color: #f8fafc;
             border: 1px solid #e2e8f0;
             border-radius: 8px;
-            padding: 20px;
+            padding: 24px;
             margin: 24px 0;
           }
           .order-details h3 {
             color: #1e293b;
             font-size: 16px;
             font-weight: 600;
-            margin: 0 0 12px 0;
+            margin: 0 0 16px 0;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #e2e8f0;
           }
           .order-detail-row {
             display: flex;
@@ -409,14 +435,45 @@ function formatEmailPreview({ subject, content, order }: {
           }
           .footer {
             background-color: #f8fafc;
-            padding: 24px 40px;
+            padding: 32px 40px;
             border-top: 1px solid #e2e8f0;
+            text-align: center;
+          }
+          .footer-logo {
+            width: 120px;
+            height: auto;
+            margin-bottom: 20px;
+            opacity: 0.9;
           }
           .footer p {
             color: #64748b;
             font-size: 14px;
-            margin: 0;
-            text-align: center;
+            margin: 0 0 8px 0;
+            line-height: 1.5;
+          }
+          .footer-links {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #e2e8f0;
+          }
+          .footer-links a {
+            color: #2563eb;
+            text-decoration: none;
+            font-size: 14px;
+            margin: 0 12px;
+          }
+          .social-links {
+            margin-top: 20px;
+          }
+          .social-links a {
+            display: inline-block;
+            margin: 0 8px;
+            color: #64748b;
+            text-decoration: none;
+          }
+          .highlight {
+            color: #2563eb;
+            font-weight: 500;
           }
         </style>
       </head>
@@ -424,7 +481,8 @@ function formatEmailPreview({ subject, content, order }: {
         <div class="wrapper">
           <div class="email-container">
             <div class="header">
-              <h1>Dear ${order.first_name},</h1>
+              <img src="https://wayofglory.com/images/logo/logo.png" alt="Way of Glory Media" class="logo" />https://wayofglory.com/images/logo/logo.png
+              <h1>${subject}</h1>
             </div>
             
             <div class="content-wrapper">
@@ -433,7 +491,7 @@ function formatEmailPreview({ subject, content, order }: {
               </div>
 
               <div class="order-details">
-                <h3>Order Details</h3>
+                <h3>Order Information</h3>
                 <div class="order-detail-row">
                   <span class="detail-label">Order Number</span>
                   <span class="detail-value">#${order.id}</span>
@@ -452,20 +510,41 @@ function formatEmailPreview({ subject, content, order }: {
                     day: 'numeric'
                   })}</span>
                 </div>
+                <div class="order-detail-row">
+                  <span class="detail-label">Installation Time</span>
+                  <span class="detail-value">${order.installation_time || 'To be confirmed'}</span>
+                </div>
                 ` : ''}
+                <div class="order-detail-row">
+                  <span class="detail-label">Status</span>
+                  <span class="detail-value">${order.status.charAt(0).toUpperCase() + order.status.slice(1)}</span>
+                </div>
               </div>
 
               <div class="signature">
-                <p class="signature-name">Way of Glory Team</p>
+                <p class="signature-name">Way of Glory Media Team</p>
                 <p class="signature-title">Customer Success Team</p>
-                <div style="margin-top: 16px;">
-                  <img src="https://wayofglory.com/logo.png" alt="Way of Glory" style="height: 40px;" />
-                </div>
               </div>
             </div>
 
             <div class="footer">
-              <p>If you have any questions, please don't hesitate to contact us.</p>
+              <img src="https://wayofglory.com/images/logo/LogçoLight.png" alt="Way of Glory" class="footer-logo" />
+              <p>Need assistance? We're here to help!</p>
+              <p>Email: <a href="mailto:help@wayofglory.com" style="color: #2563eb; text-decoration: none;">help@wayofglory.com</a></p>
+              <p>Phone: <a href="tel:+13108729781" style="color: #2563eb; text-decoration: none;">(310) 872-9781</a></p>
+              
+              <div class="footer-links">
+                <a href="https://wayofglory.com/support">Support</a>
+                <a href="https://wayofglory.com/contact">Contact</a>
+                <a href="https://wayofglory.com/terms">Terms</a>
+                <a href="https://wayofglory.com/privacy">Privacy</a>
+              </div>
+              
+              <div class="social-links">
+                <p style="color: #64748b; font-size: 12px; margin-top: 16px;">
+                  © ${new Date().getFullYear()} Way of Glory Media. All rights reserved.
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -549,13 +628,16 @@ const isPWA = () => {
 };
 
 // Add this utility function to safely show toasts
-const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+const showToast = (message: string, type: 'success' | 'error' | 'warning' = 'success') => {
   if (isPWA()) {
     console.log(`PWA mode - suppressing toast: ${type}:`, message);
     return;
   }
+  
   if (type === 'success') {
     toast.success(message);
+  } else if (type === 'warning') {
+    toast.warning(message);
   } else {
     toast.error(message);
   }
@@ -606,6 +688,8 @@ export default function OrdersPage() {
   const [content, setContent] = useState("")
   const [selectedEmailLog, setSelectedEmailLog] = useState<EmailLog | null>(null)
   const [showEmailHistory, setShowEmailHistory] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // Calculate revenue and profit totals
   const revenue = calculateTotalRevenue(orders);
@@ -644,9 +728,48 @@ export default function OrdersPage() {
     },
   ]
 
-  const getEmailTemplate = (templateId: string, order: Order): { subject: string } => {
-    const template = emailTemplates.find(t => t.id === templateId);
-    return template ? { subject: template.subject } : { subject: '' };
+  const getEmailTemplate = (templateId: string, order: Order): { subject: string, content?: string } => {
+    const templates = {
+      thank_you: {
+        subject: `Thank You for Your Order #${order.id}`,
+        content: `Dear ${order.first_name},
+
+We wanted to take a moment to thank you for choosing Way of Glory Media. Your trust in our services means a lot to us.
+
+Your order #${order.id} has been received and is being processed by our team. We'll keep you updated on its progress.
+
+If you have any questions, our support team is here to help:
+- Email: help@wayofglory.com
+- Phone: (310) 872-9781
+
+Thank you again for your business!
+
+Best regards,
+The Way of Glory Media Team`
+      },
+      payment_confirmation: {
+        subject: `Payment Confirmation - Order #${order.id}`,
+        content: `Dear ${order.first_name},
+
+This email confirms that we've received your payment for order #${order.id}. Thank you for your prompt payment.
+
+Order Details:
+- Order Number: #${order.id}
+- Total Amount: $${order.total_amount}
+${order.installation_date ? `- Installation Date: ${order.installation_date}` : ''}
+
+If you have any questions about your order, please don't hesitate to contact us.
+
+Best regards,
+The Way of Glory Media Team`
+      },
+      // Add more templates as needed
+    };
+
+    return templates[templateId as keyof typeof templates] || {
+      subject: `Order #${order.id} Update`,
+      content: getTemplatePrompt(templateId)
+    };
   };
 
   const filterAndSortOrders = useCallback(() => {
@@ -797,20 +920,19 @@ export default function OrdersPage() {
   const updateOrderStatus = async (orderId: number, newStatus: OrderStatusUpdate) => {
     try {
       const response = await fetch(`/api/admin/orders/${orderId}/status`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ status: newStatus })
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to update status');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update status');
       }
 
-      // Update local state
+      // Update local state without waiting for JSON parsing
       setOrders(prevOrders => 
         prevOrders.map(order => 
           order.id === orderId 
@@ -819,7 +941,7 @@ export default function OrdersPage() {
         )
       );
 
-      showToast(data.message || `Order #${orderId} status has been updated to ${newStatus}`);
+      showToast(`Order #${orderId} status has been updated to ${newStatus}`);
       setIsStatusOpen(false);
     } catch (error) {
       console.error('Error updating order status:', error);
@@ -992,7 +1114,7 @@ export default function OrdersPage() {
 
   // Handle email templates dialog
   const handleEmailTemplatesOpenChange = (open: boolean) => {
-    if (!open) {
+    if (!open && !isTemplateLoading) {
       clearEmailState()
     }
     setIsEmailTemplatesOpen(open)
@@ -1000,22 +1122,12 @@ export default function OrdersPage() {
 
   // Handle template selection
   const handleTemplateSelect = async (templateId: string) => {
+    if (!selectedOrder) return;
+    
+    setIsTemplateLoading(true);
+    setLoadingTemplateName('Loading template...');
+    
     try {
-      const template = emailTemplates.find(t => t.id === templateId);
-      clearEmailState();
-      setSelectedTemplate(templateId);
-      setIsTemplateLoading(true);
-      setLoadingTemplateName(template?.title || 'Email Template');
-      
-      if (templateId === 'shipping_update') {
-        setIsShippingPromptOpen(true);
-        return;
-      }
-      
-      if (!templateId || !selectedOrder?.id) {
-        throw new Error('Please select an order first');
-      }
-
       const response = await fetch(`/api/admin/orders/${selectedOrder.id}/preview-template?templateId=${templateId}`, {
         method: 'GET',
         headers: {
@@ -1026,30 +1138,57 @@ export default function OrdersPage() {
 
       const data = await response.json();
 
-      if (data.html) {
-        setPreviewHtml(data.html);
-        setEditedContent(data.html);
-        setEditedSubject(data.subject || `Order Update - Way of Glory #${selectedOrder.id}`);
-        setViewMode('preview');
-        return;
+      if (!response.ok) {
+        // Handle specific error cases
+        if (response.status === 504 || data.error?.code === '504') {
+          // Fallback to a basic template if generation times out
+          const template = getEmailTemplate(templateId, selectedOrder);
+          if (template) {
+            const fallbackHtml = formatEmailPreview({
+              subject: template.subject,
+              content: template.content || getTemplatePrompt(templateId),
+              order: selectedOrder
+            });
+            
+            setContent(template.content || getTemplatePrompt(templateId));
+            setEditedContent(template.content || getTemplatePrompt(templateId));
+            setPreviewHtml(fallbackHtml);
+            
+            showToast(
+              'The AI-enhanced template generation timed out. Using a basic template instead.',
+              'warning'
+            );
+            
+            return;
+          }
+        }
+        
+        throw new Error(data.error?.message || 'Failed to generate email content');
       }
 
-      if (!response.ok && !data.html && !data.content) {
-        throw new Error(data.details || data.error || `Failed to generate preview (${response.status})`);
-      }
+      // Set the content and preview HTML
+      const newContent = data.content || data.html;
+      setContent(newContent);
+      setEditedContent(newContent);
+      setPreviewHtml(data.html || data.content);
       
+      // Update subject if provided
+      if (data.subject) {
+        setSubject(data.subject);
+        setEditedSubject(data.subject);
+      }
+
+      // Switch to content tab after template is loaded
+      setViewMode('edit');
+      showToast('Template loaded successfully');
+
     } catch (error) {
-      console.error('Error in handleTemplateSelect:', error);
-      showToast(error instanceof Error ? error.message : 'Failed to generate preview', 'error');
-      
-      if (!previewHtml) {
-        setPreviewHtml('');
-        setEditedContent('');
-        setEditedSubject('');
-        setViewMode('edit');
-      }
+      console.error('Error selecting template:', error);
+      showToast(
+        error instanceof Error ? error.message : 'Failed to load email template',
+        'error'
+      );
     } finally {
-      setIsGeneratingAI(false);
       setIsTemplateLoading(false);
       setLoadingTemplateName('');
     }
@@ -1062,6 +1201,11 @@ export default function OrdersPage() {
         showToast("Please select an order first", 'error');
         return;
       }
+      
+      // Show the email composer first
+      setShowEmailComposer(true);
+      
+      // Then open the AI prompt dialog
       setIsAiPromptOpen(true);
       setIsGeneratingEmail(false);
       setIsGeneratingAI(false);
@@ -1071,59 +1215,60 @@ export default function OrdersPage() {
     }
   };
 
-  const handleAiPromptSubmit = async (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const handleAiPromptSubmit = async (prompt: string) => {
+    if (!selectedOrder) {
+      showToast('Please select an order first', 'error');
+      return;
+    }
+
     try {
-      if (!selectedOrder?.id || !aiPrompt) {
-        showToast('Please provide both an order and a prompt', 'error');
-        return;
-      }
-
       setIsGeneratingAI(true);
-      setIsGeneratingEmail(true);
       setIsTemplateLoading(true);
-      setLoadingTemplateName('Generating Custom Email...');
-      
-      setIsAiPromptOpen(false);
-      setShowEmailComposer(true);
+      setLoadingTemplateName('Generating custom email...');
 
-      const response = await fetch(`/api/admin/orders/${selectedOrder.id}/custom-email`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: aiPrompt })
-      });
+      // Use the preview-template endpoint with custom_email template
+      const response = await fetch(
+        `/api/admin/orders/${selectedOrder.id}/preview-template?templateId=custom_email&prompt=${encodeURIComponent(prompt)}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-pwa-request': 'true'
+          }
+        }
+      );
 
       const data = await response.json();
 
-      if (!response.ok && !data.html && !data.content) {
-        throw new Error(data.details || data.error || `Failed to generate email (${response.status})`);
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to generate email');
       }
 
-      if (data.html || data.content) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-        setEditedContent(data.html || data.content);
-        setPreviewHtml(data.html || data.content);
-        setContent(data.html || data.content);
-        setEditedSubject(data.subject || `Order Update - Way of Glory #${selectedOrder.id}`);
-        setSubject(data.subject || `Order Update - Way of Glory #${selectedOrder.id}`);
-        setViewMode('edit');
-        
-        showToast("Email generated successfully");
+      // Set the content and preview HTML
+      setContent(data.content || data.html);
+      setEditedContent(data.content || data.html);
+      setPreviewHtml(data.html || data.content);
+      
+      if (data.subject) {
+        setSubject(data.subject);
+        setEditedSubject(data.subject);
       }
+
+      // Switch to content tab after generation
+      setViewMode('edit');
+      setIsAiPromptOpen(false);
+      showToast('Email generated successfully');
+
     } catch (error) {
       console.error('Error generating email:', error);
-      showToast(error instanceof Error ? error.message : "Failed to generate email", 'error');
-      setViewMode('edit');
-      setShowEmailComposer(true);
+      showToast(
+        error instanceof Error ? error.message : 'Failed to generate email',
+        'error'
+      );
     } finally {
-      setTimeout(() => {
-        setIsGeneratingEmail(false);
-        setIsGeneratingAI(false);
-        setIsTemplateLoading(false);
-        setLoadingTemplateName('');
-      }, 500);
+      setIsGeneratingAI(false);
+      setIsTemplateLoading(false);
+      setLoadingTemplateName('');
     }
   };
 
@@ -1388,6 +1533,14 @@ export default function OrdersPage() {
     </div>
   );
 
+  // Add pagination calculation
+  const paginatedOrders = filteredOrders.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -1624,15 +1777,21 @@ export default function OrdersPage() {
     setActiveEmailTab(tab);
   };
 
-  const handleEmailLogClick = async (log: EmailLog) => {
-    setSubject(log.subject);
-    setViewMode('preview');
+  const handleEmailLogClick = (log: EmailLog) => {
+    // Format the content with proper HTML structure
+    const formattedContent = formatEmailPreview({
+      subject: log.subject,
+      content: log.content,
+      order: selectedOrder
+    });
+
+    // Set the formatted content
+    setEditedContent(formattedContent);
+    setPreviewHtml(formattedContent);
+    setEditedSubject(log.subject);
     setIsEmailTemplatesOpen(true);
     setActiveEmailTab('content');
-    
-    // Use the content directly since it's already formatted
-    setEditedContent(log.content);
-    setPreviewHtml(log.content);
+    setViewMode('preview');
   };
 
   return (
@@ -2051,7 +2210,7 @@ export default function OrdersPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filteredOrders.map((order) => (
+              {paginatedOrders.map((order) => (
                 <tr key={order.id} className="group hover:bg-blue-50/50 transition-all duration-200">
                   <td className="p-6">
                     <div className="flex flex-col">
@@ -2061,6 +2220,12 @@ export default function OrdersPage() {
                       {order.contract_number && (
                         <span className="text-xs font-mono text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded mt-1 w-fit">
                           {order.contract_number}
+                        </span>
+                      )}
+                      {order.order_creator && (
+                        <span className="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded mt-1 flex items-center gap-1.5 w-fit">
+                          <User className="h-3 w-3" />
+                          {order.order_creator}
                         </span>
                       )}
                       <span className="text-sm text-gray-600 mt-1">
@@ -2187,6 +2352,104 @@ export default function OrdersPage() {
             </tbody>
           </table>
         </div>
+        
+        {/* Pagination Controls */}
+        <div className="border-t border-gray-100 px-6 py-4 bg-gray-50/50">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <p className="text-sm text-gray-500">
+                Showing {Math.min(itemsPerPage * (currentPage - 1) + 1, filteredOrders.length)} to{' '}
+                {Math.min(itemsPerPage * currentPage, filteredOrders.length)} of {filteredOrders.length} orders
+              </p>
+              <Select 
+                value={itemsPerPage.toString()} 
+                onValueChange={(value) => {
+                  setItemsPerPage(parseInt(value));
+                  setCurrentPage(1);
+                }}
+              >
+                <SelectTrigger className="w-[120px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10 per page</SelectItem>
+                  <SelectItem value="25">25 per page</SelectItem>
+                  <SelectItem value="50">50 per page</SelectItem>
+                  <SelectItem value="100">100 per page</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(1)}
+                disabled={currentPage === 1}
+                className="hidden sm:flex"
+              >
+                <ChevronsLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              
+              <div className="flex items-center gap-2">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNumber;
+                  if (totalPages <= 5) {
+                    pageNumber = i + 1;
+                  } else if (currentPage <= 3) {
+                    pageNumber = i + 1;
+                  } else if (currentPage >= totalPages - 2) {
+                    pageNumber = totalPages - 4 + i;
+                  } else {
+                    pageNumber = currentPage - 2 + i;
+                  }
+                  
+                  return (
+                    <Button
+                      key={i}
+                      variant={currentPage === pageNumber ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setCurrentPage(pageNumber)}
+                      className={`w-10 ${
+                        currentPage === pageNumber 
+                          ? "bg-blue-600 text-white hover:bg-blue-700" 
+                          : ""
+                      }`}
+                    >
+                      {pageNumber}
+                    </Button>
+                  );
+                })}
+              </div>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(totalPages)}
+                disabled={currentPage === totalPages}
+                className="hidden sm:flex"
+              >
+                <ChevronsRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Order Details Dialog */}
@@ -2194,10 +2457,10 @@ export default function OrdersPage() {
         open={isDetailsOpen} 
         onOpenChange={(open: boolean) => setIsDetailsOpen(open)}
       >
-        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto bg-white p-0">
+        <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto bg-white p-0">
           {selectedOrder && (
             <>
-              {/* Header */}
+              {/* Enhanced Header */}
               <div className="sticky top-0 z-50 bg-white border-b">
                 <div className="px-8 py-6 bg-gradient-to-br from-gray-50 via-white to-gray-50">
                   <div className="flex items-center justify-between mb-4">
@@ -2207,25 +2470,30 @@ export default function OrdersPage() {
                       </div>
                       <div>
                         <h2 className="text-2xl font-semibold text-gray-900">Order #{selectedOrder.id}</h2>
-                        <div className="flex items-center gap-2 mt-1">
-                          <p className="text-gray-500">
-                            Created on {new Date(selectedOrder.created_at).toLocaleDateString('en-US', {
+                        <div className="flex flex-wrap items-center gap-2 mt-1">
+                          {selectedOrder.order_creator && (
+                            <div className="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md flex items-center gap-1.5">
+                              <User className="h-3 w-3" />
+                              Created by {selectedOrder.order_creator}
+                            </div>
+                          )}
+                          <div className="text-xs text-gray-500 flex items-center gap-1.5">
+                            <Calendar className="h-3 w-3" />
+                            {new Date(selectedOrder.created_at).toLocaleDateString('en-US', {
                               weekday: 'long',
                               year: 'numeric',
                               month: 'long',
                               day: 'numeric'
                             })}
-                          </p>
+                          </div>
                           {selectedOrder.contract_number && (
-                            <>
-                              <span className="text-gray-400">•</span>
-                              <p className="text-gray-500 flex items-center gap-2">
+                            <div className="text-xs text-gray-500 flex items-center gap-1.5">
+                              <FileText className="h-3 w-3" />
                                 Contract #
-                                <span className="font-mono bg-gray-100 px-2 py-1 rounded text-gray-700">
+                              <span className="font-mono bg-gray-100 px-1.5 py-0.5 rounded text-gray-700">
                                   {selectedOrder.contract_number}
                                 </span>
-                              </p>
-                            </>
+                            </div>
                           )}
                         </div>
                       </div>
@@ -2239,237 +2507,239 @@ export default function OrdersPage() {
                           selectedOrder.status === 'completed' ? 'bg-green-500 hover:bg-green-600' :
                           selectedOrder.status === 'cancelled' ? 'bg-red-500 hover:bg-red-600' :
                           'bg-orange-500 hover:bg-orange-600'
-                        } text-white border-none`}
+                        } text-white flex items-center gap-2`}
                       >
+                        {selectedOrder.status === 'pending' && <Clock className="h-4 w-4" />}
+                        {selectedOrder.status === 'confirmed' && <CheckCircle2 className="h-4 w-4" />}
+                        {selectedOrder.status === 'completed' && <CheckCircle2 className="h-4 w-4" />}
+                        {selectedOrder.status === 'cancelled' && <XCircle className="h-4 w-4" />}
+                        {selectedOrder.status === 'delayed' && <Clock className="h-4 w-4" />}
                         {selectedOrder.status}
                       </Badge>
-                <button
-                  onClick={() => setIsDetailsOpen(false)}
-                        className="rounded-full p-2 hover:bg-gray-100 transition-colors"
-                >
-                        <X className="h-5 w-5 text-gray-500" />
-                </button>
+                      <Badge
+                        variant={
+                          selectedOrder.payment_status === 'completed' ? 'default' :
+                          selectedOrder.payment_status === 'partial' ? 'secondary' :
+                          'outline'
+                        }
+                        className={`capitalize text-sm px-4 py-1.5 rounded-full shadow-sm flex items-center gap-2 ${
+                          selectedOrder.payment_status === 'completed' ? 'bg-green-100 text-green-800 hover:bg-green-200' :
+                          selectedOrder.payment_status === 'partial' ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200' :
+                          'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                        }`}
+                      >
+                        <DollarSign className="h-4 w-4" />
+                        {selectedOrder.payment_status}
+                      </Badge>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          console.log('Opening email dialog...');
+                          console.log('Selected order:', selectedOrder);
+                          setIsEmailTemplatesOpen(true);
+                        }}
+                        className="flex items-center gap-2 text-gray-700 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50"
+                      >
+                        <Mail className="h-4 w-4" />
+                        Send Email
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsStatusOpen(true)}
+                        className="flex items-center gap-2 text-gray-700 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50"
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                        Update Status
+                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setIsFullScreen(!isFullScreen)}
+                          className="rounded-full hover:bg-gray-100"
+                        >
+                          {isFullScreen ? (
+                            <Minimize2 className="h-5 w-5" />
+                          ) : (
+                            <Maximize2 className="h-5 w-5" />
+                          )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setIsDetailsOpen(false)}
+                          className="rounded-full hover:bg-gray-100"
+                        >
+                          <X className="h-5 w-5" />
+                        </Button>
+                      </div>
                     </div>
               </div>
 
-                  {/* Customer Summary */}
-                  <div className="flex items-center justify-between mt-6">
-                    <div className="flex items-center gap-6">
-                      <div className="flex items-center gap-3">
-                        <div className="bg-gray-100 p-2 rounded-full">
-                          <User className="h-5 w-5 text-gray-600" />
+                  {/* Quick Stats */}
+                  <div className="grid grid-cols-4 gap-4 mt-6">
+                    <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-3">
+                      <div className="bg-blue-50 rounded-lg p-2">
+                        <DollarSign className="h-5 w-5 text-blue-600" />
                         </div>
                         <div>
-                          <p className="text-sm text-gray-500">Customer</p>
-                          <p className="font-medium text-gray-900">{selectedOrder.first_name} {selectedOrder.last_name}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="bg-gray-100 p-2 rounded-full">
-                          <Mail className="h-5 w-5 text-gray-600" />
-                        </div>
-                        <div>
-                          <p className="text-sm text-gray-500">Email</p>
-                          <a 
-                            href={`mailto:${selectedOrder.email}`}
-                            className="font-medium text-gray-900 hover:text-blue-600 transition-colors"
-                          >
-                            {selectedOrder.email}
-                          </a>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="bg-gray-100 p-2 rounded-full">
-                          <Phone className="h-5 w-5 text-gray-600" />
-                        </div>
-                        <div>
-                          <p className="text-sm text-gray-500">Phone</p>
-                          <a 
-                            href={`tel:${selectedOrder.phone}`}
-                            className="font-medium text-gray-900 hover:text-blue-600 transition-colors"
-                          >
-                            {selectedOrder.phone}
-                          </a>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="bg-gray-100 px-4 py-2 rounded-lg">
                         <p className="text-sm text-gray-500">Total Amount</p>
-                        <p className="text-lg font-semibold text-gray-900">${formatPrice(selectedOrder.total_amount)}</p>
+                        <p className="text-lg font-semibold text-gray-900">
+                          ${formatPrice(selectedOrder.total_amount)}
+                        </p>
+                        </div>
+                      </div>
+                    <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-3">
+                      <div className="bg-green-50 rounded-lg p-2">
+                        <Package className="h-5 w-5 text-green-600" />
+                        </div>
+                        <div>
+                        <p className="text-sm text-gray-500">Items</p>
+                        <p className="text-lg font-semibold text-gray-900">
+                          {selectedOrder.order_items.length}
+                        </p>
+                        </div>
+                      </div>
+                    <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-3">
+                      <div className="bg-purple-50 rounded-lg p-2">
+                        <Wrench className="h-5 w-5 text-purple-600" />
+                        </div>
+                        <div>
+                        <p className="text-sm text-gray-500">Installation</p>
+                        <p className="text-lg font-semibold text-gray-900">
+                          ${formatPrice(selectedOrder.installation_price)}
+                        </p>
+                        </div>
+                      </div>
+                    <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-3">
+                      <div className="bg-orange-50 rounded-lg p-2">
+                        <Receipt className="h-5 w-5 text-orange-600" />
+                    </div>
+                      <div>
+                        <p className="text-sm text-gray-500">Tax</p>
+                        <p className="text-lg font-semibold text-gray-900">
+                          ${formatPrice(calculateOrderTax(selectedOrder))}
+                        </p>
+                      </div>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Quick Actions */}
-                <div className="px-8 py-3 bg-white border-t border-gray-100 flex items-center gap-3">
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                    className="gap-2 bg-white hover:bg-gray-50/80"
-                    onClick={() => handleResendEmail(selectedOrder.id)}
-                >
-                  <Mail className="h-4 w-4" />
-                  Resend Order Email
-                </Button>
-                <Button 
-                  variant="outline"
-                  size="sm"
-                    className="gap-2 bg-white hover:bg-gray-50/80"
-                  onClick={() => {
-                    setIsDetailsOpen(false);
-                    setIsStatusOpen(true);
-                  }}
-                >
-                  <RefreshCw className="h-4 w-4" />
-                  Update Status
-                </Button>
-                <Button 
-                  variant="outline"
-                  size="sm"
-                    className="gap-2 bg-white hover:bg-gray-50/80"
-                  onClick={() => handleEmailTemplatesOpenChange(true)}
-                  disabled={isSendingEmail}
-                >
-                  {isSendingEmail ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-600 border-t-transparent" />
-                      Sending...
-                    </>
-                  ) : (
-                    <>
-                      <FileText className="h-4 w-4" />
-                      Send Email
-                    </>
-                  )}
-                </Button>
-                <Button 
-                  variant="destructive"
-                  size="sm"
-                  className="gap-2 ml-auto"
-                    onClick={() => handleDelete(selectedOrder.id)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Delete Order
-                </Button>
-              </div>
-            </div>
-
               {/* Content */}
-              <div className="grid grid-cols-12 gap-6 p-8 bg-gray-50">
-                {/* Left Column - Customer & Order Info */}
-                <div className="col-span-6 space-y-6">
+              <div className="p-8">
+                <Tabs defaultValue="details" className="w-full">
+                  <TabsList className="w-full justify-start border-b rounded-none h-14 bg-transparent p-0 mb-8">
+                    <TabsTrigger 
+                      value="details"
+                      className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:bg-transparent data-[state=active]:text-blue-600 rounded-none h-14 px-8 gap-2 transition-all hover:text-blue-600"
+                    >
+                      <User className="h-4 w-4" />
+                      Customer Details
+                    </TabsTrigger>
+                    <TabsTrigger 
+                      value="items"
+                      className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:bg-transparent data-[state=active]:text-blue-600 rounded-none h-14 px-8 gap-2 transition-all hover:text-blue-600"
+                    >
+                      <Package className="h-4 w-4" />
+                      Order Items
+                    </TabsTrigger>
+                    <TabsTrigger 
+                      value="payments"
+                      className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:bg-transparent data-[state=active]:text-blue-600 rounded-none h-14 px-8 gap-2 transition-all hover:text-blue-600"
+                    >
+                      <DollarSign className="h-4 w-4" />
+                      Payments
+                    </TabsTrigger>
+                    <TabsTrigger 
+                      value="communications"
+                      className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:bg-transparent data-[state=active]:text-blue-600 rounded-none h-14 px-8 gap-2 transition-all hover:text-blue-600"
+                    >
+                      <Mail className="h-4 w-4" />
+                      Communications
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="details" className="mt-0 border-none p-0">
+                    <div className="grid grid-cols-3 gap-6">
                 {/* Customer Information */}
-                  <div className="space-y-1">
-                    <h3 className="flex items-center gap-2 text-sm font-medium text-gray-500">
-                      <div className="bg-blue-50 p-1 rounded-md">
-                        <User className="h-4 w-4 text-blue-600" />
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          <User className="h-4 w-4 text-gray-400" />
+                          <h3 className="text-sm font-medium text-gray-900">Customer Details</h3>
                       </div>
-                    Customer Information
-                    </h3>
-                    <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-4 shadow-sm hover:shadow-md transition-all">
-                      <div className="space-y-1">
-                        <div className="text-sm text-gray-500">Email</div>
-                        <div className="text-sm font-medium text-gray-900">{selectedOrder.email}</div>
+                        <div className="bg-white border rounded-xl overflow-hidden">
+                          <div className="p-4 space-y-4">
+                            <div>
+                              <p className="text-sm text-gray-500">Full Name</p>
+                              <p className="font-medium text-gray-900">{selectedOrder.first_name} {selectedOrder.last_name}</p>
                       </div>
-                      <div className="space-y-1">
-                        <div className="text-sm text-gray-500">Phone</div>
-                        <div className="text-sm font-medium text-gray-900">{selectedOrder.phone}</div>
+                            <div>
+                              <p className="text-sm text-gray-500">Email</p>
+                              <a 
+                                href={`mailto:${selectedOrder.email}`}
+                                className="font-medium text-blue-600 hover:text-blue-700"
+                              >
+                                {selectedOrder.email}
+                              </a>
+                            </div>
+                            <div>
+                              <p className="text-sm text-gray-500">Phone</p>
+                              <a 
+                                href={`tel:${selectedOrder.phone}`}
+                                className="font-medium text-blue-600 hover:text-blue-700"
+                              >
+                                {selectedOrder.phone}
+                              </a>
                     </div>
                     {selectedOrder.organization && (
-                        <div className="space-y-1">
-                          <div className="text-sm text-gray-500">Organization</div>
-                          <div className="text-sm font-medium text-gray-900">{selectedOrder.organization}</div>
+                              <div>
+                                <p className="text-sm text-gray-500">Organization</p>
+                                <p className="font-medium text-gray-900">{selectedOrder.organization}</p>
                       </div>
                     )}
+                    </div>
                   </div>
                 </div>
 
                 {/* Shipping Information */}
-                  <div className="space-y-1">
-                    <h3 className="flex items-center gap-2 text-sm font-medium text-gray-500">
-                      <div className="bg-blue-50 p-1 rounded-md">
-                        <Truck className="h-4 w-4 text-blue-600" />
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          <Truck className="h-4 w-4 text-gray-400" />
+                          <h3 className="text-sm font-medium text-gray-900">Shipping Information</h3>
                       </div>
-                    Shipping Information
-                    </h3>
-                    <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-4 shadow-sm hover:shadow-md transition-all">
-                      <div className="space-y-1">
-                        <div className="text-sm text-gray-500">Address</div>
-                        <div className="text-sm font-medium text-gray-900">
+                        <div className="bg-white border rounded-xl overflow-hidden">
+                          <div className="p-4 space-y-4">
+                            <div>
+                              <p className="text-sm text-gray-500">Delivery Address</p>
+                              <p className="font-medium text-gray-900">
                           {selectedOrder.shipping_address}<br />
                           {selectedOrder.shipping_city}, {selectedOrder.shipping_state} {selectedOrder.shipping_zip}
-                      </div>
+                              </p>
                     </div>
                     {selectedOrder.shipping_instructions && (
-                        <div className="space-y-1">
-                          <div className="text-sm text-gray-500">Special Instructions</div>
-                          <div className="text-sm font-medium text-gray-900">{selectedOrder.shipping_instructions}</div>
+                              <div>
+                                <p className="text-sm text-gray-500">Special Instructions</p>
+                                <p className="font-medium text-gray-900">{selectedOrder.shipping_instructions}</p>
                         </div>
                       )}
-                    </div>
-                  </div>
-
-                  {/* Payment Information */}
-                  <div className="space-y-1">
-                    <h3 className="flex items-center gap-2 text-sm font-medium text-gray-500">
-                      <div className="bg-blue-50 p-1 rounded-md">
-                        <CreditCard className="h-4 w-4 text-blue-600" />
-                      </div>
-                      Payment Information
-                    </h3>
-                    <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-4 shadow-sm hover:shadow-md transition-all">
-                      <div className="space-y-1">
-                        <div className="text-sm text-gray-500">Payment Method</div>
-                        <div className="text-sm font-medium text-gray-900 capitalize">{selectedOrder.payment_method}</div>
-                      </div>
-                      <div className="pt-3 border-t space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-500">Products Subtotal</span>
-                          <span className="font-medium text-gray-900">${formatPrice(selectedOrder.order_items.reduce((sum, item) => 
-                            sum + (Number(item.price_at_time) * item.quantity), 0))}</span>
-                        </div>
-                        {Number(selectedOrder.installation_price) > 0 && (
-                          <div className="flex justify-between text-sm">
-                            <span className="text-gray-500">Installation</span>
-                            <span className="font-medium text-gray-900">${formatPrice(selectedOrder.installation_price)}</span>
-                          </div>
-                        )}
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-500">Tax (7.75%)</span>
-                          <span className="font-medium text-gray-900">${formatPrice(calculateOrderTax(selectedOrder))}</span>
-                        </div>
-                        <div className="flex justify-between text-sm font-medium pt-2 mt-2 border-t">
-                          <span className="text-gray-900">Total Amount</span>
-                          <span className="text-lg text-gray-900">${formatPrice(selectedOrder.total_amount)}</span>
-                        </div>
-                      </div>
                   </div>
                 </div>
               </div>
 
-                {/* Right Column - Installation & Order Items */}
-                <div className="col-span-6 space-y-6">
-                {/* Installation Details */}
-                  <div className="space-y-1">
-                    <h3 className="flex items-center gap-2 text-sm font-medium text-gray-500">
-                      <div className="bg-blue-50 p-1 rounded-md">
-                        <Wrench className="h-4 w-4 text-blue-600" />
+                      {/* Installation Information */}
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          <Wrench className="h-4 w-4 text-gray-400" />
+                          <h3 className="text-sm font-medium text-gray-900">Installation Information</h3>
                       </div>
-                    Installation Details
-                    </h3>
-                    <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-4 shadow-sm hover:shadow-md transition-all">
-                      <div className="space-y-1">
-                        <div className="text-sm text-gray-500">Installation Address</div>
-                        <div className="text-sm font-medium text-gray-900">
-                          {selectedOrder.installation_address}<br />
-                          {selectedOrder.installation_city}, {selectedOrder.installation_state} {selectedOrder.installation_zip}
-                      </div>
-                    </div>
-                      <div className="space-y-1">
-                        <div className="text-sm text-gray-500">Installation Time</div>
-                        <div className="text-sm font-medium text-gray-900">
+                        <div className="bg-white border rounded-xl overflow-hidden">
+                          <div className="p-4 space-y-4">
+                            <div>
+                              <p className="text-sm text-gray-500">Installation Date & Time</p>
+                              <p className="font-medium text-gray-900">
                           {new Date(selectedOrder.installation_date).toLocaleDateString('en-US', {
                             weekday: 'long',
                             year: 'numeric',
@@ -2477,705 +2747,180 @@ export default function OrdersPage() {
                             day: 'numeric'
                           })}
                           {selectedOrder.installation_time && ` at ${selectedOrder.installation_time}`}
+                              </p>
                       </div>
+                            <div>
+                              <p className="text-sm text-gray-500">Installation Location</p>
+                              <p className="font-medium text-gray-900">
+                                {selectedOrder.installation_address}<br />
+                                {selectedOrder.installation_city}, {selectedOrder.installation_state} {selectedOrder.installation_zip}
+                              </p>
                     </div>
-                    {selectedOrder.contact_onsite && (
-                        <div className="space-y-1">
-                          <div className="text-sm text-gray-500">On-site Contact</div>
-                          <div className="text-sm font-medium text-gray-900">
-                            {selectedOrder.contact_onsite}<br />
+                            {selectedOrder.access_instructions && (
+                              <div>
+                                <p className="text-sm text-gray-500">Access Instructions</p>
+                                <p className="font-medium text-gray-900">{selectedOrder.access_instructions}</p>
+                              </div>
+                            )}
+                            {(selectedOrder.contact_onsite || selectedOrder.contact_onsite_phone) && (
+                              <div>
+                                <p className="text-sm text-gray-500">Onsite Contact</p>
+                                <p className="font-medium text-gray-900">
+                                  {selectedOrder.contact_onsite}
+                                  {selectedOrder.contact_onsite_phone && (
+                                    <>
+                                      <br />
                             <a 
                               href={`tel:${selectedOrder.contact_onsite_phone}`}
-                              className="hover:text-blue-600 transition-colors"
+                                        className="text-blue-600 hover:text-blue-700"
                             >
                               {selectedOrder.contact_onsite_phone}
                             </a>
-                        </div>
-                      </div>
+                                    </>
                     )}
-                    {selectedOrder.access_instructions && (
-                        <div className="space-y-1">
-                          <div className="text-sm text-gray-500">Access Instructions</div>
-                          <div className="text-sm font-medium text-gray-900">{selectedOrder.access_instructions}</div>
+                                </p>
                       </div>
                     )}
                   </div>
                 </div>
-
-                  {/* Order Items */}
-                  <div className="space-y-1 flex-1">
-                    <h3 className="flex items-center gap-2 text-sm font-medium text-gray-500">
-                      <div className="bg-blue-50 p-1 rounded-md">
-                        <Package className="h-4 w-4 text-blue-600" />
                       </div>
-                      Order Items
-                    </h3>
-                    <div className="bg-white rounded-xl border border-gray-200 shadow-sm h-[calc(100vh-600px)] flex flex-col">
-                      <div className="p-4 border-b bg-gray-50/50">
-                        <div className="text-sm text-gray-500">
-                          {selectedOrder.order_items.length} items in order
                     </div>
-                        </div>
-                      <div className="overflow-y-auto flex-1 divide-y divide-gray-100">
+                  </TabsContent>
+
+                  <TabsContent value="items" className="mt-0 border-none p-0">
+                    <div className="bg-white border rounded-xl overflow-hidden shadow-sm">
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50/50">
+                            <tr>
+                              <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
+                              <th scope="col" className="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                              <th scope="col" className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Unit Price</th>
+                              <th scope="col" className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
                     {selectedOrder.order_items.map((item, index) => (
-                      <button
+                              <tr 
                         key={index}
+                                className="group hover:bg-blue-50/50 cursor-pointer transition-all"
                         onClick={() => handleProductClick(item)}
-                        className="w-full text-left p-4 hover:bg-blue-50/50 transition-colors"
-                      >
-                        <div className="flex justify-between items-start gap-4">
-                          <div>
-                            <div className="font-medium text-sm text-gray-900">{item.product?.title}</div>
-                            <div className="text-sm text-gray-500 mt-1">
-                              Quantity: {item.quantity} × ${formatPrice(item.price_at_time)}
+                              >
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <div className="flex items-start gap-3">
+                                    <div className="bg-blue-50 rounded-lg p-2 hidden group-hover:flex">
+                                      <Package className="h-5 w-5 text-blue-500" />
                             </div>
-                          </div>
-                          <div className="text-sm font-medium text-gray-900">
-                            ${formatPrice(Number(item.price_at_time) * item.quantity)}
-                          </div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                  </div>
-                </div>
-                </div>
-
-              {/* Tabs Section */}
-              <div className="px-8 pb-8">
-                <Tabs defaultValue="signature" className="w-full">
-                  <TabsList className="grid w-[400px] grid-cols-2 p-1 bg-gray-100/80">
-                    <TabsTrigger value="signature" className="gap-2 data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm rounded-lg">
-                      <PenTool className="h-4 w-4" />
-                      Signature
-                    </TabsTrigger>
-                    <TabsTrigger value="email_history" className="gap-2 data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm rounded-lg">
-                      <Mail className="h-4 w-4" />
-                      Email History
-                    </TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="signature" className="mt-6">
-                {selectedOrder.signature_url && (
-                      <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm hover:shadow-md transition-all">
-                        <div className="bg-gray-50 rounded-lg p-4">
-                          <img 
-                            src={selectedOrder.signature_url || ''} 
-                          alt="Customer Signature" 
-                          className="max-h-32 object-contain mx-auto cursor-pointer hover:opacity-80 transition-opacity"
-                            onClick={() => selectedOrder.signature_url && setSelectedSignature(selectedOrder.signature_url)}
-                        />
-                      </div>
-                        <div className="text-xs text-gray-500 text-center mt-2">
-                          Signed on {new Date(selectedOrder.created_at).toLocaleDateString()}
-                    </div>
-                  </div>
-                )}
-                  </TabsContent>
-
-                  <TabsContent value="email_history" className="mt-6">
-                    {renderEmailHistory()}
-                  </TabsContent>
-                </Tabs>
-              </div>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Email Templates Dialog */}
-      <Dialog 
-        open={isEmailTemplatesOpen} 
-        onOpenChange={(open: boolean) => handleEmailTemplatesOpenChange(open)}
-      >
-        <DialogContent className="max-w-7xl h-[90vh] bg-white p-0 gap-0">
-          <DialogHeader className="sticky top-0 z-50 bg-gradient-to-br from-gray-50 via-white to-gray-50 border-b">
-            <div className="px-8 py-6">
-              <div className="flex items-center justify-between">
-                <DialogTitle className="flex items-center gap-4">
-                  <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-3 rounded-2xl shadow-lg shadow-blue-100">
-                    <Mail className="h-6 w-6 text-white" />
-              </div>
-                  <div>
-                    <h2 className="text-2xl font-semibold text-gray-900">
-                      {selectedTemplate ? emailTemplates.find(t => t.id === selectedTemplate)?.title : 'Create Email'}
-                    </h2>
-                    <p className="text-sm text-gray-500 mt-1.5">
-                      {selectedTemplate ? 'Edit and customize your email template' : 'Create a new email or use a template'}
-                    </p>
-                  </div>
-                </DialogTitle>
-              {(selectedTemplate || editedContent) && (
-                <div className="flex items-center gap-2">
-                  <Button
-                      variant="outline"
-                    size="sm"
-                      className={`gap-2 transition-all px-4 ${
-                        viewMode === 'edit' 
-                          ? 'bg-gradient-to-br from-blue-50 to-blue-100 text-blue-600 border-blue-200 hover:bg-blue-100' 
-                          : 'hover:bg-gray-50'
-                      }`}
-                    onClick={() => setViewMode('edit')}
-                  >
-                    <Code className="h-4 w-4" />
-                    Edit
-                  </Button>
-                  <Button
-                      variant="outline"
-                    size="sm"
-                      className={`gap-2 transition-all px-4 ${
-                        viewMode === 'preview' 
-                          ? 'bg-gradient-to-br from-blue-50 to-blue-100 text-blue-600 border-blue-200 hover:bg-blue-100' 
-                          : 'hover:bg-gray-50'
-                      }`}
-                    onClick={() => setViewMode('preview')}
-                  >
-                    <Eye className="h-4 w-4" />
-                    Preview
-                  </Button>
-                </div>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-medium text-gray-900 group-hover:text-blue-600 transition-colors">
+                                        {item.product?.title}
+                                      </p>
+                                      {item.product?.category && (
+                                        <p className="text-sm text-gray-500">
+                                          {item.product.category}
+                                        </p>
               )}
               </div>
+                                    <div className="hidden group-hover:block">
+                                      <Eye className="h-4 w-4 text-blue-500" />
             </div>
-          </DialogHeader>
-          <div className="flex h-[calc(90vh-140px)]">
-            {/* Left Sidebar */}
-            <div className="w-80 border-r overflow-y-auto bg-gradient-to-br from-gray-50 to-white">
-              <div className="p-6 space-y-6">
-                {/* Quick Actions */}
-                <div className="space-y-3">
-                <Button
-                    className="w-full gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg hover:shadow-xl transition-all py-6 rounded-xl font-medium group"
-                    onClick={() => {
-                      clearEmailState();
-                      setSelectedTemplate(null);
-                      setPreviewHtml('');
-                      setEditedSubject('');
-                      setTemplateVars({});
-                      setViewMode('edit');
-                      setIsGeneratingEmail(true);
-                      setLoadingTemplateName('Creating New Email...');
-                      setShowEmailComposer(true);
-                      // Set a timeout to clear the loading state
-                      setTimeout(() => {
-                        setIsGeneratingEmail(false);
-                        setLoadingTemplateName('');
-                      }, 1000);
-                    }}
-                  >
-                    <div className="bg-blue-500/20 rounded-lg p-1">
-                      <Plus className="h-5 w-5 group-hover:scale-110 transition-transform duration-200" />
                     </div>
-                    <div className="flex flex-col items-start">
-                      <span className="font-semibold">Create New Email</span>
-                      <span className="text-xs opacity-90">Start from scratch</span>
-                    </div>
-                  </Button>
-
-                  <Button
-                    onClick={handleGenerateEmail}
-                    disabled={isGeneratingEmail}
-                    className="w-full gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg hover:shadow-xl transition-all py-6 rounded-xl font-medium group"
-                  >
-                    <div className="bg-blue-500/20 rounded-lg p-1">
-                      <Sparkles className="h-5 w-5 group-hover:scale-110 transition-transform duration-200" />
-                    </div>
-                    <span>Generate with AI</span>
-                  </Button>
-                </div>
-
-                {/* Templates Section */}
-                <div className="pt-4">
-                  <h4 className="text-sm font-medium text-gray-900 mb-4 flex items-center gap-2 px-2">
-                    <Sparkles className="h-4 w-4 text-blue-500" />
-                    Smart Templates
-                  </h4>
-
-                  <div className="space-y-2">
-                    {emailTemplates.map((tmpl) => {
-                      const isSelected = selectedTemplate === tmpl.id;
-                      const isLoading = isTemplateLoading && loadingTemplateName === tmpl.title;
-                      return (
-                        <div
-                          key={tmpl.id}
-                          className={`flex items-start gap-3 p-4 rounded-xl border transition-all cursor-pointer relative group ${
-                            isSelected
-                        ? 'border-blue-200 bg-gradient-to-br from-blue-50 to-white shadow-md' 
-                              : 'border-gray-100 hover:border-blue-100 hover:bg-gradient-to-br hover:from-gray-50 hover:to-white hover:shadow-sm'
-                          }`}
-                          onClick={() => !isLoading && !sendingTemplateId && handleTemplateSelect(tmpl.id)}
-                        >
-                          <div className={`p-2.5 rounded-xl ${
-                            isSelected
-                              ? 'bg-gradient-to-br from-blue-100 to-blue-50 border border-blue-200' 
-                              : 'bg-gradient-to-br from-gray-100 to-gray-50 border border-gray-200 group-hover:border-blue-200'
-                          }`}>
-                            {isLoading ? (
-                              <div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-                            ) : sendingTemplateId === tmpl.id ? (
-                        <div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-                      ) : (
-                              <tmpl.icon className={`h-5 w-5 ${
-                                isSelected ? 'text-blue-600' : 'text-gray-600 group-hover:text-blue-600'
-                        } transition-colors`} />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className={`text-sm font-medium truncate ${
-                              isSelected ? 'text-blue-700' : 'text-gray-900 group-hover:text-blue-700'
-                            } transition-colors`}>
-                              {isLoading ? `Generating ${tmpl.title}...` : tmpl.title}
-                            </h4>
-                            <p className="text-sm text-gray-500 mt-1 line-clamp-2 group-hover:text-gray-600 transition-colors">
-                              {tmpl.description}
-                            </p>
-                    </div>
-                    <div className={`absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all ${
-                            isSelected ? 'text-blue-600' : 'text-gray-400'
-                    }`}>
-                      <ChevronRight className="h-4 w-4" />
-                    </div>
-                  </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            {/* Main Content Area */}
-            <div className="flex-1 overflow-y-auto bg-gradient-to-br from-white to-gray-50">
-              <div className="p-8 space-y-6 max-w-4xl mx-auto">
-                {/* Subject Line */}
-                  <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-gray-500" />
-                    Email Subject
-                  </Label>
-                    <Input
-                      value={editedSubject}
-                      onChange={(e) => setEditedSubject(e.target.value)}
-                    className="w-full bg-white border-gray-200 shadow-sm"
-                      placeholder="Enter email subject..."
-                    />
-                  </div>
-
-                <Tabs 
-                  value={activeTab}
-                  defaultValue="content" 
-                  className="w-full" 
-                  onValueChange={(value) => setActiveTab(value as EmailTabValue)}
-                >
-                    <div className="flex items-center justify-between mb-4">
-                    <TabsList className="grid w-[600px] grid-cols-3 p-1 bg-gray-100/80">
-                      <TabsTrigger value="content" className="gap-2 data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm rounded-lg">
-                          <FileText className="h-4 w-4" />
-                          Content
-                        </TabsTrigger>
-                      <TabsTrigger value="variables" className="gap-2 data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm rounded-lg">
-                          <Settings className="h-4 w-4" />
-                          Variables
-                        </TabsTrigger>
-                      <TabsTrigger value="history" className="gap-2 data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm rounded-lg">
-                        <Clock className="h-4 w-4" />
-                        History
-                        </TabsTrigger>
-                      </TabsList>
-                    </div>
-
-                    <TabsContent value="content" className="mt-0">
-                    <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
-                      {viewMode === 'edit' ? (
-                        <div className="p-6 relative">
-                          {(isGeneratingAI || isTemplateLoading) && (
-                            <div className="absolute inset-0 bg-white/90 backdrop-blur-sm flex items-center justify-center z-10">
-                              <div className="flex flex-col items-center gap-4">
-                                <div className="relative">
-                                  <div className="w-20 h-20 rounded-full border-4 border-blue-100 animate-[spin_3s_linear_infinite]" />
-                                  <div className="w-20 h-20 rounded-full border-4 border-blue-500 border-t-transparent animate-[spin_1.5s_linear_infinite] absolute inset-0" />
-                                  <div className="absolute inset-0 flex items-center justify-center">
-                                    <div className="relative">
-                                      <Sparkles className="h-8 w-8 text-blue-500 animate-pulse" />
-                                      <div className="absolute inset-0 animate-ping">
-                                        <Sparkles className="h-8 w-8 text-blue-500/30" />
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                                <div className="text-center">
-                                  <div className="text-sm font-medium text-gray-900">
-                                    {isTemplateLoading ? (
-                                      <div className="flex flex-col items-center gap-2">
-                                        <span>Loading {loadingTemplateName}</span>
-                                        <div className="flex items-center gap-1">
-                                          <div className="w-2 h-2 rounded-full bg-blue-600 animate-[bounce_1.4s_infinite]" />
-                                          <div className="w-2 h-2 rounded-full bg-blue-600 animate-[bounce_1.4s_infinite_0.2s]" />
-                                          <div className="w-2 h-2 rounded-full bg-blue-600 animate-[bounce_1.4s_infinite_0.4s]" />
-                                        </div>
-                                      </div>
-                                    ) : (
-                                      <div className="flex flex-col items-center gap-2">
-                                        <span>Generating Email</span>
-                                        <div className="flex items-center gap-1">
-                                          <div className="w-2 h-2 rounded-full bg-blue-600 animate-[bounce_1.4s_infinite]" />
-                                          <div className="w-2 h-2 rounded-full bg-blue-600 animate-[bounce_1.4s_infinite_0.2s]" />
-                                          <div className="w-2 h-2 rounded-full bg-blue-600 animate-[bounce_1.4s_infinite_0.4s]" />
-                                        </div>
-                                      </div>
-                                    )}
-                                  </div>
-                                  <p className="text-sm text-gray-500 mt-3">This may take a few moments</p>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                          <EmailComposer
-                            orderId={String(selectedOrder?.id || '')}
-                            initialContent={editedContent}
-                            onContentChange={(content) => {
-                              setEditedContent(content)
-                              setPreviewHtml(content)
-                            }}
-                            onSubjectChange={(subject) => setEditedSubject(subject)}
-                            subject={editedSubject}
-                            onEmailSent={() => {
-                              clearEmailState()
-                            }}
-                            isTemplateLoading={isTemplateLoading}
-                            loadingTemplateName={loadingTemplateName}
-                            activeTab={activeTab}
-                            onTabChange={(tab) => {
-                              const tabsElement = document.querySelector(`[role="tab"][value="${tab}"]`) as HTMLButtonElement;
-                              if (tabsElement) {
-                                tabsElement.click();
-                              }
-                            }}
-                          />
-                        </div>
-                      ) : (
-                          <EmailPreview html={previewHtml} height="600px" width="100%" />
-                      )}
-                    </div>
-                    </TabsContent>
-
-                    <TabsContent value="variables" className="mt-0">
-                    <div className="bg-white rounded-xl border shadow-sm p-6">
-                        <div className="grid grid-cols-2 gap-6">
-                        {/* Variables Grid */}
-                        <div className="space-y-4">
-                          <Label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                            <User className="h-4 w-4 text-gray-500" />
-                            Customer Name
-                          </Label>
-                            <Input
-                              value={templateVars.customerName || ''}
-                              onChange={(e) => setTemplateVars(prev => ({
-                                ...prev,
-                                customerName: e.target.value
-                              }))}
-                              placeholder={`${selectedOrder?.first_name} ${selectedOrder?.last_name}`}
-                            className="bg-white border-gray-200"
-                            />
-                          </div>
-                        <div className="space-y-4">
-                          <Label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                            <Package className="h-4 w-4 text-gray-500" />
-                            Order Number
-                          </Label>
-                            <Input
-                              value={templateVars.orderNumber || ''}
-                              onChange={(e) => setTemplateVars(prev => ({
-                                ...prev,
-                                orderNumber: e.target.value
-                              }))}
-                              placeholder={`#${selectedOrder?.id}`}
-                            className="bg-white border-gray-200"
-                            />
-                          </div>
-                        <div className="space-y-4">
-                          <Label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                            <DollarSign className="h-4 w-4 text-gray-500" />
-                            Total Amount
-                          </Label>
-                            <Input
-                              value={templateVars.totalAmount || ''}
-                              onChange={(e) => setTemplateVars(prev => ({
-                                ...prev,
-                                totalAmount: e.target.value
-                              }))}
-                              placeholder={`$${selectedOrder?.total_amount}`}
-                            className="bg-white border-gray-200"
-                            />
-                          </div>
-                        <div className="space-y-4">
-                          <Label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                            <Calendar className="h-4 w-4 text-gray-500" />
-                            Installation Date
-                          </Label>
-                            <Input
-                              value={templateVars.installationDate || ''}
-                              onChange={(e) => setTemplateVars(prev => ({
-                                ...prev,
-                                installationDate: e.target.value
-                              }))}
-                              placeholder={selectedOrder?.installation_date || ''}
-                            className="bg-white border-gray-200"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </TabsContent>
-
-                  <TabsContent value="history" className="mt-0">
-                    <div className="bg-white rounded-xl border shadow-sm p-6">
-                      <div className="space-y-4">
-                        {isLoadingEmailLogs ? (
-                          <div className="flex items-center justify-center py-8">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                </div>
-                        ) : emailLogs.length === 0 ? (
-                          <div className="text-center py-8 text-gray-500">
-                            <Mail className="w-12 h-12 mx-auto mb-3 text-gray-400" />
-                            <p>No emails have been sent yet</p>
-                          </div>
-                        ) : (
-                          <div className="space-y-4">
-                            {emailLogs.map((log) => (
-                              <div
-                                key={log.id}
-                                className="border rounded-lg p-4 hover:bg-gray-50 transition-colors cursor-pointer"
-                                onClick={() => {
-                                  setEditedSubject(log.subject);
-                                  setEditedContent(log.content);
-                                  setPreviewHtml(log.content);
-                                  setViewMode('preview');
-                                  setActiveTab('content');
-                                }}
-                              >
-                                <div className="flex justify-between items-start mb-2">
-                                  <h4 className="font-medium text-gray-900">{log.subject}</h4>
-                                  <span className="text-xs text-gray-500">{log.sent_at}</span>
-                                </div>
-                                <p className="text-sm text-gray-600 line-clamp-2">{log.preview}</p>
-                                {log.template_id && (
-                                  <div className="mt-2">
-                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                      {log.template_id.replace(/_/g, ' ')}
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-center">
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-sm bg-gray-100 text-gray-800 group-hover:bg-blue-100 group-hover:text-blue-800 transition-colors">
+                                    {item.quantity}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-right">
+                                  <span className="text-sm text-gray-900 group-hover:text-blue-600 transition-colors">
+                                    ${formatPrice(item.price_at_time)}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-right">
+                                  <span className="text-sm font-medium text-gray-900 group-hover:text-blue-600 transition-colors">
+                                    ${formatPrice(Number(item.price_at_time) * item.quantity)}
+                                  </span>
+                                </td>
+                              </tr>
                             ))}
+                          </tbody>
+                          <tfoot className="bg-gray-50/50">
+                            <tr>
+                              <td colSpan={3} className="px-6 py-4 text-right text-sm font-medium text-gray-500">Subtotal</td>
+                              <td className="px-6 py-4 text-right text-sm font-medium text-gray-900">
+                                ${formatPrice(selectedOrder.order_items.reduce((sum, item) => 
+                                  sum + (Number(item.price_at_time) * item.quantity), 0))}
+                              </td>
+                            </tr>
+                            {Number(selectedOrder.installation_price) > 0 && (
+                              <tr>
+                                <td colSpan={3} className="px-6 py-4 text-right text-sm font-medium text-gray-500">Installation</td>
+                                <td className="px-6 py-4 text-right text-sm font-medium text-gray-900">
+                                  ${formatPrice(selectedOrder.installation_price)}
+                                </td>
+                              </tr>
+                            )}
+                            <tr>
+                              <td colSpan={3} className="px-6 py-4 text-right text-sm font-medium text-gray-500">Tax (7.75%)</td>
+                              <td className="px-6 py-4 text-right text-sm font-medium text-gray-900">
+                                ${formatPrice(calculateOrderTax(selectedOrder))}
+                              </td>
+                            </tr>
+                            <tr className="border-t-2 border-gray-200">
+                              <td colSpan={3} className="px-6 py-4 text-right text-base font-semibold text-gray-900">Total Amount</td>
+                              <td className="px-6 py-4 text-right text-base font-semibold text-gray-900">
+                                ${formatPrice(selectedOrder.total_amount)}
+                              </td>
+                            </tr>
+                          </tfoot>
+                        </table>
+                    </div>
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="payments" className="mt-0 border-none p-0">
+                    <div className="bg-white border rounded-xl overflow-hidden">
+                      <PaymentManager
+                        orderId={selectedOrder.id}
+                        totalAmount={parseFloat(selectedOrder.total_amount.toString())}
+                        paymentPlan={selectedOrder.paymentPlan}
+                        dueToday={selectedOrder.dueToday}
+                        totalDueAfterFirst={selectedOrder.totalDueAfterFirst}
+                        paymentFrequency={selectedOrder.paymentFrequency}
+                        onPaymentComplete={() => {
+                          fetchOrders();
+                        }}
+                      />
+                    </div>
+                    </TabsContent>
+
+                  <TabsContent value="communications" className="mt-0 border-none p-0">
+                    <div className="space-y-6">
+                      {/* Signature Section */}
+                      {selectedOrder.signature_url && (
+                        <div className="bg-white border rounded-xl overflow-hidden">
+                          <div className="p-6">
+                            <div className="flex items-center gap-2 mb-4">
+                              <PenTool className="h-4 w-4 text-gray-400" />
+                              <h3 className="text-sm font-medium text-gray-900">Customer Signature</h3>
                           </div>
-                        )}
-                      </div>
+                            <img 
+                              src={selectedOrder.signature_url} 
+                              alt="Customer Signature" 
+                              className="max-h-32 object-contain"
+                            />
+                          </div>
+                          </div>
+                      )}
+
+                      {/* Email History */}
+                      {renderEmailHistory()}
                     </div>
                   </TabsContent>
                 </Tabs>
-
-                {/* Footer Actions */}
-                <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm border-t z-50">
-                  <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-end gap-4">
-                  <Button
-                      variant="ghost"
-                    onClick={() => {
-                      setIsEmailTemplatesOpen(false)
-                    }}
-                      className="w-[200px] bg-[#F5F5F5] hover:bg-[#E5E5E5] text-gray-900 font-medium"
-                  >
-                    Cancel
-                  </Button>
-                    <Button
-                      onClick={handleSendEmail}
-                      disabled={isLoading || isGeneratingAI || isTemplateLoading || isSendingEmail}
-                      className="w-[200px] bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-medium flex items-center justify-center gap-2 shadow-sm"
-                    >
-                      {isSendingEmail ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-                          Sending...
-                        </>
-                      ) : (
-                        <>
-                          <Mail className="w-4 h-4" />
-                          Send Email
+              </div>
                         </>
                       )}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* AI Prompt Dialog */}
-      <Dialog open={isAiPromptOpen} onOpenChange={setIsAiPromptOpen}>
-        <DialogContent className="sm:max-w-[600px] bg-white !p-0">
-          <div className="bg-white rounded-lg">
-            <DialogHeader className="px-6 pt-6">
-              <DialogTitle className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-blue-500" />
-                Generate Custom Email
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 px-6 py-4">
-              <div className="space-y-2">
-                <Label>What kind of email would you like to generate?</Label>
-                {isGeneratingAI ? (
-                  <div className="h-32 bg-white border rounded-lg p-4 flex items-center justify-center">
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="relative">
-                        <div className="w-8 h-8 rounded-full border-2 border-blue-100 animate-[spin_3s_linear_infinite]" />
-                        <div className="w-8 h-8 rounded-full border-2 border-blue-500 border-t-transparent animate-[spin_1.5s_linear_infinite] absolute inset-0" />
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <Sparkles className="h-4 w-4 text-blue-500 animate-pulse" />
-                        </div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-sm font-medium text-gray-900">
-                          <div className="flex flex-col items-center gap-1">
-                            <span>Generating Email</span>
-                            <div className="flex items-center gap-1">
-                              <div className="w-1 h-1 rounded-full bg-blue-600 animate-[bounce_1.4s_infinite]" />
-                              <div className="w-1 h-1 rounded-full bg-blue-600 animate-[bounce_1.4s_infinite_0.2s]" />
-                              <div className="w-1 h-1 rounded-full bg-blue-600 animate-[bounce_1.4s_infinite_0.4s]" />
-                            </div>
-                          </div>
-                        </div>
-                        <p className="text-xs text-gray-500 mt-1">This may take a few moments</p>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <Textarea
-                    placeholder="Example: Write a follow-up email asking about their experience with the installation. Make it friendly but professional."
-                    value={aiPrompt}
-                    onChange={(e) => setAiPrompt(e.target.value)}
-                    className="h-32 resize-none bg-white"
-                  />
-                )}
-              </div>
-            </div>
-            <DialogFooter className="px-6 pb-6">
-              <Button
-                onClick={() => setIsAiPromptOpen(false)}
-                variant="ghost"
-                className="text-gray-600"
-                disabled={isGeneratingAI}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                onClick={handleAiPromptSubmit}
-                disabled={isGeneratingAI}
-                className={`bg-blue-600 hover:bg-blue-700 text-white ${isGeneratingAI ? 'min-w-[100px]' : ''}`}
-              >
-                {isGeneratingAI ? "Generating..." : "Generate"}
-              </Button>
-            </DialogFooter>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Shipping Status Dialog */}
-      <Dialog 
-        open={isShippingPromptOpen} 
-        onOpenChange={(open: boolean) => setIsShippingPromptOpen(open)}
-      >
-        <DialogContent className="sm:max-w-[500px] bg-white">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-xl">
-              <Truck className="h-5 w-5 text-blue-500" />
-              Select Current Order Status
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            {isGeneratingAI && (
-              <div className="absolute inset-0 flex items-center justify-center bg-white/80 z-50">
-                <div className="flex flex-col items-center gap-2">
-                  <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-                  <p className="text-sm text-gray-600">Generating email...</p>
-                </div>
-              </div>
-            )}
-            <div className="grid grid-cols-1 gap-3">
-              {['Processing', 'Shipped', 'Out for Delivery', 'Delayed'].map((status) => (
-                <Button
-                  key={status}
-                  variant="outline"
-                  className="w-full justify-start gap-3 py-6 text-left"
-                  onClick={() => handleShippingUpdate(status)}
-                  disabled={isGeneratingAI}
-                >
-                  <div className="flex items-center gap-3">
-                    {status === 'Processing' && <Package className="h-5 w-5 text-blue-500" />}
-                    {status === 'Shipped' && <Truck className="h-5 w-5 text-green-500" />}
-                    {status === 'Out for Delivery' && <MapPin className="h-5 w-5 text-purple-500" />}
-                    {status === 'Delayed' && <Clock className="h-5 w-5 text-orange-500" />}
-                    <div>
-                      <div className="font-medium">{status}</div>
-                      <div className="text-sm text-gray-500">
-                        Select to update customer about this status
-                      </div>
-                    </div>
-                  </div>
-                </Button>
-              ))}
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Product Details Dialog */}
-      <Dialog 
-        open={isProductDetailsOpen} 
-        onOpenChange={(open: boolean) => {
-          if (!open) {
-            setIsProductDetailsOpen(false)
-            setIsFullScreen(false)
-          }
-        }}
-      >
-        <DialogContent className={`bg-white p-0 rounded-2xl shadow-xl transition-all duration-200 overflow-hidden ${
-          isFullScreen ? 'max-w-[95vw] h-[95vh]' : 'max-w-3xl max-h-[85vh]'
-        }`}>
-          <DialogHeader className="sticky top-0 bg-white z-10 border-b px-6 py-4">
-            <div className="flex items-center justify-between">
-                <DialogTitle className="text-xl font-semibold">Product Details</DialogTitle>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setIsFullScreen(!isFullScreen)}
-                    className="rounded-full bg-white border border-gray-200 shadow-sm p-2 hover:bg-gray-50 transition-colors"
-                  >
-                    {isFullScreen ? (
-                      <ChevronDown className="h-4 w-4 text-gray-500" />
-                    ) : (
-                      <ChevronUp className="h-4 w-4 text-gray-500" />
-                    )}
-                    <span className="sr-only">
-                      {isFullScreen ? 'Exit Full Screen' : 'Full Screen'}
-                    </span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setIsProductDetailsOpen(false)
-                      setIsFullScreen(false)
-                    }}
-                    className="rounded-full bg-white border border-gray-200 shadow-sm p-2 hover:bg-gray-50 transition-colors"
-                  >
-                    <X className="h-4 w-4 text-gray-500" />
-                    <span className="sr-only">Close</span>
-                  </button>
-              </div>
-            </div>
-          </DialogHeader>
-          <div className={`overflow-y-auto ${isFullScreen ? 'h-[calc(95vh-88px)]' : 'h-[calc(85vh-88px)]'}`}>
-            <ProductDetails product={selectedProduct} isFullScreen={isFullScreen} />
-          </div>
         </DialogContent>
       </Dialog>
 
@@ -3310,6 +3055,306 @@ export default function OrdersPage() {
             >
               Cancel
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Product Details Dialog */}
+      <Dialog 
+        open={isProductDetailsOpen} 
+        onOpenChange={(open: boolean) => {
+          if (!open) {
+            setSelectedProduct(null);
+            setIsProductDetailsOpen(false);
+            setIsFullScreen(false);
+          }
+        }}
+      >
+        <DialogContent className={`bg-white p-0 rounded-2xl shadow-xl transition-all duration-200 ${
+          isFullScreen ? 'max-w-[95vw] h-[95vh]' : 'max-w-4xl'
+        }`}>
+          <DialogHeader className="sticky top-0 bg-white z-10 border-b px-6 py-4">
+            <div className="flex items-center justify-between">
+              <DialogTitle className="text-xl font-semibold flex items-center gap-2">
+                <Package className="h-5 w-5 text-blue-500" />
+                Product Details
+              </DialogTitle>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setIsFullScreen(!isFullScreen)}
+                  className="rounded-full bg-white border border-gray-200 shadow-sm p-2 hover:bg-gray-50 transition-colors"
+                >
+                  {isFullScreen ? (
+                    <Minimize2 className="h-4 w-4 text-gray-500" />
+                  ) : (
+                    <Maximize2 className="h-4 w-4 text-gray-500" />
+                  )}
+                  <span className="sr-only">
+                    {isFullScreen ? 'Exit Full Screen' : 'Full Screen'}
+                  </span>
+                </button>
+                <button
+                  onClick={() => {
+                    setSelectedProduct(null);
+                    setIsProductDetailsOpen(false);
+                    setIsFullScreen(false);
+                  }}
+                  className="rounded-full bg-white border border-gray-200 shadow-sm p-2 hover:bg-gray-50 transition-colors"
+                >
+                  <X className="h-4 w-4 text-gray-500" />
+                  <span className="sr-only">Close</span>
+                </button>
+              </div>
+            </div>
+          </DialogHeader>
+          <div className={`p-6 ${isFullScreen ? 'h-[calc(95vh-88px)] overflow-y-auto' : ''}`}>
+            <ProductDetails product={selectedProduct} isFullScreen={isFullScreen} />
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Email Templates Dialog */}
+      <Dialog 
+        open={isEmailTemplatesOpen} 
+        onOpenChange={handleEmailTemplatesOpenChange}
+      >
+        <DialogContent className="max-w-7xl h-[90vh] bg-white p-0 gap-0">
+          <DialogHeader className="sticky top-0 z-50 bg-gradient-to-br from-gray-50 via-white to-gray-50 border-b">
+            <div className="px-8 py-6">
+              <div className="flex items-center justify-between">
+                <DialogTitle className="flex items-center gap-4">
+                  <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-3 rounded-2xl shadow-lg shadow-blue-100">
+                    <Mail className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-semibold text-gray-900">
+                      {selectedTemplate ? emailTemplates.find(t => t.id === selectedTemplate)?.title : 'Create Email'}
+                    </h2>
+                    <p className="text-sm text-gray-500 mt-1.5">
+                      {selectedTemplate ? 'Edit and customize your email template' : 'Create a new email or use a template'}
+                    </p>
+                  </div>
+                </DialogTitle>
+                {(selectedTemplate || editedContent) && (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={`gap-2 transition-all px-4 ${
+                        viewMode === 'edit' 
+                          ? 'bg-gradient-to-br from-blue-50 to-blue-100 text-blue-600 border-blue-200 hover:bg-blue-100' 
+                          : 'hover:bg-gray-50'
+                      }`}
+                      onClick={() => setViewMode('edit')}
+                    >
+                      <Code className="h-4 w-4" />
+                      Edit
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={`gap-2 transition-all px-4 ${
+                        viewMode === 'preview' 
+                          ? 'bg-gradient-to-br from-blue-50 to-blue-100 text-blue-600 border-blue-200 hover:bg-blue-100' 
+                          : 'hover:bg-gray-50'
+                      }`}
+                      onClick={() => setViewMode('preview')}
+                    >
+                      <Eye className="h-4 w-4" />
+                      Preview
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="flex h-[calc(90vh-140px)]">
+            {/* Left Sidebar */}
+            <div className="w-80 border-r overflow-y-auto bg-gradient-to-br from-gray-50 to-white">
+              <div className="p-6 space-y-6">
+                {/* Quick Actions */}
+                <div className="space-y-3">
+                  <Button
+                    className="w-full gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg hover:shadow-xl transition-all py-6 rounded-xl font-medium group"
+                    onClick={() => {
+                      clearEmailState();
+                      setSelectedTemplate(null);
+                      setPreviewHtml('');
+                      setEditedSubject('');
+                      setTemplateVars({});
+                      setViewMode('edit');
+                      setIsGeneratingEmail(true);
+                      setLoadingTemplateName('Creating New Email...');
+                      setShowEmailComposer(true);
+                      setTimeout(() => {
+                        setIsGeneratingEmail(false);
+                        setLoadingTemplateName('');
+                      }, 1000);
+                    }}
+                  >
+                    <div className="bg-blue-500/20 rounded-lg p-1">
+                      <Plus className="h-5 w-5 group-hover:scale-110 transition-transform duration-200" />
+                    </div>
+                    <div className="flex flex-col items-start">
+                      <span className="font-semibold">Create New Email</span>
+                      <span className="text-xs opacity-90">Start from scratch</span>
+                    </div>
+                  </Button>
+
+                  <Button
+                    onClick={handleGenerateEmail}
+                    disabled={isGeneratingEmail}
+                    className="w-full gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg hover:shadow-xl transition-all py-6 rounded-xl font-medium group"
+                  >
+                    <div className="bg-blue-500/20 rounded-lg p-1">
+                      <Sparkles className="h-5 w-5 group-hover:scale-110 transition-transform duration-200" />
+                    </div>
+                    <span>Generate with AI</span>
+                  </Button>
+                </div>
+
+                {/* Templates Section */}
+                <div className="pt-4">
+                  <h4 className="text-sm font-medium text-gray-900 mb-4 flex items-center gap-2 px-2">
+                    <Sparkles className="h-4 w-4 text-blue-500" />
+                    Smart Templates
+                  </h4>
+
+                  <div className="space-y-2">
+                    {emailTemplates.map((tmpl) => {
+                      const isSelected = selectedTemplate === tmpl.id;
+                      const isLoading = isTemplateLoading && loadingTemplateName === tmpl.title;
+                      return (
+                        <div
+                          key={tmpl.id}
+                          className={`flex items-start gap-3 p-4 rounded-xl border transition-all cursor-pointer relative group ${
+                            isSelected
+                              ? 'border-blue-200 bg-gradient-to-br from-blue-50 to-white shadow-md' 
+                              : 'border-gray-100 hover:border-blue-100 hover:bg-gradient-to-br hover:from-gray-50 hover:to-white hover:shadow-sm'
+                          }`}
+                          onClick={() => !isLoading && !sendingTemplateId && handleTemplateSelect(tmpl.id)}
+                        >
+                          <div className={`p-2.5 rounded-xl ${
+                            isSelected
+                              ? 'bg-gradient-to-br from-blue-100 to-blue-50 border border-blue-200' 
+                              : 'bg-gradient-to-br from-gray-100 to-gray-50 border border-gray-200 group-hover:border-blue-200'
+                          }`}>
+                            {isLoading ? (
+                              <div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+                            ) : sendingTemplateId === tmpl.id ? (
+                              <div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+                            ) : (
+                              <tmpl.icon className={`h-5 w-5 ${
+                                isSelected ? 'text-blue-600' : 'text-gray-600 group-hover:text-blue-600'
+                              } transition-colors`} />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className={`text-sm font-medium truncate ${
+                              isSelected ? 'text-blue-700' : 'text-gray-900 group-hover:text-blue-700'
+                            } transition-colors`}>
+                              {isLoading ? `Generating ${tmpl.title}...` : tmpl.title}
+                            </h4>
+                            <p className="text-sm text-gray-500 mt-1 line-clamp-2 group-hover:text-gray-600 transition-colors">
+                              {tmpl.description}
+                            </p>
+                          </div>
+                          <div className={`absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all ${
+                            isSelected ? 'text-blue-600' : 'text-gray-400'
+                          }`}>
+                            <ChevronRight className="h-4 w-4" />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Main Content Area */}
+            <div className="flex-1 overflow-y-auto bg-gradient-to-br from-white to-gray-50">
+              <div className="p-8 space-y-6 max-w-4xl mx-auto">
+                {/* Subject Line */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-gray-500" />
+                    Email Subject
+                  </Label>
+                  <Input
+                    value={editedSubject}
+                    onChange={(e) => setEditedSubject(e.target.value)}
+                    className="w-full bg-white border-gray-200 shadow-sm"
+                    placeholder="Enter email subject..."
+                  />
+                </div>
+
+                {/* Email Content */}
+                <div className="w-full">
+                  {viewMode === 'edit' ? (
+                    <div className="relative">
+                      {isGeneratingEmail && (
+                        <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-10 flex items-center justify-center">
+                          <div className="bg-white border rounded-xl shadow-lg p-6 max-w-sm mx-auto text-center">
+                            <div className="flex justify-center mb-4">
+                              {isGeneratingAI ? (
+                                <div className="flex flex-col items-center gap-2">
+                                  <span>Generating with AI</span>
+                                  <div className="flex items-center gap-1">
+                                    <div className="w-2 h-2 rounded-full bg-blue-600 animate-[bounce_1.4s_infinite]" />
+                                    <div className="w-2 h-2 rounded-full bg-blue-600 animate-[bounce_1.4s_infinite_0.2s]" />
+                                    <div className="w-2 h-2 rounded-full bg-blue-600 animate-[bounce_1.4s_infinite_0.4s]" />
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="flex flex-col items-center gap-2">
+                                  <span>Generating Email</span>
+                                  <div className="flex items-center gap-1">
+                                    <div className="w-2 h-2 rounded-full bg-blue-600 animate-[bounce_1.4s_infinite]" />
+                                    <div className="w-2 h-2 rounded-full bg-blue-600 animate-[bounce_1.4s_infinite_0.2s]" />
+                                    <div className="w-2 h-2 rounded-full bg-blue-600 animate-[bounce_1.4s_infinite_0.4s]" />
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-500 mt-3">This may take a few moments</p>
+                          </div>
+                        </div>
+                      )}
+                      <EmailComposer
+                        orderId={String(selectedOrder?.id || '')}
+                        initialContent={editedContent}
+                        onContentChange={(content) => {
+                          setEditedContent(content);
+                        }}
+                        onSubjectChange={(subject) => setEditedSubject(subject)}
+                        subject={editedSubject}
+                        onEmailSent={handleEmailSent}
+                        isTemplateLoading={isTemplateLoading}
+                        loadingTemplateName={loadingTemplateName}
+                        activeTab={activeEmailTab}
+                        onTabChange={handleEmailTabChange}
+                        isAiPromptOpen={isAiPromptOpen}
+                        onAiPromptOpenChange={setIsAiPromptOpen}
+                        onAiPromptSubmit={handleAiPromptSubmit}
+                        isGeneratingAI={isGeneratingAI}
+                        previewHtml={previewHtml}
+                        onPreviewHtmlChange={(html) => setPreviewHtml(html)}
+                      />
+                    </div>
+                  ) : (
+                    <EmailPreview 
+                      html={previewHtml} 
+                      height="600px" 
+                      width="100%" 
+                      onSendEmail={handleSendEmail}
+                      isSending={isSendingEmail}
+                    />
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

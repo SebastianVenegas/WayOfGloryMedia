@@ -1,0 +1,143 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model admin_users {
+  id            Int       @id @default(autoincrement())
+  email         String    @unique @db.VarChar(255)
+  password_hash String    @db.VarChar(255)
+  name          String    @db.VarChar(255)
+  role          String    @default("admin") @db.VarChar(50)
+  created_at    DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime? @default(now()) @db.Timestamptz(6)
+}
+
+model categories {
+  id          Int       @id @default(autoincrement())
+  name        String
+  description String?
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime? @default(now()) @db.Timestamptz(6)
+}
+
+model email_logs {
+  id          Int       @id @default(autoincrement())
+  order_id    Int?
+  template_id String?   @db.VarChar(255)
+  subject     String?
+  content     String?
+  sent_at     DateTime? @default(now()) @db.Timestamptz(6)
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+  orders      orders?   @relation(fields: [order_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model mixers {
+  id   Int    @id @default(autoincrement())
+  name String @db.VarChar(255)
+}
+
+model order_items {
+  id            Int       @id @default(autoincrement())
+  order_id      Int?
+  product_id    Int
+  quantity      Int
+  price_at_time Decimal   @db.Decimal(10, 2)
+  created_at    DateTime? @default(now()) @db.Timestamptz(6)
+  cost_at_time  Decimal?  @db.Decimal(10, 2)
+  orders        orders?   @relation(fields: [order_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model orders {
+  id                    Int           @id @default(autoincrement())
+  first_name            String
+  last_name             String
+  email                 String
+  phone                 String
+  organization          String?
+  shipping_address      String
+  shipping_city         String
+  shipping_state        String
+  shipping_zip          String
+  shipping_instructions String?
+  installation_address  String?
+  installation_city     String?
+  installation_state    String?
+  installation_zip      String?
+  installation_date     String?
+  installation_time     String?
+  access_instructions   String?
+  contact_onsite        String?
+  contact_onsite_phone  String?
+  payment_method        String
+  total_amount          Decimal       @db.Decimal(10, 2)
+  installation_price    Decimal?      @db.Decimal(10, 2)
+  signature_url         String?
+  status                String        @default("pending")
+  created_at            DateTime?     @default(now()) @db.Timestamptz(6)
+  total_cost            Decimal?      @db.Decimal(10, 2)
+  total_profit          Decimal?      @db.Decimal(10, 2)
+  tax_amount            Decimal?      @db.Decimal(10, 2)
+  notes                 Json?
+  contact_on_site       String?       @db.VarChar(255)
+  contact_on_site_phone String?       @db.VarChar(255)
+  signature             String?
+  contains_services     Boolean?      @default(false)
+  product_subtotal      Decimal?      @default(0) @db.Decimal(10, 2)
+  service_subtotal      Decimal?      @default(0) @db.Decimal(10, 2)
+  contract_number       String        @unique @db.VarChar(20)
+  order_creator         String?       @db.VarChar(255)
+  total_paid            Decimal?      @default(0.00) @db.Decimal(10, 2)
+  remaining_balance     Decimal?      @default(dbgenerated("(total_amount - total_paid)")) @db.Decimal(10, 2)
+  payment_status        String?       @default("pending") @db.VarChar(50)
+  payment_history       Json?         @default("[]")
+  email_logs            email_logs[]
+  order_items           order_items[]
+}
+
+model our_prices {
+  id                Int       @id @default(autoincrement())
+  product_id        Int?      @unique
+  original_price    Decimal   @db.Decimal(10, 2)
+  our_price         Decimal   @db.Decimal(10, 2)
+  markup_percentage Decimal?  @db.Decimal(5, 2)
+  created_at        DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime? @default(now()) @db.Timestamptz(6)
+  products          products? @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([product_id], map: "idx_our_prices_product_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model products {
+  id                     Int         @id @default(autoincrement())
+  title                  String
+  description            String
+  price                  Decimal     @db.Decimal(10, 2)
+  category               String
+  star_rating            Decimal?    @db.Decimal(2, 1)
+  extended_description   String?
+  technical_advice       String?
+  warranty_info          String?
+  installation_available Boolean?    @default(false)
+  reviews                String?
+  features               String[]
+  included_items         String[]
+  technical_details      Json?
+  created_at             DateTime?   @default(now()) @db.Timestamptz(6)
+  updated_at             DateTime?   @default(now()) @db.Timestamptz(6)
+  is_custom              Boolean?    @default(false)
+  is_service             Boolean?    @default(false)
+  status                 String?     @default("active") @db.VarChar(50)
+  metadata               Json?
+  skip_tax               Boolean?    @default(false)
+  our_prices             our_prices?
+
+  @@index([category], map: "idx_products_category")
+  @@index([metadata], map: "idx_products_metadata", type: Gin)
+}

@@ -85,14 +85,23 @@ export async function GET(
     }
 
     const templateId = searchParams.get('templateId');
+    const userPrompt = searchParams.get('prompt');
+    
     if (!templateId) {
       console.error('Missing templateId in query params');
       return NextResponse.json({ error: 'Template ID is required' }, { status: 400 });
     }
 
+    // For custom emails, we need a prompt
+    if (templateId === 'custom_email' && !userPrompt) {
+      console.error('Missing prompt for custom email');
+      return NextResponse.json({ error: 'Prompt is required for custom emails' }, { status: 400 });
+    }
+
     console.log('Preview template request:', {
       orderId: orderId_int,
-      templateId
+      templateId,
+      prompt: userPrompt ? userPrompt.substring(0, 100) + '...' : undefined
     });
 
     // Fetch order details with order items
@@ -157,21 +166,46 @@ export async function GET(
       status: orderData.status,
       order_items: orderItems,
       installation_price: formatPrice(installationPrice),
-      installation_date: orderData.installation_date
+      installation_date: orderData.installation_date,
+      installation_time: orderData.installation_time
     };
 
     let template;
-    let prompt;
+    let templatePrompt;
 
-    if (templateId === 'custom') {
-      const customPrompt = searchParams.get('prompt');
-      if (!customPrompt) {
-        return NextResponse.json({ error: "Custom prompt is required" }, { status: 400 });
+    if (templateId === 'custom_email') {
+      // First, get the AI-generated content from custom-email endpoint
+      const customEmailResponse = await fetch(`${baseUrl}/api/admin/orders/${orderId_int}/custom-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-pwa-request': 'true'
+        },
+        body: JSON.stringify({
+          prompt: userPrompt,
+          variables: {
+            orderId: order.id,
+            firstName: order.first_name,
+            lastName: order.last_name,
+            status: order.status,
+            includesInstallation: !!order.installation_date,
+            installationDate: order.installation_date,
+            installationTime: order.installation_time
+          }
+        })
+      });
+
+      if (!customEmailResponse.ok) {
+        const errorData = await customEmailResponse.json();
+        throw new Error(errorData.error || 'Failed to generate custom email');
       }
 
+      const customEmailData = await customEmailResponse.json();
+      
+      // Use the AI-generated content but format it with our template
       template = {
-        subject: `Order Update - Way of Glory #${order.id}`,
-        prompt: customPrompt,
+        subject: customEmailData.subject || `Order Update - Way of Glory #${order.id}`,
+        prompt: userPrompt || '',
         variables: {
           orderId: order.id,
           firstName: order.first_name,
@@ -188,11 +222,19 @@ export async function GET(
           supportEmail: 'help@wayofglory.com',
           websiteUrl: 'https://wayofglory.com',
           logoUrl: logoLightUrl,
+          logoNormalUrl: logoNormalUrl,
           year: new Date().getFullYear(),
-          emailType: 'Order Update'
+          emailType: 'Custom Email',
+          baseUrl: baseUrl
         }
       };
-      prompt = customPrompt;
+      
+      // Return the response immediately with the formatted content
+      return NextResponse.json({
+        subject: template.subject,
+        content: customEmailData.content,
+        html: formatEmailContent(customEmailData.content, template.variables)
+      });
     } else {
       template = getEmailTemplate(templateId, order);
       if (!template) {
@@ -209,15 +251,15 @@ export async function GET(
         installation_price: formatPrice(installationPrice),
         totalAmount: formatPrice(totalAmount)
       };
-      prompt = template.prompt;
+      templatePrompt = template.prompt;
     }
 
     // Generate content using the generate-email endpoint
-    const generateUrl = 'https://wayofglory.com/api/admin/generate-email';
+    const generateUrl = `${baseUrl}/api/admin/generate-email`;
     
     console.log('Generating email with:', {
       templateId,
-      prompt: prompt.substring(0, 100) + '...',
+      prompt: templatePrompt.substring(0, 100) + '...',
       variables: template.variables,
       isPWA: true,
       logoUrls: {
@@ -227,14 +269,14 @@ export async function GET(
     });
 
     const generatePayload = {
-      prompt: prompt,
-      content: prompt,
+      prompt: templatePrompt,
+      content: templatePrompt,
       variables: {
         ...template.variables,
         logoUrl: logoNormalUrl,
         logoNormalUrl: logoNormalUrl,
         logoLightUrl: logoLightUrl,
-        baseUrl: 'https://wayofglory.com',
+        baseUrl: baseUrl,
         isPWA: true
       },
       orderId: orderId_int,
@@ -243,87 +285,103 @@ export async function GET(
 
     let generateResult;
     try {
-      const response = await safeFetch(generateUrl, {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-store',
-          'x-pwa-request': 'true',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-        },
-        body: JSON.stringify(generatePayload)
+      const maxRetries = 3;
+      let attempt = 0;
+      let lastError;
+
+      while (attempt < maxRetries) {
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+
+          const response = await safeFetch(generateUrl, {
+            method: 'POST',
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+              'x-pwa-request': 'true'
+            },
+            body: JSON.stringify(generatePayload),
+            signal: controller.signal
+          });
+
+          clearTimeout(timeoutId);
+
+          if (!response.ok) {
+            const errorDetails = response.data?.error || 'Unknown error';
+            console.error(`Email generation failed (attempt ${attempt + 1}/${maxRetries}):`, {
+              status: response.status,
+              error: errorDetails
+            });
+            lastError = errorDetails;
+            
+            // If it's not a timeout error, don't retry
+            if (response.status !== 504 && response.status !== 408) {
+              throw new Error(errorDetails);
+            }
+          } else {
+            generateResult = response.data;
+            break; // Success, exit retry loop
+          }
+        } catch (error) {
+          lastError = error;
+          console.error(`Attempt ${attempt + 1}/${maxRetries} failed:`, error);
+        }
+
+        attempt++;
+        if (attempt < maxRetries) {
+          // Exponential backoff: wait longer between each retry
+          await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+        }
+      }
+
+      if (!generateResult) {
+        return NextResponse.json({ 
+          error: 'Failed to generate email after multiple attempts',
+          details: lastError?.toString() || 'Maximum retry attempts reached',
+          success: false 
+        }, { 
+          status: 500 
+        });
+      }
+
+      // Validate the generated content
+      if (!generateResult.html && !generateResult.content) {
+        console.error('Invalid template response:', generateResult);
+        return NextResponse.json({ 
+          error: 'Failed to generate email content',
+          details: 'The template generator returned an invalid response',
+          success: false 
+        }, { 
+          status: 500 
+        });
+      }
+
+      // Return the successful response
+      return NextResponse.json({
+        subject: template.subject,
+        content: generateResult.content || '',
+        html: generateResult.html || '',
+        success: true
+      }, {
+        status: 200
       });
 
-      // Check if the response has content, even if status is not 200
-      if (response.data?.html || response.data?.content) {
-        generateResult = response;
-      } else if (!response.ok) {
-        throw new Error('Failed to generate email content');
-      } else {
-        generateResult = response;
-      }
     } catch (err) {
       console.error('Error calling generate-email:', err);
-      return new NextResponse(JSON.stringify({ 
-        error: 'Failed to generate email content',
+      
+      // Determine if it's a timeout error
+      const isTimeout = err instanceof Error && 
+        (err.message.includes('timeout') || err.message.includes('504'));
+      
+      return NextResponse.json({ 
+        error: isTimeout ? 'Email generation timed out' : 'Failed to generate email content',
         details: err instanceof Error ? err.message : 'Unknown error',
-        success: false,
-        isPWA: true,
-        content: null,
-        html: null
-      }), { 
-        status: 500,
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-store',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-        }
+        success: false
+      }, { 
+        status: isTimeout ? 504 : 500
       });
     }
-
-    // If we have content, return it regardless of status code
-    if (generateResult.data?.html || generateResult.data?.content) {
-      return new NextResponse(JSON.stringify({
-        subject: template.subject,
-        content: generateResult.data.content || '',
-        html: generateResult.data.html || '',
-        success: true,
-        isPWA: true
-      }), {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-store',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-        }
-      });
-    }
-
-    // Only return error if we truly have no content
-    return new NextResponse(JSON.stringify({
-      error: 'Failed to generate email content',
-      details: 'No content received from generator',
-      success: false,
-      isPWA: true,
-      content: null,
-      html: null
-    }), {
-      status: 500,
-      headers: {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'no-store',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-      }
-    });
 
   } catch (error) {
     console.error('Error in preview-template:', error);

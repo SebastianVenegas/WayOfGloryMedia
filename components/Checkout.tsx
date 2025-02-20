@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { motion, AnimatePresence } from "framer-motion"
+import { motion as m, AnimatePresence } from "framer-motion"
 import { ChevronRight, ChevronLeft, X, Calendar, Clock, MapPin, CreditCard, Building2, Truck, FileText, PenLine, Banknote, BanknoteIcon, FileCheck, User, Loader2, Wrench, Package, ClipboardCopy, Info, Phone } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
 import SignaturePad from 'react-signature-canvas'
@@ -34,7 +34,14 @@ export interface CheckoutFormData {
   contactOnSite: string;
   contactOnSitePhone: string;
   paymentMethod: string;
+  paymentPlan: 'full' | 'installments';
   signature: string | null;
+  dueToday: number | null;
+  totalDueAfterFirst: number | null;
+  numberOfInstallments: number | null;
+  installmentAmount: number | null;
+  downPayment: number | null;
+  order_creator?: string;
 }
 
 interface CheckoutProps {
@@ -116,6 +123,20 @@ const calculateTax = (products: Array<{
   return taxableAmount * TAX_RATE;
 };
 
+const calculateTotal = (products: Array<{
+  id: number;
+  title: string;
+  price: number;
+  quantity: number;
+  category: string;
+  is_service?: boolean;
+  is_custom?: boolean;
+}>, installationPrice: number = 0) => {
+  const subtotal = products.reduce((sum, p) => sum + p.price * p.quantity, 0);
+  const tax = calculateTax(products);
+  return subtotal + tax + installationPrice;
+};
+
 const formatDate = (date: Date) => {
   return new Intl.DateTimeFormat('en-US', {
     year: 'numeric',
@@ -156,10 +177,12 @@ interface StepProps {
   onChange: (data: Partial<CheckoutFormData>) => void;
   errors: { [key: string]: string };
   onSubmit: () => void;
+  products: CheckoutProps['products'];
+  installationPrice: number;
 }
 
 // Extract step components
-const ContactStep: React.FC<StepProps> = ({ formData, onChange, errors }) => {
+const ContactStep: React.FC<StepProps> = ({ formData, onChange, errors, onSubmit }) => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     onChange({ [name]: value });
@@ -230,7 +253,7 @@ const ContactStep: React.FC<StepProps> = ({ formData, onChange, errors }) => {
         );
 };
 
-const ShippingStep: React.FC<StepProps> = ({ formData, onChange, errors }) => {
+const ShippingStep: React.FC<StepProps> = ({ formData, onChange, errors, onSubmit }) => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     onChange({ [name]: value });
@@ -372,62 +395,171 @@ const ShippingStep: React.FC<StepProps> = ({ formData, onChange, errors }) => {
         );
 };
 
-const PaymentStep: React.FC<StepProps> = ({ formData, onChange, errors }) => {
+const PaymentStep: React.FC<StepProps> = ({ formData, onChange, errors, onSubmit, products, installationPrice }) => {
   const handlePaymentMethodChange = (method: string) => {
     onChange({ paymentMethod: method });
   };
 
-        return (
-          <div className="space-y-6">
-            <h3 className="text-lg font-medium">Select Payment Method</h3>
-            <div className="space-y-4">
-        <PaymentOption
-          title="Cash"
-          description="Pay in cash before delivery"
-          icon={BanknoteIcon}
-          iconColor="text-green-600"
-          selected={formData.paymentMethod === 'cash'}
-          onClick={() => handlePaymentMethodChange('cash')}
-        />
+  const handlePaymentPlanChange = (plan: 'full' | 'installments') => {
+    onChange({ paymentPlan: plan });
+  };
 
-        <PaymentOption
-          title="Check"
-          description="Pay by check before delivery"
-          icon={FileCheck}
-          iconColor="text-blue-600"
-          selected={formData.paymentMethod === 'check'}
-          onClick={() => handlePaymentMethodChange('check')}
-        />
+  const handleDownPaymentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const total = calculateTotal(products, installationPrice);
+    const downPayment = parseFloat(e.target.value) || 0;
+    
+    if (formData.numberOfInstallments) {
+      const remainingBalance = total - downPayment;
+      const installmentAmount = remainingBalance / formData.numberOfInstallments;
+      
+      onChange({
+        downPayment,
+        installmentAmount,
+        dueToday: downPayment,
+        totalDueAfterFirst: remainingBalance
+      });
+    } else {
+      onChange({
+        downPayment,
+        dueToday: downPayment
+      });
+    }
+  };
 
-        <PaymentOption
-          title="Direct Deposit"
-          description="Pay via bank transfer"
-          icon={Building2}
-          iconColor="text-purple-600"
-          selected={formData.paymentMethod === 'direct_deposit'}
-          onClick={() => handlePaymentMethodChange('direct_deposit')}
-          additionalContent={
-            formData.paymentMethod === 'direct_deposit' && (
-                  <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                    <h5 className="font-medium mb-2">Bank Details:</h5>
-                    <div className="space-y-1 text-sm">
-                      <p>Bank: Chase Bank</p>
-                      <p>Account Name: Way of Glory Media INC</p>
-                      <p>Account Number: XXXX-XXXX-XXXX</p>
-                      <p>Routing Number: XXXXXXXX</p>
-                  <p className="mt-2 text-gray-600">
-                    Please include your name and event date in the transfer description
-                  </p>
-                    </div>
-                  </div>
-            )
-          }
-        />
+  const handleInstallmentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const installments = parseInt(e.target.value);
+    const total = calculateTotal(products, installationPrice);
+    const downPayment = formData.downPayment || total * 0.2; // Use existing down payment or default to 20%
+    const remainingBalance = total - downPayment;
+    const installmentAmount = Number((remainingBalance / installments).toFixed(2));
+
+    onChange({
+      numberOfInstallments: installments,
+      downPayment,
+      installmentAmount,
+      dueToday: downPayment,
+      totalDueAfterFirst: remainingBalance
+    });
+  };
+
+  const total = calculateTotal(products, installationPrice);
+  const minDownPayment = total * 0.1; // Minimum 10% down payment
+
+  return (
+    <div className="space-y-6">
+      <div className="space-y-4">
+        <h3 className="text-lg font-medium">Payment Method</h3>
+        <div className="grid grid-cols-1 gap-4">
+          <PaymentOption
+            title="Cash"
+            description="Pay in cash"
+            icon={BanknoteIcon}
+            iconColor="text-green-500"
+            selected={formData.paymentMethod === 'cash'}
+            onClick={() => handlePaymentMethodChange('cash')}
+          />
+          <PaymentOption
+            title="Check"
+            description="Pay by check"
+            icon={FileCheck}
+            iconColor="text-blue-500"
+            selected={formData.paymentMethod === 'check'}
+            onClick={() => handlePaymentMethodChange('check')}
+          />
+          <PaymentOption
+            title="PayPal"
+            description="Pay using PayPal"
+            icon={CreditCard}
+            iconColor="text-blue-600"
+            selected={formData.paymentMethod === 'paypal'}
+            onClick={() => handlePaymentMethodChange('paypal')}
+          />
+          <PaymentOption
+            title="Zelle"
+            description="Pay using Zelle"
+            icon={Building2}
+            iconColor="text-purple-500"
+            selected={formData.paymentMethod === 'zelle'}
+            onClick={() => handlePaymentMethodChange('zelle')}
+          />
+        </div>
       </div>
-      {errors.paymentMethod && (
-        <p className="text-red-500 text-sm mt-1">{errors.paymentMethod}</p>
-                )}
-              </div>
+
+      <div className="space-y-4">
+        <h3 className="text-lg font-medium">Payment Plan</h3>
+        <div className="grid grid-cols-1 gap-4">
+          <PaymentOption
+            title="Full Payment"
+            description="Pay the entire amount upfront"
+            icon={Banknote}
+            iconColor="text-green-500"
+            selected={formData.paymentPlan === 'full'}
+            onClick={() => handlePaymentPlanChange('full')}
+          />
+          <PaymentOption
+            title="Installment Plan"
+            description="Split your payment into installments"
+            icon={BanknoteIcon}
+            iconColor="text-blue-500"
+            selected={formData.paymentPlan === 'installments'}
+            onClick={() => handlePaymentPlanChange('installments')}
+            additionalContent={
+              formData.paymentPlan === 'installments' && (
+                <div className="mt-4 space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Down Payment (Minimum {formatCurrency(minDownPayment)})
+                    </label>
+                    <input
+                      type="number"
+                      min={minDownPayment}
+                      max={total}
+                      step="0.01"
+                      value={formData.downPayment || ''}
+                      onChange={handleDownPaymentChange}
+                      className="w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-gray-900"
+                      placeholder="Enter down payment amount"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Number of Installments
+                    </label>
+                    <select
+                      className="w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-gray-900"
+                      value={formData.numberOfInstallments || ''}
+                      onChange={handleInstallmentChange}
+                    >
+                      <option value="">Select number of installments</option>
+                      <option value="3">3 installments</option>
+                      <option value="4">4 installments</option>
+                      <option value="6">6 installments</option>
+                      <option value="12">12 installments</option>
+                    </select>
+                  </div>
+                  {formData.numberOfInstallments && formData.downPayment && formData.installmentAmount && (
+                    <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+                      <p className="text-sm text-gray-600">
+                        Down Payment (Due Today): {formatCurrency(formData.downPayment)}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        {formData.numberOfInstallments} payments of {formatCurrency(formData.installmentAmount)}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        Total After Down Payment: {formatCurrency(formData.totalDueAfterFirst || 0)}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        Total Amount: {formatCurrency(total)}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )
+            }
+          />
+        </div>
+      </div>
+    </div>
   );
 };
 
@@ -467,7 +599,7 @@ const PaymentOption: React.FC<PaymentOptionProps> = ({
           </div>
         );
 
-const InstallationStep: React.FC<StepProps> = ({ formData, onChange, errors }) => {
+const InstallationStep: React.FC<StepProps> = ({ formData, onChange, errors, onSubmit }) => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     onChange({ [name]: value });
@@ -658,7 +790,102 @@ const ContractHeader: React.FC<ContractHeaderProps> = ({ contractNumber }) => {
   );
 };
 
-// Update ReviewStep component for better layout
+// Update PaymentPlanSection component
+const PaymentPlanSection: React.FC<{ formData: CheckoutFormData; products: CheckoutProps['products']; installationPrice: number }> = ({ formData, products, installationPrice }) => {
+  const subtotal = products.reduce((sum, p) => sum + p.price * p.quantity, 0);
+  const tax = calculateTax(products);
+  const total = subtotal + tax + installationPrice;
+
+  return (
+    <div className="bg-gradient-to-br from-gray-50 to-white p-6 rounded-xl border border-gray-200 shadow-sm">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="bg-blue-100 p-2.5 rounded-lg">
+          <BanknoteIcon className="h-5 w-5 text-blue-600" />
+        </div>
+        <h3 className="text-lg font-semibold text-gray-900">Payment Information</h3>
+      </div>
+      <div className="space-y-6">
+        {/* Payment Method */}
+        <div className="bg-white rounded-lg border border-gray-100 p-4">
+          <h4 className="text-sm font-medium text-gray-700 mb-3">Payment Method</h4>
+          <div className="flex items-center gap-2">
+            {formData.paymentMethod === 'cash' && <BanknoteIcon className="h-4 w-4 text-green-500" />}
+            {formData.paymentMethod === 'check' && <FileCheck className="h-4 w-4 text-blue-500" />}
+            {formData.paymentMethod === 'paypal' && <CreditCard className="h-4 w-4 text-blue-600" />}
+            {formData.paymentMethod === 'zelle' && <Building2 className="h-4 w-4 text-purple-500" />}
+            <span className="text-sm font-semibold text-gray-900 capitalize">
+              {formData.paymentMethod.replace('_', ' ')}
+            </span>
+          </div>
+        </div>
+
+        {/* Payment Breakdown */}
+        <div className="bg-white rounded-lg border border-gray-100 p-4">
+          <h4 className="text-sm font-medium text-gray-700 mb-3">Payment Breakdown</h4>
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">Total Amount</span>
+              <span className="text-sm font-semibold text-gray-900">{formatCurrency(total)}</span>
+            </div>
+            
+            {formData.paymentPlan === 'installments' ? (
+              <>
+                <div className="flex justify-between items-center text-blue-600 font-medium">
+                  <span className="text-sm">Due Today</span>
+                  <span className="text-sm">{formatCurrency(formData.downPayment || 0)}</span>
+                </div>
+                <div className="pt-2 border-t border-gray-100">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-sm text-gray-600">Remaining Balance</span>
+                    <span className="text-sm font-medium text-gray-900">{formatCurrency(formData.totalDueAfterFirst || 0)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Payment Plan</span>
+                    <span className="text-sm font-medium text-gray-900">
+                      {formData.numberOfInstallments} payments of {formatCurrency(formData.installmentAmount || 0)}
+                    </span>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="flex justify-between items-center text-blue-600 font-medium">
+                <span className="text-sm">Full Payment Due Today</span>
+                <span className="text-sm">{formatCurrency(total)}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Payment Details */}
+        <div className="bg-white rounded-lg border border-gray-100 p-4">
+          <h4 className="text-sm font-medium text-gray-700 mb-3">Payment Details</h4>
+          <div className="space-y-2">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">Subtotal</span>
+              <span className="text-sm text-gray-900">{formatCurrency(subtotal)}</span>
+            </div>
+            {installationPrice > 0 && (
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Installation</span>
+                <span className="text-sm text-gray-900">{formatCurrency(installationPrice)}</span>
+              </div>
+            )}
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">Tax</span>
+              <span className="text-sm text-gray-900">{formatCurrency(tax)}</span>
+            </div>
+            <div className="pt-2 border-t border-gray-100 flex justify-between items-center font-medium">
+              <span className="text-sm text-gray-900">Total</span>
+              <span className="text-sm text-gray-900">{formatCurrency(total)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Update ReviewStep component
 const ReviewStep: React.FC<StepProps & {
   products: CheckoutProps['products'];
   installationPrice: number;
@@ -684,24 +911,25 @@ const ReviewStep: React.FC<StepProps & {
         <div className="space-y-6">
           <CustomerInformation formData={formData} />
           <ShippingInformation formData={formData} />
-                      </div>
+        </div>
         <div className="space-y-6">
-          <PaymentDetails 
-            formData={formData}
-            products={products}
+          <PaymentPlanSection 
+            formData={formData} 
+            products={products} 
             installationPrice={installationPrice}
           />
           {installationPrice > 0 && (
             <InstallationInformation formData={formData} />
-                        )}
-                      </div>
-                    </div>
+          )}
+        </div>
+      </div>
 
       <OrderSummary
         products={products}
         installationPrice={installationPrice}
         productsTax={productsTax}
         total={total}
+        formData={formData}
       />
       
       <TermsAndConditions />
@@ -712,33 +940,33 @@ const ReviewStep: React.FC<StepProps & {
         errors={errors}
         signaturePadRef={signaturePadRef}
       />
-                  </div>
+    </div>
   );
 };
 
 // Update OrderSummary component
-const OrderSummary: React.FC<OrderSummaryProps> = ({ products, installationPrice, productsTax, total }) => (
+const OrderSummary: React.FC<OrderSummaryProps> = ({ products, installationPrice, productsTax, total, formData }) => (
   <div className="bg-gradient-to-br from-gray-50 to-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
     <div className="p-6">
       <div className="flex items-center gap-3 mb-6">
         <div className="bg-blue-100 p-2.5 rounded-lg">
           <Package className="h-5 w-5 text-blue-600" />
-                    </div>
+        </div>
         <h3 className="text-lg font-semibold text-gray-900">Order Summary</h3>
       </div>
       <div className="bg-white rounded-lg border border-gray-100 overflow-hidden">
-                      <table className="w-full text-sm">
-                        <thead>
+        <table className="w-full text-sm">
+          <thead>
             <tr className="bg-gray-50 border-b border-gray-100">
               <th className="px-6 py-4 text-left text-gray-600 font-medium">Item</th>
               <th className="px-6 py-4 text-center text-gray-600 font-medium">Quantity</th>
               <th className="px-6 py-4 text-right text-gray-600 font-medium">Price</th>
               <th className="px-6 py-4 text-right text-gray-600 font-medium">Total</th>
-                          </tr>
-                        </thead>
+            </tr>
+          </thead>
           <tbody className="divide-y divide-gray-100">
-                          {products.map((product, index) => (
-                            <tr key={index} className="hover:bg-gray-50 transition-colors">
+            {products.map((product, index) => (
+              <tr key={index} className="hover:bg-gray-50 transition-colors">
                 <td className="px-6 py-4">
                   <div>
                     <p className="font-medium text-gray-900">{product.title}</p>
@@ -754,9 +982,9 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({ products, installationPrice
                 <td className="px-6 py-4 text-right font-medium text-gray-900">
                   {formatCurrency(product.price * product.quantity)}
                 </td>
-                            </tr>
-                          ))}
-                        </tbody>
+              </tr>
+            ))}
+          </tbody>
         </table>
       </div>
       <div className="mt-6 bg-white rounded-lg border border-gray-100 p-4">
@@ -767,7 +995,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({ products, installationPrice
               {formatCurrency(products.reduce((sum, p) => sum + p.price * p.quantity, 0))}
             </span>
           </div>
-                          {installationPrice > 0 && (
+          {installationPrice > 0 && (
             <div className="flex items-center justify-between text-sm">
               <span className="text-gray-600">Installation</span>
               <span className="font-medium text-gray-900">{formatCurrency(installationPrice)}</span>
@@ -776,12 +1004,37 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({ products, installationPrice
           <div className="flex items-center justify-between text-sm">
             <span className="text-gray-600">Tax</span>
             <span className="font-medium text-gray-900">{formatCurrency(productsTax)}</span>
-                    </div>
+          </div>
           <div className="pt-3 border-t border-gray-100">
             <div className="flex items-center justify-between">
               <span className="text-lg font-semibold text-gray-900">Total</span>
               <span className="text-lg font-bold text-blue-600">{formatCurrency(total)}</span>
-                  </div>
+            </div>
+            {formData.paymentPlan === 'installments' ? (
+              <div className="mt-4 space-y-2 bg-gray-50 p-4 rounded-lg">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-medium text-gray-700">Due Today (Down Payment)</span>
+                  <span className="font-bold text-blue-600">{formatCurrency(formData.downPayment || 0)}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-medium text-gray-700">Remaining Balance</span>
+                  <span className="font-medium text-gray-900">{formatCurrency(formData.totalDueAfterFirst || 0)}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-medium text-gray-700">Payment Plan</span>
+                  <span className="font-medium text-gray-900">
+                    {formData.numberOfInstallments} payments of {formatCurrency(formData.installmentAmount || 0)}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-4 bg-gray-50 p-4 rounded-lg">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-medium text-gray-700">Full Payment Due Today</span>
+                  <span className="font-bold text-blue-600">{formatCurrency(total)}</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -820,7 +1073,13 @@ export default function Checkout({
     contactOnSite: '',
     contactOnSitePhone: '',
     paymentMethod: '',
-    signature: null
+    paymentPlan: 'full',
+    signature: null,
+    dueToday: null,
+    totalDueAfterFirst: null,
+    numberOfInstallments: null,
+    installmentAmount: null,
+    downPayment: null
   });
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [isLoading, setIsLoading] = useState(false);
@@ -875,32 +1134,55 @@ export default function Checkout({
             .reduce((sum, p) => sum + (p.our_price || p.price) * p.quantity, 0);
           const tax = calculateTax(products);
           const total = productSubtotal + serviceSubtotal + tax + (installationPrice || 0);
-          const totalProfit = products.reduce((sum, p) => {
-            const profit = ((p.our_price || p.price) - (p.price || 0)) * p.quantity;
-            return sum + profit;
-          }, 0);
 
-          // Send complete order data
-          const orderData = {
+          // Calculate initial payment amount based on payment plan
+          const initialPaymentAmount = formData.paymentPlan === 'full' ? 
+            total : 
+            (formData.downPayment || total * 0.25);
+
+          // Calculate installment amount for installment plans
+          const installmentAmount = formData.paymentPlan === 'installments' && formData.numberOfInstallments ? 
+            (total - (formData.downPayment || 0)) / formData.numberOfInstallments : 
+            undefined;
+
+          // Prepare the contract data
+          const contractData = {
             ...formData,
             products,
             productSubtotal,
             serviceSubtotal,
             tax,
             total,
-            totalProfit,
+            paymentPlan: formData.paymentPlan || 'full',
+            dueToday: initialPaymentAmount,
+            payment_status: formData.paymentPlan === 'full' ? 'completed' : 'partial',
+            total_paid: initialPaymentAmount,
+            contractNumber: formData.contractNumber,
+            order_creator: localStorage.getItem('userName') || 'Unknown',
             installationPrice,
-            contractNumber: formData.contractNumber // Ensure contract number is included
+            installmentAmount: formData.paymentPlan === 'installments' ? formData.installmentAmount : null,
+            downPayment: formData.paymentPlan === 'installments' ? formData.downPayment : initialPaymentAmount,
+            numberOfInstallments: formData.paymentPlan === 'installments' ? formData.numberOfInstallments : null,
+            totalDueAfterFirst: formData.paymentPlan === 'installments' ? total - initialPaymentAmount : null,
+            paymentRecord: {
+              amount: initialPaymentAmount,
+              payment_method: formData.paymentMethod,
+              payment_type: 'initial',
+              notes: 'Initial installment payment',
+              created_at: new Date().toISOString()
+            }
           };
 
-          await onSubmit(orderData);
+          console.log('Submitting contract data:', contractData);
+
+          await onSubmit(contractData);
           clearCart();
           onClose();
           toast.success("Order completed successfully!");
         } catch (error) {
           console.error('Error submitting form:', error);
           setErrors({ submit: 'Failed to submit the form. Please try again.' });
-          toast.error("Failed to complete order. Please try again.");
+          toast.error(error instanceof Error ? error.message : "Failed to complete order. Please try again.");
         } finally {
           setIsLoading(false);
         }
@@ -923,7 +1205,9 @@ export default function Checkout({
       formData,
       onChange: handleInputChange,
       errors,
-      onSubmit: handleSubmit
+      onSubmit: handleSubmit,
+      products,
+      installationPrice
     };
 
     switch (currentStepId) {
@@ -977,6 +1261,7 @@ interface OrderSummaryProps {
   installationPrice: number;
   productsTax: number;
   total: number;
+  formData: CheckoutFormData;
 }
 interface InstallationInformationProps {
   formData: CheckoutFormData;
@@ -1066,10 +1351,11 @@ const ShippingInformation: React.FC<ShippingInformationProps> = ({ formData }) =
   </div>
 );
 
-const PaymentDetails: React.FC<{ formData: CheckoutFormData; products: CheckoutProps['products']; installationPrice: number; }> = ({ 
+const PaymentDetails: React.FC<{ formData: CheckoutFormData; products: CheckoutProps['products']; installationPrice: number; onChange: (data: Partial<CheckoutFormData>) => void; }> = ({ 
   formData, 
   products, 
-  installationPrice 
+  installationPrice,
+  onChange
 }) => {
   const subtotal = products.reduce((sum, p) => sum + p.price * p.quantity, 0);
   const tax = calculateTax(products);
@@ -1089,12 +1375,56 @@ const PaymentDetails: React.FC<{ formData: CheckoutFormData; products: CheckoutP
           <div className="flex items-center gap-2">
             {formData.paymentMethod === 'cash' && <BanknoteIcon className="h-4 w-4 text-green-500" />}
             {formData.paymentMethod === 'check' && <FileCheck className="h-4 w-4 text-blue-500" />}
-            {formData.paymentMethod === 'direct_deposit' && <Building2 className="h-4 w-4 text-purple-500" />}
+            {formData.paymentMethod === 'paypal' && <CreditCard className="h-4 w-4 text-blue-600" />}
+            {formData.paymentMethod === 'zelle' && <Building2 className="h-4 w-4 text-purple-500" />}
             <span className="text-sm font-semibold text-gray-900 capitalize">
               {formData.paymentMethod.replace('_', ' ')}
             </span>
           </div>
         </div>
+        <div className="p-4 flex items-center justify-between">
+          <span className="text-sm font-medium text-gray-500">Payment Plan</span>
+          <span className="text-sm font-semibold text-gray-900 capitalize">
+            {formData.paymentPlan === 'full' ? 'Pay in Full' : 'Pay in Installments'}
+          </span>
+        </div>
+        {formData.paymentPlan === 'installments' && (
+          <div className="space-y-4">
+            <div className="p-4 flex items-center justify-between">
+              <span className="text-sm font-medium text-gray-500">Down Payment</span>
+              <input
+                type="number"
+                min={total * 0.1}
+                max={total}
+                step="0.01"
+                value={formData.downPayment || ''}
+                onChange={(e) => onChange({ downPayment: parseFloat(e.target.value) })}
+                className="w-32 p-2 border rounded-md text-sm font-semibold text-gray-900 text-right"
+                placeholder="Enter down payment amount"
+              />
+            </div>
+            <div className="p-4 flex items-center justify-between">
+              <span className="text-sm font-medium text-gray-500">Number of Installments</span>
+              <select
+                className="w-32 p-2 border rounded-md text-sm font-semibold text-gray-900"
+                value={formData.numberOfInstallments || ''}
+                onChange={(e) => onChange({ numberOfInstallments: parseInt(e.target.value) })}
+              >
+                <option value="">Select number of installments</option>
+                <option value="3">3 installments</option>
+                <option value="4">4 installments</option>
+                <option value="6">6 installments</option>
+                <option value="12">12 installments</option>
+              </select>
+            </div>
+            {formData.numberOfInstallments && formData.downPayment && formData.installmentAmount && (
+              <div className="p-4 flex items-center justify-between">
+                <span className="text-sm font-medium text-gray-500">Down Payment (Due Today)</span>
+                <span className="text-sm font-semibold text-gray-900">{formatCurrency(formData.downPayment)}</span>
+              </div>
+            )}
+          </div>
+        )}
         <div className="p-4 flex items-center justify-between">
           <span className="text-sm font-medium text-gray-500">Subtotal</span>
           <span className="text-sm font-semibold text-gray-900">{formatCurrency(subtotal)}</span>
@@ -1128,38 +1458,91 @@ const TermsAndConditions: React.FC = () => (
     </div>
     <div className="bg-white rounded-lg p-6 border border-gray-100">
       <p className="text-gray-600 mb-6">
-                        By signing this agreement, you acknowledge and agree to the following terms:
-                      </p>
+        By signing this agreement, you acknowledge and agree to the following terms:
+      </p>
       <div className="space-y-4">
         <div className="flex gap-4">
           <div className="flex-shrink-0 w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-medium text-sm">1</div>
           <div>
-            <p className="text-gray-900"><strong>Payment Terms:</strong> Payment is due according to the selected payment method. For invoiced orders, payment is due upon receipt.</p>
-                      </div>
-                    </div>
+            <p className="text-gray-900"><strong>Payment Terms:</strong> Payment is due according to the selected payment method and plan. For full payments, the entire amount is due upon signing. For installment plans:</p>
+            <ul className="mt-2 ml-4 space-y-1 text-gray-700 list-disc">
+              <li>Down payment is required at the time of signing</li>
+              <li>Remaining balance will be divided into agreed-upon installments</li>
+              <li>Each installment payment is due on the same day of subsequent months</li>
+              <li>Late payments may incur additional fees</li>
+            </ul>
+          </div>
+        </div>
+
         <div className="flex gap-4">
           <div className="flex-shrink-0 w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-medium text-sm">2</div>
           <div>
-            <p className="text-gray-900"><strong>Installation:</strong> If installation services are included, the customer agrees to provide access to the premises at the scheduled date and time.</p>
-                  </div>
+            <p className="text-gray-900"><strong>Payment Default:</strong> In the event of payment default:</p>
+            <ul className="mt-2 ml-4 space-y-1 text-gray-700 list-disc">
+              <li>A grace period of 5 business days is provided for each installment</li>
+              <li>Late fees of 5% will apply after the grace period</li>
+              <li>Services may be suspended until payment is received</li>
+              <li>Legal action may be taken for continued non-payment</li>
+            </ul>
+          </div>
         </div>
+
         <div className="flex gap-4">
           <div className="flex-shrink-0 w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-medium text-sm">3</div>
           <div>
-            <p className="text-gray-900"><strong>Warranty:</strong> All products come with manufacturer's warranty. Services are guaranteed for quality and workmanship.</p>
+            <p className="text-gray-900"><strong>Installation and Services:</strong> If installation services are included:</p>
+            <ul className="mt-2 ml-4 space-y-1 text-gray-700 list-disc">
+              <li>Customer must provide access to premises at scheduled time</li>
+              <li>Rescheduling with less than 48 hours notice may incur fees</li>
+              <li>Installation area must be prepared according to specifications</li>
+              <li>Additional work beyond scope will require separate agreement</li>
+            </ul>
           </div>
         </div>
+
         <div className="flex gap-4">
           <div className="flex-shrink-0 w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-medium text-sm">4</div>
           <div>
-            <p className="text-gray-900"><strong>Cancellation:</strong> Orders may be cancelled within 24 hours of placement without penalty. Custom services may not be eligible for cancellation.</p>
+            <p className="text-gray-900"><strong>Early Payoff:</strong> For installment plans:</p>
+            <ul className="mt-2 ml-4 space-y-1 text-gray-700 list-disc">
+              <li>Early payoff of remaining balance is allowed at any time</li>
+              <li>No prepayment penalties will be charged</li>
+              <li>Contact our office for current payoff amount</li>
+            </ul>
           </div>
         </div>
+
         <div className="flex gap-4">
           <div className="flex-shrink-0 w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-medium text-sm">5</div>
           <div>
-            <p className="text-gray-900"><strong>Returns:</strong> Products may be returned within 3 days in original condition. Custom items and services are non-refundable.</p>
+            <p className="text-gray-900"><strong>Warranty and Returns:</strong></p>
+            <ul className="mt-2 ml-4 space-y-1 text-gray-700 list-disc">
+              <li>Products include manufacturer's standard warranty</li>
+              <li>Installation work is guaranteed for quality and workmanship</li>
+              <li>Returns accepted within 3 days for unopened products only</li>
+              <li>Custom items and installed products are non-returnable</li>
+              <li>Refunds will be applied to the remaining balance or future payments</li>
+            </ul>
           </div>
+        </div>
+
+        <div className="flex gap-4">
+          <div className="flex-shrink-0 w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-medium text-sm">6</div>
+          <div>
+            <p className="text-gray-900"><strong>Cancellation and Modifications:</strong></p>
+            <ul className="mt-2 ml-4 space-y-1 text-gray-700 list-disc">
+              <li>Orders may be cancelled within 24 hours without penalty</li>
+              <li>Payment plan modifications require written agreement</li>
+              <li>Custom orders cannot be cancelled once production begins</li>
+              <li>Installation date changes require 48 hours notice</li>
+            </ul>
+          </div>
+        </div>
+
+        <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+          <p className="text-sm text-gray-600">
+            By proceeding with this agreement, you confirm that you have read, understood, and agree to these terms and conditions. This agreement is legally binding and enforceable.
+          </p>
         </div>
       </div>
     </div>
@@ -1368,7 +1751,7 @@ const CheckoutLayout: React.FC<CheckoutLayoutProps> = ({
   formData,
   renderStep
 }) => (
-    <motion.div
+    <m.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -1376,7 +1759,7 @@ const CheckoutLayout: React.FC<CheckoutLayoutProps> = ({
     >
       <div className="fixed inset-0 overflow-y-auto">
         <div className="flex min-h-full items-center justify-center p-4">
-          <motion.div
+          <m.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
@@ -1455,7 +1838,7 @@ const CheckoutLayout: React.FC<CheckoutLayoutProps> = ({
             <div className="px-6 py-4">
               <form onSubmit={handleSubmit}>
                 <AnimatePresence mode="wait">
-                  <motion.div
+                  <m.div
                     key={currentStep}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -1463,7 +1846,7 @@ const CheckoutLayout: React.FC<CheckoutLayoutProps> = ({
                     transition={{ duration: 0.2 }}
                   >
                     {renderStep()}
-                  </motion.div>
+                  </m.div>
                 </AnimatePresence>
               </form>
             </div>
@@ -1506,8 +1889,8 @@ const CheckoutLayout: React.FC<CheckoutLayoutProps> = ({
                 )}
               </Button>
             </div>
-          </motion.div>
+          </m.div>
         </div>
       </div>
-    </motion.div>
+    </m.div>
 ); 

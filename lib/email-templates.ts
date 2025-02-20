@@ -64,6 +64,7 @@ export interface Order {
   status: string;
   order_items?: any[];
   installation_date?: string;
+  installation_time?: string;
   installation_price?: number | string;
   subtotal?: number;
   hasInstallation?: boolean;

@@ -1,35 +1,89 @@
-import { NextResponse, NextRequest } from 'next/server';
-import { sql } from '@vercel/postgres';
+import { NextRequest, NextResponse } from 'next/server';
+import prisma from '@/lib/prisma';
+
+interface EmailLog {
+  id: number;
+  subject: string | null;
+  content: string | null;
+  sent_at: Date | null;
+  template_id: string | null;
+  created_at: Date | null;
+}
+
+interface FormattedEmailLog {
+  id: number;
+  subject: string;
+  content: string;
+  sent_at: string;
+  template_id?: string;
+  status: string;
+  preview: string;
+}
 
 export async function GET(
   request: NextRequest,
-  context: any
+  context: { params: { orderId: string } }
 ): Promise<Response> {
-  const { params } = context;
-  const orderId = params.orderId;
-
   try {
-    if (!orderId) {
-      return NextResponse.json({ error: 'Order ID is required' }, { status: 400 });
+    // Await the params to fix the Next.js warning
+    const params = await Promise.resolve(context.params);
+    const orderIdNum = parseInt(params.orderId);
+
+    if (isNaN(orderIdNum)) {
+      return NextResponse.json(
+        { error: 'Invalid order ID format' },
+        { status: 400 }
+      );
     }
 
-    const orderIdInt = parseInt(orderId);
-    if (isNaN(orderIdInt)) {
-      return NextResponse.json({ error: 'Invalid Order ID' }, { status: 400 });
-    }
+    const emailLogs = await prisma.email_logs.findMany({
+      where: {
+        order_id: orderIdNum
+      },
+      orderBy: {
+        sent_at: 'desc'
+      },
+      select: {
+        id: true,
+        subject: true,
+        content: true,
+        sent_at: true,
+        template_id: true,
+        created_at: true
+      }
+    });
 
-    const result = await sql`
-      SELECT 
-        el.*,
-        SUBSTRING(el.content, 1, 200) as preview
-      FROM email_logs el
-      WHERE el.order_id = ${orderIdInt}
-      ORDER BY el.sent_at DESC;
-    `;
+    // Format the logs to match the expected structure
+    const formattedLogs: FormattedEmailLog[] = emailLogs.map((log: EmailLog) => ({
+      id: log.id,
+      subject: log.subject || '',
+      content: log.content || '',
+      sent_at: log.sent_at?.toISOString() || log.created_at?.toISOString() || new Date().toISOString(),
+      template_id: log.template_id || undefined,
+      status: 'sent',
+      preview: log.content?.substring(0, 150) || ''
+    }));
 
-    return NextResponse.json(result.rows);
+    return NextResponse.json(formattedLogs);
   } catch (error) {
     console.error('Error fetching email logs:', error);
-    return NextResponse.json({ error: 'Failed to fetch email logs' }, { status: 500 });
+    
+    if (error instanceof Error && error.message.includes('prisma')) {
+      return NextResponse.json(
+        { 
+          error: 'Database error occurred',
+          details: error.message
+        },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json(
+      { 
+        error: 'Failed to fetch email logs',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
+      { status: 500 }
+    );
   }
 } 

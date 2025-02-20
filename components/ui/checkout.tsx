@@ -6,6 +6,10 @@ import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronLeft, ChevronRight, Check, X } from 'lucide-react'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Label } from '@/components/ui/label'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
+import { toast } from '@/components/ui/use-toast'
 
 interface CheckoutProps {
   cartItems: {
@@ -94,6 +98,10 @@ export function Checkout({ cartItems, onClose, clearCart }: CheckoutProps) {
   })
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('directDeposit')
   const [isComplete, setIsComplete] = useState(false)
+  const [paymentPlan, setPaymentPlan] = useState<'full' | 'installments'>('full')
+  const [dueToday, setDueToday] = useState<number>(0)
+  const [totalDueAfterFirst, setTotalDueAfterFirst] = useState<number>(0)
+  const [paymentFrequency, setPaymentFrequency] = useState<'Weekly' | 'Bi-Weekly' | 'Monthly' | 'Quarterly'>('Monthly')
 
   const totalPrice = cartItems.reduce((sum, item) => {
     const basePrice = item.price * item.quantity
@@ -131,10 +139,20 @@ export function Checkout({ cartItems, onClose, clearCart }: CheckoutProps) {
   }
 
   const handleComplete = async () => {
-    const orderId = Math.random().toString(36).substr(2, 9).toUpperCase()
+    const orderId = Math.random().toString(36).substr(2, 9).toUpperCase();
     
     try {
-      const response = await fetch('/api/order-confirmation', {
+      // Calculate initial payment amount based on payment plan
+      const totalWithTax = totalPrice + salesTax;
+      const initialPaymentAmount = paymentPlan === 'installments' ? dueToday : totalWithTax;
+      
+      const initialPayment = {
+        amount: initialPaymentAmount,
+        payment_type: paymentPlan === 'installments' ? 'initial' : 'full'
+      };
+
+      // First create the order
+      const orderResponse = await fetch('/api/order-confirmation', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -144,23 +162,39 @@ export function Checkout({ cartItems, onClose, clearCart }: CheckoutProps) {
           cartItems,
           paymentMethod,
           orderId,
-          totalPrice
+          totalPrice: totalWithTax,
+          paymentPlan,
+          dueToday: paymentPlan === 'installments' ? dueToday : totalWithTax,
+          totalDueAfterFirst: paymentPlan === 'installments' ? totalDueAfterFirst : 0,
+          paymentFrequency,
+          initialPayment
         }),
-      })
+      });
 
-      if (!response.ok) {
-        throw new Error('Failed to send order confirmation')
+      if (!orderResponse.ok) {
+        const errorData = await orderResponse.json();
+        throw new Error(errorData.error || 'Failed to create order');
       }
 
-      clearCart() // Clear cart immediately after successful order creation
-      setIsComplete(true)
-    } catch (error) {
-      console.error('Error sending order confirmation:', error)
-      // Still complete the order and clear cart even if email fails
-      clearCart()
-      setIsComplete(true)
+      const orderData = await orderResponse.json();
+      
+      if (!orderData.success) {
+        throw new Error('Failed to create order');
+      }
+
+      // Clear cart and show completion
+      clearCart();
+      setIsComplete(true);
+      
+    } catch (error: unknown) {
+      console.error('Error completing order:', error);
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to complete order. Please try again.',
+        variant: 'destructive'
+      });
     }
-  }
+  };
 
   const isStepValid = () => {
     switch (step) {
@@ -178,6 +212,100 @@ export function Checkout({ cartItems, onClose, clearCart }: CheckoutProps) {
         return true
     }
   }
+
+  const PaymentDetails = () => {
+    return (
+      <div className="space-y-6">
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Payment Plan</h3>
+          <RadioGroup 
+            value={paymentPlan}
+            onValueChange={(value: 'full' | 'installments') => {
+              setPaymentPlan(value);
+              if (value === 'full') {
+                setDueToday(totalPrice);
+                setTotalDueAfterFirst(0);
+              } else {
+                // Default to 50% down payment for installments
+                setDueToday(totalPrice * 0.5);
+                setTotalDueAfterFirst(totalPrice * 0.5);
+              }
+            }}
+            className="grid gap-4"
+          >
+            <div className="flex items-center space-x-4 rounded-lg border p-4">
+              <RadioGroupItem value="full" id="full" />
+              <Label htmlFor="full">
+                <div className="font-medium">Pay in Full</div>
+                <div className="text-sm text-gray-500">Pay the entire amount now: ${totalPrice.toFixed(2)}</div>
+              </Label>
+            </div>
+            <div className="flex items-center space-x-4 rounded-lg border p-4">
+              <RadioGroupItem value="installments" id="installments" />
+              <Label htmlFor="installments">
+                <div className="font-medium">Installment Plan</div>
+                <div className="text-sm text-gray-500">Split your payment into manageable installments</div>
+              </Label>
+            </div>
+          </RadioGroup>
+        </div>
+
+        {paymentPlan === 'installments' && (
+          <div className="space-y-4">
+            <div>
+              <Label>Due Today</Label>
+              <Input
+                type="number"
+                value={dueToday}
+                onChange={(e) => {
+                  const value = parseFloat(e.target.value);
+                  setDueToday(value);
+                  setTotalDueAfterFirst(totalPrice - value);
+                }}
+                min={0}
+                max={totalPrice}
+                step={0.01}
+              />
+              <p className="text-sm text-gray-500 mt-1">Minimum 50% down payment required</p>
+            </div>
+
+            <div>
+              <Label>Payment Frequency</Label>
+              <Select 
+                value={paymentFrequency}
+                onValueChange={(value: 'Weekly' | 'Bi-Weekly' | 'Monthly' | 'Quarterly') => 
+                  setPaymentFrequency(value)
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Weekly">Weekly</SelectItem>
+                  <SelectItem value="Bi-Weekly">Bi-Weekly</SelectItem>
+                  <SelectItem value="Monthly">Monthly</SelectItem>
+                  <SelectItem value="Quarterly">Quarterly</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="rounded-lg bg-gray-50 p-4">
+              <div className="text-sm text-gray-600">
+                <div className="flex justify-between mb-2">
+                  <span>Due Today:</span>
+                  <span className="font-medium">${dueToday.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Remaining Balance:</span>
+                  <span className="font-medium">${totalDueAfterFirst.toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
@@ -762,6 +890,19 @@ export function Checkout({ cartItems, onClose, clearCart }: CheckoutProps) {
                         </motion.div>
                       )}
                     </motion.div>
+                  </motion.div>
+
+                  <motion.div 
+                    className="bg-gray-50 rounded-xl p-6"
+                    variants={staggerItem}
+                  >
+                    <motion.h4 
+                      className="text-lg font-semibold text-gray-900 mb-4"
+                      variants={staggerItem}
+                    >
+                      Payment Details
+                    </motion.h4>
+                    <PaymentDetails />
                   </motion.div>
 
                   <motion.div 

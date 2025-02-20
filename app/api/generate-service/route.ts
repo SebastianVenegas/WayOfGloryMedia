@@ -12,21 +12,40 @@ const getOpenAIClient = () => {
 
 export async function POST(req: Request) {
   try {
-    const { prompt } = await req.json()
+    const { 
+      prompt, 
+      category,
+      expertise,
+      style,
+      metadata,
+      requirements 
+    } = await req.json()
 
     // Initialize OpenAI client with error handling
     const openai = getOpenAIClient()
+
+    // Build the system prompt based on expertise
+    let systemPrompt = expertise 
+      ? `You are a ${expertise.role} with ${expertise.background}. Your focus is on ${expertise.focus}. 
+         Create detailed, professional services with accurate pricing and features specific to ${category} services.
+         Ensure all recommendations and specifications meet industry standards for ${category.toLowerCase()} services.`
+      : "You are a professional service creator for an audio/visual/software equipment company. Create detailed, professional services with accurate pricing and features."
+
+    // Add style context if provided
+    if (style) {
+      systemPrompt += `\nMaintain a ${style} tone and focus on ${requirements?.style?.focus || 'professional standards'}.`
+    }
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4",
       messages: [
         {
           role: "system",
-          content: "You are a professional service creator for an audio/visual/software equipment company. Create detailed, professional services with accurate pricing and features."
+          content: systemPrompt
         },
         {
           role: "user",
-          content: `Create a professional service based on this description make it pro and also depending on if the user say like i am going to do a wedding or something like that make it more specific and use the name where he sais i am me or my company or my name, if the prompt is something like this "my name is sebastian venegas i will be teaching piano to paulo for 100 for 1 hour" make the discription more like a agreement: "${prompt}". Return it in JSON format with these fields: title (string), description (string), price (number), features (array of strings). Make the description professional and detailed. Include 3-5 key features. Price should be realistic for the service scope.`
+          content: `Create a professional ${category} service based on this description. Make it professional and specific to any client requirements mentioned. If the prompt includes personal details (like names or specific requirements), incorporate them appropriately: "${prompt}". Return it in JSON format with these fields: title (string), description (string), price (number), features (array of strings), metadata (object with provided metadata fields). Make the description professional and detailed. Include 3-5 key features. Price should be realistic for the service scope.`
         }
       ]
     })

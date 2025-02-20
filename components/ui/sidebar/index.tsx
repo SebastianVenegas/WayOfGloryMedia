@@ -300,10 +300,10 @@ export function Sidebar({ isExpanded, toggleSidebar, pathname, handleLogout, use
             {/* Desktop Header - Only show on desktop */}
             {!isMobile && (
               <div 
-                className="flex items-center h-28 border-b border-gray-100 bg-white cursor-pointer relative group"
+                className="flex items-center h-28 border-b border-gray-100 bg-white cursor-pointer relative"
                 onClick={toggleSidebar}
               >
-                <div className="flex items-center w-full px-2">
+                <div className="flex items-center justify-between w-full px-2">
                   <div className="flex items-center gap-2">
                     <div className="w-16 h-16 relative flex items-center justify-center">
                       <Image
@@ -329,15 +329,15 @@ export function Sidebar({ isExpanded, toggleSidebar, pathname, handleLogout, use
                       Way of Glory
                     </motion.span>
                   </div>
+                  <motion.div
+                    initial={false}
+                    animate={{ rotate: isExpanded ? 180 : 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-100 transition-colors"
+                  >
+                    <ChevronRight className="h-4 w-4 text-gray-400" />
+                  </motion.div>
                 </div>
-                <motion.div
-                  initial={false}
-                  animate={{ rotate: isExpanded ? 180 : 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="absolute right-0 top-1/2 -translate-y-1/2 h-full w-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <ChevronRight className="h-4 w-4 text-gray-400" />
-                </motion.div>
               </div>
             )}
 
