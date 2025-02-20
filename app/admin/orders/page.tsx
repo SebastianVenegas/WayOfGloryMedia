@@ -1128,7 +1128,7 @@ The Way of Glory Media Team`
     try {
       const template = emailTemplates.find(t => t.id === templateId)
       clearEmailState()
-      setPreviewHtml('<p>Generating your email content...</p>')
+      setPreviewHtml('<div class="flex items-center justify-center min-h-[400px]"><div class="text-center"><div class="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent mx-auto mb-4"></div><p class="text-gray-500">Loading template...</p></div></div>')
       setIsGeneratingAI(true)
       setIsTemplateLoading(true)
       setLoadingTemplateName(template?.title || 'Email Template')
@@ -1142,26 +1142,34 @@ The Way of Glory Media Team`
         }
       })
 
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('Template generation error:', {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorText
+        })
+        throw new Error(`Failed to generate template: ${response.statusText}`)
+      }
+
       const data = await response.json()
       
       // If we have content, use it
       if (data.html || data.content) {
         setEditedContent(data.content || '')
-        setPreviewHtml(data.html || '')
+        setPreviewHtml(data.html || data.content || '')
         setEditedSubject(data.subject || '')
         setIsAiPromptOpen(false)
         showToast('Template generated successfully')
       } else {
         // Show error if we have no content
-        throw new Error(data.error || 'Failed to generate preview')
+        throw new Error('No content received from template generation')
       }
 
     } catch (err) {
       console.error('Error generating template:', err)
-      // Only show error if we have no content
-      if (!previewHtml || previewHtml === '<p>Generating your email content...</p>') {
-        showToast('Failed to generate email template. Please try again.', 'error')
-      }
+      setPreviewHtml('')
+      showToast(err instanceof Error ? err.message : 'Failed to generate email template. Please try again.', 'error')
     } finally {
       setIsGeneratingAI(false)
       setIsTemplateLoading(false)
@@ -1325,18 +1333,17 @@ The Way of Glory Media Team`
   // Handle quick generate
   const handleQuickGenerate = async (templateId: string) => {
     try {
-      const template = emailTemplates.find(t => t.id === templateId)
-      clearEmailState();
-      setPreviewHtml('<p>Generating your email content...</p>');
-      setIsGeneratingAI(true);
-      setIsTemplateLoading(true);
-      setLoadingTemplateName(template?.title || 'Email Template');
-
-      // Check if an order is selected
       if (!selectedOrder) {
-        toast.error('Please select an order first');
-        return;
+        showToast('Please select an order first', 'error')
+        return
       }
+
+      const template = emailTemplates.find(t => t.id === templateId)
+      clearEmailState()
+      setPreviewHtml('<div class="flex items-center justify-center min-h-[400px]"><div class="text-center"><div class="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent mx-auto mb-4"></div><p class="text-gray-500">Loading template...</p></div></div>')
+      setIsGeneratingAI(true)
+      setIsTemplateLoading(true)
+      setLoadingTemplateName(template?.title || 'Email Template')
 
       // Use the preview-template endpoint
       const response = await fetch(`/api/admin/orders/${selectedOrder.id}/preview-template?templateId=${templateId}`, {
@@ -1345,36 +1352,42 @@ The Way of Glory Media Team`
           'Content-Type': 'application/json',
           'x-pwa-request': 'true'
         }
-      });
+      })
 
-      const data = await response.json();
-      
-      // If we have content, use it regardless of status
-      if (data.html || data.content) {
-        setEditedContent(data.content || '');
-        setPreviewHtml(data.html || '');
-        setEditedSubject(data.subject || '');
-        setIsAiPromptOpen(false);
-        return;
-      }
-      
-      // Only show error if we truly have no content
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to generate preview');
+        const errorText = await response.text()
+        console.error('Template generation error:', {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorText
+        })
+        throw new Error(`Failed to generate template: ${response.statusText}`)
       }
 
-    } catch (error) {
-      console.error('Error generating preview:', error);
-      // Only show error if we have no content
-      if (!previewHtml || previewHtml === '<p>Generating your email content...</p>') {
-        toast.error(error instanceof Error ? error.message : 'Failed to generate preview');
+      const data = await response.json()
+      
+      // If we have content, use it
+      if (data.html || data.content) {
+        setEditedContent(data.content || '')
+        setPreviewHtml(data.html || data.content || '')
+        setEditedSubject(data.subject || '')
+        setIsAiPromptOpen(false)
+        showToast('Template generated successfully')
+      } else {
+        // Show error if we have no content
+        throw new Error('No content received from template generation')
       }
+
+    } catch (err) {
+      console.error('Error generating template:', err)
+      setPreviewHtml('')
+      showToast(err instanceof Error ? err.message : 'Failed to generate email template. Please try again.', 'error')
     } finally {
-      setIsGeneratingAI(false);
-      setIsTemplateLoading(false);
-      setLoadingTemplateName('');
+      setIsGeneratingAI(false)
+      setIsTemplateLoading(false)
+      setLoadingTemplateName('')
     }
-  };
+  }
 
   // Handle new email
   const handleNewEmail = () => {

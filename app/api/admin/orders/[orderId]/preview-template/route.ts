@@ -364,7 +364,11 @@ export async function GET(
         html: generateResult.html || '',
         success: true
       }, {
-        status: 200
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-store'
+        }
       });
 
     } catch (err) {
@@ -379,7 +383,7 @@ export async function GET(
         details: err instanceof Error ? err.message : 'Unknown error',
         success: false
       }, { 
-        status: isTimeout ? 504 : 500
+        status: isTimeout ? 504 : 500 
       });
     }
 
