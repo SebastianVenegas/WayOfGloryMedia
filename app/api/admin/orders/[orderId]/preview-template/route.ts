@@ -85,8 +85,8 @@ async function getOrder(orderId: number): Promise<EmailOrder | null> {
 
 export async function GET(
   request: Request,
-  context: { params: { orderId: string } }
-) {
+  { params }: { params: { orderId: string } }
+): Promise<Response> {
   try {
     const { searchParams } = new URL(request.url);
     const templateId = searchParams.get('templateId');
@@ -99,7 +99,7 @@ export async function GET(
       });
     }
 
-    const order = await getOrder(parseInt(context.params.orderId));
+    const order = await getOrder(parseInt(params.orderId));
     if (!order) {
       return new Response(JSON.stringify({ error: 'Order not found' }), {
         status: 404,
