@@ -251,8 +251,8 @@ export default function EmailComposer({
       if (!externalPreviewHtml) {
         setPreviewHtml(initialContent)
       }
-      // Clear loading state after content is set
-      if (isTemplateLoading) {
+      // Only clear loading state if we actually have content
+      if (isTemplateLoading && initialContent.trim()) {
         setTimeout(() => {
           setIsGenerating(false)
         }, 500)
@@ -260,17 +260,39 @@ export default function EmailComposer({
     }
   }, [initialContent, isTemplateLoading, externalPreviewHtml])
 
+  // Update loading states when isTemplateLoading changes
+  useEffect(() => {
+    if (isTemplateLoading) {
+      setIsGenerating(true)
+      // Set a loading preview if we don't have content yet
+      if (!content.trim()) {
+        setPreviewHtml('<div class="flex items-center justify-center min-h-[400px]"><div class="text-center"><div class="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent mx-auto mb-4"></div><p class="text-gray-500">Loading template...</p></div></div>')
+      }
+    } else {
+      // Only clear loading state if we have content
+      if (content.trim()) {
+        setTimeout(() => {
+          setIsGenerating(false)
+        }, 500)
+      }
+    }
+  }, [isTemplateLoading, content])
+
   useEffect(() => {
     if (externalSubject !== undefined) {
       setSubject(externalSubject)
     }
   }, [externalSubject])
 
-  // Update loading states when isTemplateLoading changes
+  // Handle view mode changes
   useEffect(() => {
-    setIsGenerating(isTemplateLoading)
-  }, [isTemplateLoading])
+    // Clear loading states when switching to preview mode
+    if (viewMode === 'preview') {
+      setIsGenerating(false)
+    }
+  }, [viewMode])
 
+  // Handle content changes
   const handleContentChange = (value: string) => {
     const cleanValue = value.replace(/<p><\/p>/g, '<p><br></p>')
     setContent(cleanValue)
@@ -283,8 +305,15 @@ export default function EmailComposer({
     if (onPreviewHtmlChange) {
       onPreviewHtmlChange(cleanValue)
     }
+    // Clear loading state if we have content
+    if (isGenerating && cleanValue.trim()) {
+      setTimeout(() => {
+        setIsGenerating(false)
+      }, 500)
+    }
   }
 
+  // Handle subject changes
   const handleSubjectChange = (value: string) => {
     setSubject(value)
     if (onSubjectChange) {
@@ -292,13 +321,44 @@ export default function EmailComposer({
     }
   }
 
-  const handleSendEmail = async () => {
-    if (!content.trim()) {
-      return;
+  // Handle view mode toggle
+  const handleViewModeToggle = (mode: 'edit' | 'preview') => {
+    // Clear loading state when switching modes
+    setIsGenerating(false)
+    setViewMode(mode)
+  }
+
+  // Handle errors
+  const handleError = (error: unknown, action: string) => {
+    console.error(`Error ${action}:`, error)
+    let errorMessage = 'An unexpected error occurred. Please try again.'
+
+    if (error instanceof Error) {
+      errorMessage = error.message
+    } else if (typeof error === 'string') {
+      errorMessage = error
     }
 
-    setIsSendingEmail(true);
-    setError('');
+    toast({
+      title: "Error",
+      description: errorMessage,
+      variant: "destructive"
+    })
+  }
+
+  // Handle email sending
+  const handleSendEmail = async () => {
+    if (!content.trim()) {
+      toast({
+        title: "Error",
+        description: "Please add some content to your email before sending.",
+        variant: "destructive"
+      })
+      return
+    }
+
+    setIsSendingEmail(true)
+    setError('')
 
     try {
       const response = await fetch(`/api/admin/orders/${orderId}/send-template`, {
@@ -314,27 +374,87 @@ export default function EmailComposer({
             html: content
           }
         })
-      });
+      })
 
-      const data = await response.json();
+      const data = await response.json()
 
       if (response.ok || data.html || data.content) {
+        toast({
+          title: "Success",
+          description: "Email sent successfully!",
+          variant: "default"
+        })
         if (onEmailSent) {
-          onEmailSent();
+          onEmailSent()
         }
-        return;
+        return
       }
 
-      if (!response.ok && !data.html && !data.content) {
-        throw new Error('Failed to send email');
+      throw new Error(data.error || 'Failed to send email')
+    } catch (error) {
+      handleError(error, 'sending email')
+    } finally {
+      setIsSendingEmail(false)
+    }
+  }
+
+  // Handle AI prompt dialog
+  useEffect(() => {
+    if (!isAiPromptOpen) {
+      setAiPrompt('')
+      setIsImprovingPrompt(false)
+    }
+  }, [isAiPromptOpen])
+
+  // Handle AI prompt submission
+  const handleAiPromptSubmit = async (prompt: string) => {
+    if (!prompt.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a prompt before generating.",
+        variant: "destructive"
+      })
+      return
+    }
+
+    setIsGenerating(true)
+    setPreviewHtml('<div class="flex items-center justify-center min-h-[400px]"><div class="text-center"><div class="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent mx-auto mb-4"></div><p class="text-gray-500">Generating email with AI...</p></div></div>')
+
+    try {
+      if (onAiPromptSubmit) {
+        await onAiPromptSubmit(prompt)
+      }
+      // Close the dialog after successful generation
+      if (onAiPromptOpenChange) {
+        onAiPromptOpenChange(false)
       }
     } catch (error) {
-      console.error('Error sending email:', error);
-      setError('Failed to send email. Please try again.');
-    } finally {
-      setIsSendingEmail(false);
+      handleError(error, 'generating with AI')
+      setIsGenerating(false)
     }
-  };
+  }
+
+  // Handle prompt improvement
+  const handleImprovePrompt = async () => {
+    if (!aiPrompt.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a prompt to improve.",
+        variant: "destructive"
+      })
+      return
+    }
+
+    try {
+      setIsImprovingPrompt(true)
+      const improvedPrompt = await improvePromptWithAI(aiPrompt)
+      setAiPrompt(improvedPrompt)
+    } catch (error) {
+      handleError(error, 'improving prompt')
+    } finally {
+      setIsImprovingPrompt(false)
+    }
+  }
 
   const fetchEmailLogs = useCallback(async () => {
     if (!orderId) return;
@@ -517,8 +637,9 @@ export default function EmailComposer({
                       <div className="flex flex-col items-center gap-1">
                         <span>
                           {isSendingEmail ? "Sending Email..." : 
-                           isTemplateLoading ? loadingTemplateName : 
-                           "Generating Custom Email"}
+                           isTemplateLoading ? loadingTemplateName || "Loading Template..." : 
+                           isGenerating ? "Generating Email..." :
+                           "Processing..."}
                         </span>
                         <span className="text-sm text-gray-500">Please wait...</span>
                       </div>
@@ -537,11 +658,46 @@ export default function EmailComposer({
           </div>
         </div>
       ) : (
-        <EmailPreview 
-          html={previewHtml} 
-          height="calc(100vh - 400px)" 
-          width="100%" 
-        />
+        <div className="space-y-2">
+          <label htmlFor="preview" className="block text-sm font-medium text-gray-700">
+            Email Preview
+          </label>
+          <div className="rounded-xl border bg-white shadow-sm">
+            <div className="p-6 relative">
+              {(isTemplateLoading || isGenerating) ? (
+                <div className="min-h-[400px] border rounded-lg bg-white p-6 flex items-center justify-center prose-sm">
+                  <div className="flex flex-col items-center gap-4">
+                    <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+                    <div className="flex flex-col items-center gap-1">
+                      <span>
+                        {isTemplateLoading ? loadingTemplateName || "Loading Template..." : 
+                         isGenerating ? "Generating Preview..." :
+                         "Processing..."}
+                      </span>
+                      <span className="text-sm text-gray-500">Please wait...</span>
+                    </div>
+                  </div>
+                </div>
+              ) : !previewHtml ? (
+                <div className="min-h-[400px] border rounded-lg bg-white p-6 flex items-center justify-center prose-sm">
+                  <div className="flex flex-col items-center gap-4">
+                    <Info className="h-8 w-8 text-gray-400" />
+                    <div className="flex flex-col items-center gap-1">
+                      <span className="text-gray-500">No preview available</span>
+                      <span className="text-sm text-gray-400">Switch to edit mode to create content</span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <EmailPreview 
+                  html={previewHtml} 
+                  height="calc(100vh - 400px)" 
+                  width="100%" 
+                />
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -627,8 +783,9 @@ export default function EmailComposer({
                                 <div className="flex flex-col items-center gap-1">
                                   <span>
                                     {isSendingEmail ? "Sending Email..." : 
-                                     isTemplateLoading ? loadingTemplateName : 
-                                     "Generating Custom Email"}
+                                     isTemplateLoading ? loadingTemplateName || "Loading Template..." : 
+                                     isGenerating ? "Generating Email..." :
+                                     "Processing..."}
                                   </span>
                                   <span className="text-sm text-gray-500">Please wait...</span>
                                 </div>
@@ -647,11 +804,46 @@ export default function EmailComposer({
                     </div>
                   </div>
                 ) : (
-                  <EmailPreview 
-                    html={previewHtml} 
-                    height="calc(100vh - 400px)" 
-                    width="100%" 
-                  />
+                  <div className="space-y-2">
+                    <label htmlFor="preview" className="block text-sm font-medium text-gray-700">
+                      Email Preview
+                    </label>
+                    <div className="rounded-xl border bg-white shadow-sm">
+                      <div className="p-6 relative">
+                        {(isTemplateLoading || isGenerating) ? (
+                          <div className="min-h-[400px] border rounded-lg bg-white p-6 flex items-center justify-center prose-sm">
+                            <div className="flex flex-col items-center gap-4">
+                              <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+                              <div className="flex flex-col items-center gap-1">
+                                <span>
+                                  {isTemplateLoading ? loadingTemplateName || "Loading Template..." : 
+                                   isGenerating ? "Generating Preview..." :
+                                   "Processing..."}
+                                </span>
+                                <span className="text-sm text-gray-500">Please wait...</span>
+                              </div>
+                            </div>
+                          </div>
+                        ) : !previewHtml ? (
+                          <div className="min-h-[400px] border rounded-lg bg-white p-6 flex items-center justify-center prose-sm">
+                            <div className="flex flex-col items-center gap-4">
+                              <Info className="h-8 w-8 text-gray-400" />
+                              <div className="flex flex-col items-center gap-1">
+                                <span className="text-gray-500">No preview available</span>
+                                <span className="text-sm text-gray-400">Switch to edit mode to create content</span>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <EmailPreview 
+                            html={previewHtml} 
+                            height="calc(100vh - 400px)" 
+                            width="100%" 
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 )}
               </div>
 
@@ -703,21 +895,7 @@ export default function EmailComposer({
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={async () => {
-                                    try {
-                                      setIsImprovingPrompt(true);
-                                      const improvedPrompt = await improvePromptWithAI(aiPrompt);
-                                      setAiPrompt(improvedPrompt);
-                                    } catch (error) {
-                                      toast({
-                                        title: "Error improving prompt",
-                                        description: "Failed to improve the prompt. Please try again.",
-                                        variant: "destructive"
-                                      });
-                                    } finally {
-                                      setIsImprovingPrompt(false);
-                                    }
-                                  }}
+                                  onClick={handleImprovePrompt}
                                   className="h-7 px-2 text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800"
                                   disabled={!aiPrompt.trim() || isImprovingPrompt}
                                 >
@@ -801,7 +979,7 @@ export default function EmailComposer({
                             Cancel
                           </Button>
                           <Button 
-                            onClick={() => onAiPromptSubmit?.(aiPrompt)}
+                            onClick={() => handleAiPromptSubmit(aiPrompt)}
                             disabled={isGeneratingAI || !aiPrompt.trim()}
                             className="bg-blue-600/90 backdrop-blur-sm hover:bg-blue-700 text-white shadow-sm flex items-center gap-2 min-w-[120px]"
                           >

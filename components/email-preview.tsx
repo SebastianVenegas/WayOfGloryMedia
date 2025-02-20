@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Send, Loader2 } from 'lucide-react';
 
@@ -8,6 +8,7 @@ interface EmailPreviewProps {
   width?: string;
   onSendEmail?: () => void;
   isSending?: boolean;
+  isLoading?: boolean;
 }
 
 const EmailPreview: React.FC<EmailPreviewProps> = ({ 
@@ -15,8 +16,15 @@ const EmailPreview: React.FC<EmailPreviewProps> = ({
   height = '600px', 
   width = '100%',
   onSendEmail,
-  isSending = false
+  isSending = false,
+  isLoading = false
 }) => {
+  const [isFrameLoaded, setIsFrameLoaded] = useState(false);
+
+  const handleFrameLoad = () => {
+    setIsFrameLoaded(true);
+  };
+
   // Check if the HTML includes DOCTYPE or html tags
   const isFullHtml = html.includes('<!DOCTYPE') || html.includes('<html');
   
@@ -86,12 +94,21 @@ const EmailPreview: React.FC<EmailPreviewProps> = ({
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 relative">
+        {(isLoading || !isFrameLoaded) && (
+          <div className="absolute inset-0 flex items-center justify-center bg-white">
+            <div className="flex flex-col items-center gap-4">
+              <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent"></div>
+              <p className="text-gray-500">Loading preview...</p>
+            </div>
+          </div>
+        )}
         <iframe
           srcDoc={fullHtml}
           style={{ height, width }}
           sandbox="allow-same-origin allow-scripts"
           title="Email Preview"
           className="bg-white rounded-lg shadow-sm border border-gray-200 w-full"
+          onLoad={handleFrameLoad}
         />
       </div>
       

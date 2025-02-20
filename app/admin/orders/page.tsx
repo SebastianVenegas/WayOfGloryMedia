@@ -762,13 +762,11 @@ If you have any questions about your order, please don't hesitate to contact us.
 
 Best regards,
 The Way of Glory Media Team`
-      },
-      // Add more templates as needed
+      }
     };
 
     return templates[templateId as keyof typeof templates] || {
-      subject: `Order #${order.id} Update`,
-      content: getTemplatePrompt(templateId)
+      subject: `Order #${order.id} Update`
     };
   };
 
@@ -1120,79 +1118,56 @@ The Way of Glory Media Team`
     setIsEmailTemplatesOpen(open)
   }
 
-  // Handle template selection
+  // Handle template selection and generation
   const handleTemplateSelect = async (templateId: string) => {
-    if (!selectedOrder) return;
-    
-    setIsTemplateLoading(true);
-    setLoadingTemplateName('Loading template...');
-    
+    if (!selectedOrder) {
+      showToast('Please select an order first', 'error')
+      return
+    }
+
     try {
+      const template = emailTemplates.find(t => t.id === templateId)
+      clearEmailState()
+      setPreviewHtml('<p>Generating your email content...</p>')
+      setIsGeneratingAI(true)
+      setIsTemplateLoading(true)
+      setLoadingTemplateName(template?.title || 'Email Template')
+
+      // Use the API to generate the content
       const response = await fetch(`/api/admin/orders/${selectedOrder.id}/preview-template?templateId=${templateId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
           'x-pwa-request': 'true'
         }
-      });
+      })
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        // Handle specific error cases
-        if (response.status === 504 || data.error?.code === '504') {
-          // Fallback to a basic template if generation times out
-          const template = getEmailTemplate(templateId, selectedOrder);
-          if (template) {
-            const fallbackHtml = formatEmailPreview({
-              subject: template.subject,
-              content: template.content || getTemplatePrompt(templateId),
-              order: selectedOrder
-            });
-            
-            setContent(template.content || getTemplatePrompt(templateId));
-            setEditedContent(template.content || getTemplatePrompt(templateId));
-            setPreviewHtml(fallbackHtml);
-            
-            showToast(
-              'The AI-enhanced template generation timed out. Using a basic template instead.',
-              'warning'
-            );
-            
-            return;
-          }
-        }
-        
-        throw new Error(data.error?.message || 'Failed to generate email content');
-      }
-
-      // Set the content and preview HTML
-      const newContent = data.content || data.html;
-      setContent(newContent);
-      setEditedContent(newContent);
-      setPreviewHtml(data.html || data.content);
+      const data = await response.json()
       
-      // Update subject if provided
-      if (data.subject) {
-        setSubject(data.subject);
-        setEditedSubject(data.subject);
+      // If we have content, use it
+      if (data.html || data.content) {
+        setEditedContent(data.content || '')
+        setPreviewHtml(data.html || '')
+        setEditedSubject(data.subject || '')
+        setIsAiPromptOpen(false)
+        showToast('Template generated successfully')
+      } else {
+        // Show error if we have no content
+        throw new Error(data.error || 'Failed to generate preview')
       }
 
-      // Switch to content tab after template is loaded
-      setViewMode('edit');
-      showToast('Template loaded successfully');
-
-    } catch (error) {
-      console.error('Error selecting template:', error);
-      showToast(
-        error instanceof Error ? error.message : 'Failed to load email template',
-        'error'
-      );
+    } catch (err) {
+      console.error('Error generating template:', err)
+      // Only show error if we have no content
+      if (!previewHtml || previewHtml === '<p>Generating your email content...</p>') {
+        showToast('Failed to generate email template. Please try again.', 'error')
+      }
     } finally {
-      setIsTemplateLoading(false);
-      setLoadingTemplateName('');
+      setIsGeneratingAI(false)
+      setIsTemplateLoading(false)
+      setLoadingTemplateName('')
     }
-  };
+  }
 
   // Handle email generation
   const handleGenerateEmail = async () => {
