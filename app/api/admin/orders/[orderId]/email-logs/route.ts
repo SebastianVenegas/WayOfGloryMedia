@@ -22,11 +22,9 @@ interface FormattedEmailLog {
 
 export async function GET(
   request: NextRequest,
-  context: { params: { orderId: string } }
-): Promise<Response> {
+  { params }: { params: { orderId: string } }
+): Promise<NextResponse> {
   try {
-    // Await the params to fix the Next.js warning
-    const params = await Promise.resolve(context.params);
     const orderIdNum = parseInt(params.orderId);
 
     if (isNaN(orderIdNum)) {

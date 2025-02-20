@@ -47,7 +47,6 @@ interface ContractData {
   downPayment: number;
   numberOfInstallments: number;
   installmentAmount: number;
-  totalDueAfterFirst: number;
 }
 
 interface ContractError {
@@ -152,8 +151,7 @@ export async function POST(request: NextRequest) {
         number_of_installments: numberOfInstallments,
         down_payment: data.downPayment || initialPaymentAmount,
         payment_plan: data.paymentPlan,
-        total_amount: total,
-        remaining_balance: remainingBalance
+        total_amount: total
       };
 
       // Log the data being sent to SQL
