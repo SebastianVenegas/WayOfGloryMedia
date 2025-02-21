@@ -119,14 +119,15 @@ export async function GET(request: NextRequest): Promise<Response> {
     // Get the email template configuration
     const template = getEmailTemplate(templateId, order);
 
-    // For custom emails, use the provided prompt
-    const finalPrompt = customPrompt || template.prompt;
+    // For custom emails, use the provided prompt; fallback to template.prompt or a default message
+    const finalPrompt = customPrompt || template.prompt || `Generate email content for order #${order.id}`;
 
-    // Generate the email content using the AI service with a timeout
+    // Generate the email content using the AI service with a timeout and no-cache option
     const openAIRequest = fetch(
       'https://api.openai.com/v1/chat/completions',
       {
         method: 'POST',
+        cache: 'no-store',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
@@ -149,26 +150,29 @@ export async function GET(request: NextRequest): Promise<Response> {
       }
     );
     const timeoutPromise = new Promise<Response>((_, reject) =>
-      setTimeout(() => reject(new Error('OpenAI API request timed out')), 15000)
+      setTimeout(() => reject(new Error('OpenAI API request timed out')), 30000)
     );
-    const generateResponse = await Promise.race([openAIRequest, timeoutPromise]);
 
-    if (!generateResponse.ok) {
-      console.error('AI service error:', await generateResponse.text());
-      return new NextResponse(JSON.stringify({ error: 'Failed to generate email content' }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    const aiResponse = await generateResponse.json();
-    const emailContent = aiResponse.choices[0]?.message?.content;
-
-    if (!emailContent) {
-      return new NextResponse(JSON.stringify({ error: 'No content generated' }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      });
+    let emailContent: string;
+    try {
+      const generateResponse = await Promise.race([openAIRequest, timeoutPromise]);
+      if (!generateResponse.ok) {
+        console.error('AI service error:', await generateResponse.text());
+        throw new Error('Failed to generate email content');
+      }
+      const aiResponse = await generateResponse.json();
+      emailContent = aiResponse.choices[0]?.message?.content;
+      if (!emailContent) {
+        throw new Error('No content generated');
+      }
+    } catch (e) {
+      console.error('Error in OpenAI generation:', e);
+      // Fallback email content if OpenAI request times out or fails
+      if (e instanceof Error && e.message.includes('timed out')) {
+        emailContent = 'Thank you for your order. We are processing your request and will update you shortly with complete details.';
+      } else {
+        throw e;
+      }
     }
 
     // Format the email with the template
