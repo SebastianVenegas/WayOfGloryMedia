@@ -1303,7 +1303,7 @@ export default function OrdersPage() {
       setShowEmailComposer(true);
 
       // Assuming 'order' is available in scope for the current order
-      const template = getEmailTemplate(templateId, order);
+      const template = getEmailTemplate(templateId, selectedOrder);
       const response = await fetch(`/api/admin/generate-email?_=${Date.now()}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
