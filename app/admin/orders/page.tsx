@@ -1401,7 +1401,6 @@ export default function OrdersPage() {
       }));
       
       toast({
-        title: "Error",
         description: error instanceof Error ? error.message : 'Failed to generate email',
         variant: "destructive"
       });
