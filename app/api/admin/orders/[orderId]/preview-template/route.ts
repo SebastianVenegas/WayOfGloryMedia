@@ -1,5 +1,6 @@
 import { sql } from '@vercel/postgres';
 import { getEmailTemplate, formatEmailContent, type Order as EmailOrder } from '@/lib/email-templates';
+import { NextResponse, NextRequest } from 'next/server';
 
 // Helper function to format price
 function formatPrice(value: number | string): string {
@@ -83,25 +84,33 @@ async function getOrder(orderId: number): Promise<EmailOrder | null> {
   }
 }
 
-export async function GET(
-  request: Request,
-  { params }: { params: { orderId: string } }
-): Promise<Response> {
+export async function GET(request: NextRequest): Promise<Response> {
+  // Extract orderId from the URL. Expected URL: /api/admin/orders/{orderId}/preview-template
+  const segments = request.nextUrl.pathname.split('/');
+  // segments: ['', 'api', 'admin', 'orders', '{orderId}', 'preview-template']
+  const orderIdString = segments[4];
+  if (!orderIdString) {
+    return new NextResponse(JSON.stringify({ error: 'Order ID parameter missing' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const templateId = searchParams.get('templateId');
     const customPrompt = searchParams.get('prompt');
 
     if (!templateId) {
-      return new Response(JSON.stringify({ error: 'Template ID is required' }), {
+      return new NextResponse(JSON.stringify({ error: 'Template ID is required' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' }
       });
     }
 
-    const order = await getOrder(parseInt(params.orderId));
+    const order = await getOrder(parseInt(orderIdString));
     if (!order) {
-      return new Response(JSON.stringify({ error: 'Order not found' }), {
+      return new NextResponse(JSON.stringify({ error: 'Order not found' }), {
         status: 404,
         headers: { 'Content-Type': 'application/json' }
       });
@@ -142,7 +151,7 @@ export async function GET(
 
     if (!generateResponse.ok) {
       console.error('AI service error:', await generateResponse.text());
-      return new Response(JSON.stringify({ error: 'Failed to generate email content' }), {
+      return new NextResponse(JSON.stringify({ error: 'Failed to generate email content' }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' }
       });
@@ -152,7 +161,7 @@ export async function GET(
     const emailContent = aiResponse.choices[0]?.message?.content;
 
     if (!emailContent) {
-      return new Response(JSON.stringify({ error: 'No content generated' }), {
+      return new NextResponse(JSON.stringify({ error: 'No content generated' }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' }
       });
@@ -161,7 +170,7 @@ export async function GET(
     // Format the email with the template
     const formattedEmail = formatEmailContent(emailContent, template.variables);
 
-    return new Response(
+    return new NextResponse(
       JSON.stringify({
         content: emailContent,
         html: formattedEmail,
@@ -178,7 +187,7 @@ export async function GET(
 
   } catch (error) {
     console.error('Error generating email template:', error);
-    return new Response(
+    return new NextResponse(
       JSON.stringify({ error: 'Failed to generate email template' }),
       {
         status: 500,
