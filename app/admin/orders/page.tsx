@@ -1308,10 +1308,22 @@ export default function OrdersPage() {
 
       // Use 'selectedOrder' for the current order
       const template = getEmailTemplate(templateId, selectedOrder!);
+      
+      // Create the request body with the correct properties
+      const requestBody = {
+        prompt: template.content || template.subject,
+        variables: {
+          orderId: selectedOrder.id,
+          customerName: `${selectedOrder.first_name} ${selectedOrder.last_name}`,
+          orderTotal: selectedOrder.total_amount,
+          orderStatus: selectedOrder.status
+        }
+      };
+
       const response = await fetch(`/api/admin/generate-email?_=${Date.now()}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: template.prompt, variables: template.variables }),
+        body: JSON.stringify(requestBody),
         cache: 'no-store'
       });
 
