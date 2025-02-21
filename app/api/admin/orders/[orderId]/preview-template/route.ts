@@ -122,8 +122,8 @@ export async function GET(request: NextRequest): Promise<Response> {
     // For custom emails, use the provided prompt
     const finalPrompt = customPrompt || template.prompt;
 
-    // Generate the email content using the AI service
-    const generateResponse = await fetch(
+    // Generate the email content using the AI service with a timeout
+    const openAIRequest = fetch(
       'https://api.openai.com/v1/chat/completions',
       {
         method: 'POST',
@@ -148,6 +148,10 @@ export async function GET(request: NextRequest): Promise<Response> {
         })
       }
     );
+    const timeoutPromise = new Promise<Response>((_, reject) =>
+      setTimeout(() => reject(new Error('OpenAI API request timed out')), 15000)
+    );
+    const generateResponse = await Promise.race([openAIRequest, timeoutPromise]);
 
     if (!generateResponse.ok) {
       console.error('AI service error:', await generateResponse.text());
