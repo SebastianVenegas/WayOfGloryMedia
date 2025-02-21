@@ -216,19 +216,21 @@ export async function POST(
     // Initialize OpenAI
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-    // Generate email content
-    const completion = await openai.chat.completions.create({
-      model: AI_EMAIL_CONFIG.model,
-      temperature: AI_EMAIL_CONFIG.temperature,
-      max_tokens: AI_EMAIL_CONFIG.max_tokens,
-      messages: [
-        {
-          role: "system",
-          content: AI_EMAIL_CONFIG.system_prompt
-        },
-        {
-          role: "user",
-          content: `PROMPT: ${userContent}
+    try {
+      // Generate email content with timeout
+      const completion = await Promise.race([
+        openai.chat.completions.create({
+          model: AI_EMAIL_CONFIG.model,
+          temperature: AI_EMAIL_CONFIG.temperature,
+          max_tokens: AI_EMAIL_CONFIG.max_tokens,
+          messages: [
+            {
+              role: "system",
+              content: AI_EMAIL_CONFIG.system_prompt
+            },
+            {
+              role: "user",
+              content: `PROMPT: ${userContent}
 
 REQUIRED ORDER CONTEXT:
 - Customer: ${variables.firstName} ${variables.lastName}
@@ -239,66 +241,94 @@ ${variables.includesInstallation ? '- Installation is included' : '- No installa
 ${variables.includesTraining ? '- Training is included' : '- No training included'}
 
 Write the email exactly as requested in the prompt while naturally incorporating this order information. Don't add any content that wasn't specifically requested.`
+            }
+          ]
+        }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('OpenAI request timed out')), 15000)
+        )
+      ]) as OpenAI.Chat.ChatCompletion;
+
+      const aiResponse = completion.choices[0]?.message?.content;
+      
+      // Validate OpenAI response
+      if (!aiResponse || typeof aiResponse !== 'string') {
+        console.error('OpenAI returned invalid content:', { aiResponse });
+        return NextResponse.json(
+          { error: 'Generation failed', details: 'Invalid or empty content returned from AI' },
+          { status: 500 }
+        );
+      }
+
+      // Process the content
+      let subject = `Order Update - Way of Glory #${orderIdInt}`;
+      let emailContent = aiResponse.trim();
+
+      // Extract subject if present
+      const subjectMatch = emailContent.match(/^(?:subject:|re:|regarding:)\s*(.+?)(?:\n|$)/i);
+      if (subjectMatch) {
+        subject = subjectMatch[1].trim();
+        emailContent = emailContent.replace(/^(?:subject:|re:|regarding:)\s*.+?\n/, '').trim();
+      }
+
+      // Validate processed content
+      if (!emailContent) {
+        console.error('Empty content after processing');
+        return NextResponse.json(
+          { error: 'Processing failed', details: 'Email content is empty after processing' },
+          { status: 500 }
+        );
+      }
+
+      // Log the generated content for debugging
+      console.log('Generated email content:', {
+        prompt: userContent,
+        subject,
+        contentPreview: emailContent.substring(0, 200) + '...'
+      });
+
+      // Format the content using the same template as other emails
+      const formattedContent = formatEmailContent(emailContent, {
+        ...variables,
+        emailType: subject.replace(' - Way of Glory', '').replace(` #${variables.orderId}`, ''),
+        companyName: 'Way of Glory Media',
+        supportEmail: 'help@wayofglory.com',
+        logoUrl: '/images/logo/LogoLight.png',
+        logoNormalUrl: '/images/logo/logo.png',
+        year: new Date().getFullYear(),
+        baseUrl: process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
+      });
+
+      // Return the response with cache prevention headers
+      return new NextResponse(
+        JSON.stringify({
+          subject,
+          content: emailContent,
+          html: formattedContent
+        }),
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-store, no-cache, must-revalidate',
+            'Pragma': 'no-cache'
+          }
         }
-      ]
-    });
+      );
 
-    const aiResponse = completion.choices[0]?.message?.content;
-    
-    // Validate OpenAI response
-    if (!aiResponse || typeof aiResponse !== 'string') {
-      console.error('OpenAI returned invalid content:', { aiResponse });
+    } catch (aiError) {
+      console.error('AI service error:', {
+        error: aiError,
+        message: aiError instanceof Error ? aiError.message : 'Unknown error'
+      });
+
       return NextResponse.json(
-        { error: 'Generation failed', details: 'Invalid or empty content returned from AI' },
-        { status: 500 }
+        { 
+          error: 'Email generation failed',
+          details: aiError instanceof Error ? aiError.message : 'AI service error'
+        },
+        { status: 503 }
       );
     }
-
-    // Process the content
-    let subject = `Order Update - Way of Glory #${orderIdInt}`;
-    let emailContent = aiResponse.trim();
-
-    // Extract subject if present
-    const subjectMatch = emailContent.match(/^(?:subject:|re:|regarding:)\s*(.+?)(?:\n|$)/i);
-    if (subjectMatch) {
-      subject = subjectMatch[1].trim();
-      emailContent = emailContent.replace(/^(?:subject:|re:|regarding:)\s*.+?\n/, '').trim();
-    }
-
-    // Validate processed content
-    if (!emailContent) {
-      console.error('Empty content after processing');
-      return NextResponse.json(
-        { error: 'Processing failed', details: 'Email content is empty after processing' },
-        { status: 500 }
-      );
-    }
-
-    // Log the generated content for debugging
-    console.log('Generated email content:', {
-      prompt: userContent,
-      subject,
-      contentPreview: emailContent.substring(0, 200) + '...'
-    });
-
-    // Format the content using the same template as other emails
-    const formattedContent = formatEmailContent(emailContent, {
-      ...variables,
-      emailType: subject.replace(' - Way of Glory', '').replace(` #${variables.orderId}`, ''),
-      companyName: 'Way of Glory Media',
-      supportEmail: 'help@wayofglory.com',
-      logoUrl: '/images/logo/LogoLight.png',
-      logoNormalUrl: '/images/logo/logo.png',
-      year: new Date().getFullYear(),
-      baseUrl: process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
-    });
-
-    // Return the response
-    return NextResponse.json({
-      subject,
-      content: emailContent,
-      html: formattedContent
-    });
 
   } catch (error) {
     console.error('Error in custom-email:', {

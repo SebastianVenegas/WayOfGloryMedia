@@ -219,7 +219,7 @@ export default function EmailComposer({
   isSending = false,
   isAiPromptOpen = false,
   onAiPromptOpenChange,
-  onAiPromptSubmit,
+  onAiPromptSubmit: externalAiPromptSubmit,
   isGeneratingAI = false,
   previewHtml: externalPreviewHtml,
   onPreviewHtmlChange
@@ -238,6 +238,118 @@ export default function EmailComposer({
   const [viewMode, setViewMode] = useState<'edit' | 'preview'>('edit')
   const [previewHtml, setPreviewHtml] = useState(externalPreviewHtml || initialContent)
   const [isImprovingPrompt, setIsImprovingPrompt] = useState(false)
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false)
+
+  // Reset error state when content changes
+  useEffect(() => {
+    setError('')
+  }, [content])
+
+  // Handle preview generation with timeout
+  const generatePreview = useCallback(async () => {
+    if (!orderId || isLoadingPreview) return
+
+    setIsLoadingPreview(true)
+    setError('')
+
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 20000) // 20 second timeout
+
+    try {
+      const response = await fetch(`/api/admin/orders/${orderId}/preview-template?templateId=custom`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content }),
+        signal: controller.signal
+      })
+
+      clearTimeout(timeoutId)
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to generate preview')
+      }
+
+      const data = await response.json()
+      setPreviewHtml(data.html)
+      onPreviewHtmlChange?.(data.html)
+      setError('')
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to generate preview'
+      if (error instanceof Error && error.name === 'AbortError') {
+        setError('Preview generation timed out. Please try again.')
+      } else {
+        setError(errorMessage)
+      }
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive'
+      })
+    } finally {
+      setIsLoadingPreview(false)
+    }
+  }, [orderId, content, onPreviewHtmlChange, toast])
+
+  // Handle AI prompt submission with timeout
+  const handleAiPromptSubmit = useCallback(async (prompt: string) => {
+    if (!orderId || isGeneratingAI) return
+
+    setIsGenerating(true)
+    setError('')
+
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 20000) // 20 second timeout
+
+    try {
+      const response = await fetch(`/api/admin/orders/${orderId}/custom-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt }),
+        signal: controller.signal
+      })
+
+      clearTimeout(timeoutId)
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to generate email')
+      }
+
+      const data = await response.json()
+      setContent(data.content)
+      setSubject(data.subject)
+      setPreviewHtml(data.html)
+      onContentChange?.(data.content)
+      onSubjectChange?.(data.subject)
+      onPreviewHtmlChange?.(data.html)
+      setError('')
+      onAiPromptOpenChange?.(false)
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to generate email'
+      if (error instanceof Error && error.name === 'AbortError') {
+        setError('Email generation timed out. Please try again.')
+      } else {
+        setError(errorMessage)
+      }
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive'
+      })
+    } finally {
+      setIsGenerating(false)
+    }
+  }, [orderId, isGeneratingAI, onContentChange, onSubjectChange, onPreviewHtmlChange, onAiPromptOpenChange, toast])
+
+  // Handle external AI prompt submit
+  const onSubmitAiPrompt = useCallback(async (prompt: string) => {
+    if (externalAiPromptSubmit) {
+      externalAiPromptSubmit(prompt)
+    } else {
+      await handleAiPromptSubmit(prompt)
+    }
+  }, [externalAiPromptSubmit, handleAiPromptSubmit])
 
   useEffect(() => {
     if (externalPreviewHtml !== undefined) {
@@ -405,34 +517,6 @@ export default function EmailComposer({
       setIsImprovingPrompt(false)
     }
   }, [isAiPromptOpen])
-
-  // Handle AI prompt submission
-  const handleAiPromptSubmit = async (prompt: string) => {
-    if (!prompt.trim()) {
-      toast({
-        title: "Error",
-        description: "Please enter a prompt before generating.",
-        variant: "destructive"
-      })
-      return
-    }
-
-    setIsGenerating(true)
-    setPreviewHtml('<div class="flex items-center justify-center min-h-[400px]"><div class="text-center"><div class="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent mx-auto mb-4"></div><p class="text-gray-500">Generating email with AI...</p></div></div>')
-
-    try {
-      if (onAiPromptSubmit) {
-        await onAiPromptSubmit(prompt)
-      }
-      // Close the dialog after successful generation
-      if (onAiPromptOpenChange) {
-        onAiPromptOpenChange(false)
-      }
-    } catch (error) {
-      handleError(error, 'generating with AI')
-      setIsGenerating(false)
-    }
-  }
 
   // Handle prompt improvement
   const handleImprovePrompt = async () => {
@@ -979,7 +1063,7 @@ export default function EmailComposer({
                             Cancel
                           </Button>
                           <Button 
-                            onClick={() => handleAiPromptSubmit(aiPrompt)}
+                            onClick={() => onSubmitAiPrompt(aiPrompt)}
                             disabled={isGeneratingAI || !aiPrompt.trim()}
                             className="bg-blue-600/90 backdrop-blur-sm hover:bg-blue-700 text-white shadow-sm flex items-center gap-2 min-w-[120px]"
                           >

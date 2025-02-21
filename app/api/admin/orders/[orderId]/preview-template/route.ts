@@ -1,6 +1,11 @@
 import { sql } from '@vercel/postgres';
 import { getEmailTemplate, formatEmailContent, type Order as EmailOrder } from '@/lib/email-templates';
 import { NextResponse, NextRequest } from 'next/server';
+import OpenAI from 'openai';
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 // Helper function to format price
 function formatPrice(value: number | string): string {
@@ -85,9 +90,8 @@ async function getOrder(orderId: number): Promise<EmailOrder | null> {
 }
 
 export async function GET(request: NextRequest): Promise<Response> {
-  // Extract orderId from the URL. Expected URL: /api/admin/orders/{orderId}/preview-template
+  // Extract orderId from the URL
   const segments = request.nextUrl.pathname.split('/');
-  // segments: ['', 'api', 'admin', 'orders', '{orderId}', 'preview-template']
   const orderIdString = segments[4];
   if (!orderIdString) {
     return new NextResponse(JSON.stringify({ error: 'Order ID parameter missing' }), {
@@ -119,20 +123,13 @@ export async function GET(request: NextRequest): Promise<Response> {
     // Get the email template configuration
     const template = getEmailTemplate(templateId, order);
 
-    // For custom emails, use the provided prompt; fallback to template.prompt or a default message
-    const finalPrompt = customPrompt || template.prompt || `Generate email content for order #${order.id}`;
+    // For custom emails, use the provided prompt
+    const finalPrompt = customPrompt || template.prompt;
 
-    // Generate the email content using the AI service with a timeout and no-cache option
-    const openAIRequest = fetch(
-      'https://api.openai.com/v1/chat/completions',
-      {
-        method: 'POST',
-        cache: 'no-store',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
-        },
-        body: JSON.stringify({
+    try {
+      // Generate the email content using OpenAI with a timeout
+      const completion = await Promise.race([
+        openai.chat.completions.create({
           model: template.variables.ai_config.model,
           temperature: template.variables.ai_config.temperature,
           max_tokens: template.variables.ai_config.max_tokens,
@@ -146,55 +143,61 @@ export async function GET(request: NextRequest): Promise<Response> {
               content: finalPrompt
             }
           ]
-        })
-      }
-    );
-    const timeoutPromise = new Promise<Response>((_, reject) =>
-      setTimeout(() => reject(new Error('OpenAI API request timed out')), 30000)
-    );
+        }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('OpenAI request timed out')), 15000)
+        )
+      ]) as OpenAI.Chat.ChatCompletion;
 
-    let emailContent: string;
-    try {
-      const generateResponse = await Promise.race([openAIRequest, timeoutPromise]);
-      if (!generateResponse.ok) {
-        console.error('AI service error:', await generateResponse.text());
-        throw new Error('Failed to generate email content');
-      }
-      const aiResponse = await generateResponse.json();
-      emailContent = aiResponse.choices[0]?.message?.content;
+      const emailContent = completion.choices[0]?.message?.content;
+
       if (!emailContent) {
-        throw new Error('No content generated');
+        console.error('No content generated from OpenAI');
+        return new NextResponse(JSON.stringify({ error: 'No content generated' }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
       }
-    } catch (e) {
-      console.error('Error in OpenAI generation:', e);
-      // Always fallback to a default email content if any error occurs
-      emailContent = 'Thank you for your order. We are processing your request and will update you shortly with complete details.';
-    }
 
-    // Format the email with the template
-    const formattedEmail = formatEmailContent(emailContent, template.variables);
-    // Fallback for subject if it's empty
-    const finalSubject = template.subject || 'Your Order Update';
+      // Format the email with the template
+      const formattedEmail = formatEmailContent(emailContent, template.variables);
 
-    return new NextResponse(
-      JSON.stringify({
-        content: emailContent,
-        html: formattedEmail,
-        subject: finalSubject
-      }),
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-store, no-cache, must-revalidate',
-          'Pragma': 'no-cache'
+      return new NextResponse(
+        JSON.stringify({
+          content: emailContent,
+          html: formattedEmail,
+          subject: template.subject
+        }),
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-store, no-cache, must-revalidate',
+            'Pragma': 'no-cache'
+          }
         }
-      }
-    );
+      );
+
+    } catch (aiError) {
+      console.error('AI service error:', aiError);
+      return new NextResponse(
+        JSON.stringify({ 
+          error: 'Failed to generate email content',
+          details: aiError instanceof Error ? aiError.message : 'Unknown error'
+        }),
+        {
+          status: 503,
+          headers: { 'Content-Type': 'application/json' }
+        }
+      );
+    }
 
   } catch (error) {
     console.error('Error generating email template:', error);
     return new NextResponse(
-      JSON.stringify({ error: 'Failed to generate email template' }),
+      JSON.stringify({ 
+        error: 'Failed to generate email template',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      }),
       {
         status: 500,
         headers: { 'Content-Type': 'application/json' }
