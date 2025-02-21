@@ -67,7 +67,7 @@ import {
   SelectLabel,
 } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
-import { useToast } from "@/components/ui/use-toast"
+import { toast } from 'sonner'
 import dynamic from 'next/dynamic'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import EmailComposer from '@/components/admin/EmailComposer'
@@ -643,16 +643,7 @@ const showToast = (message: string, type: 'success' | 'error' | 'warning' = 'suc
   }
 };
 
-interface EmailState {
-  content: string;
-  subject: string;
-  isLoading: boolean;
-  loadingTemplate: string;
-  error: string | null;
-}
-
 export default function OrdersPage() {
-  const { toast } = useToast()
   const [orders, setOrders] = useState<Order[]>([])
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -682,6 +673,8 @@ export default function OrdersPage() {
   const [shippingStatus, setShippingStatus] = useState('')
   const [isShippingPromptOpen, setIsShippingPromptOpen] = useState(false)
   const [isFullScreen, setIsFullScreen] = useState(false)
+  const [isTemplateLoading, setIsTemplateLoading] = useState(false)
+  const [loadingTemplateName, setLoadingTemplateName] = useState('')
   const [emailLogs, setEmailLogs] = useState<EmailLog[]>([])
   const [isLoadingEmailLogs, setIsLoadingEmailLogs] = useState(false)
   const [activeTab, setActiveTab] = useState<EmailTabValue>('content')
@@ -697,14 +690,6 @@ export default function OrdersPage() {
   const [showEmailHistory, setShowEmailHistory] = useState(false)
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [error, setError] = useState('');
-  const [emailState, setEmailState] = useState<EmailState>({
-    content: '',
-    subject: '',
-    isLoading: false,
-    loadingTemplate: '',
-    error: null
-  });
 
   // Calculate revenue and profit totals
   const revenue = calculateTotalRevenue(orders);
@@ -1092,7 +1077,7 @@ export default function OrdersPage() {
 
   // Handle email templates dialog
   const handleEmailTemplatesOpenChange = (open: boolean) => {
-    if (!open && !emailState.isLoading) {
+    if (!open && !isTemplateLoading) {
       clearEmailState()
     }
     setIsEmailTemplatesOpen(open)
@@ -1110,12 +1095,8 @@ export default function OrdersPage() {
       clearEmailState()
       setPreviewHtml('<div class="flex items-center justify-center min-h-[400px]"><div class="text-center"><div class="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent mx-auto mb-4"></div><p class="text-gray-500">Loading template...</p></div></div>')
       setIsGeneratingAI(true)
-      setEmailState(prev => ({
-        ...prev,
-        isLoading: true,
-        loadingTemplate: template?.title || 'Email Template',
-        error: null
-      }))
+      setIsTemplateLoading(true)
+      setLoadingTemplateName(template?.title || 'Email Template')
 
       // Use the API to generate the content
       const response = await fetch(`/api/admin/orders/${selectedOrder.id}/preview-template?templateId=${templateId}`, {
@@ -1156,12 +1137,8 @@ export default function OrdersPage() {
       showToast(err instanceof Error ? err.message : 'Failed to generate email template. Please try again.', 'error')
     } finally {
       setIsGeneratingAI(false)
-      setEmailState(prev => ({
-        ...prev,
-        isLoading: false,
-        loadingTemplate: '',
-        error: null
-      }))
+      setIsTemplateLoading(false)
+      setLoadingTemplateName('')
     }
   }
 
@@ -1194,12 +1171,8 @@ export default function OrdersPage() {
 
     try {
       setIsGeneratingAI(true);
-      setEmailState(prev => ({
-        ...prev,
-        isLoading: true,
-        loadingTemplate: 'Generating custom email...',
-        error: null
-      }))
+      setIsTemplateLoading(true);
+      setLoadingTemplateName('Generating custom email...');
 
       // Use the preview-template endpoint with custom_email template
       const response = await fetch(
@@ -1241,13 +1214,9 @@ export default function OrdersPage() {
         'error'
       );
     } finally {
-      setIsGeneratingAI(false)
-      setEmailState(prev => ({
-        ...prev,
-        isLoading: false,
-        loadingTemplate: '',
-        error: null
-      }))
+      setIsGeneratingAI(false);
+      setIsTemplateLoading(false);
+      setLoadingTemplateName('');
     }
   };
 
@@ -1328,82 +1297,67 @@ export default function OrdersPage() {
 
   // Handle quick generate
   const handleQuickGenerate = async (templateId: string) => {
-    if (!selectedOrder) return;
-
-    // Set loading states immediately
-    setEmailState(prev => ({
-      ...prev,
-      isLoading: true,
-      loadingTemplate: templateId,
-      error: null
-    }));
+    if (!selectedOrder) {
+      showToast('Please select an order first', 'error');
+      return;
+    }
 
     try {
-      // Get the template content
-      const template = getEmailTemplate(templateId, selectedOrder);
-      
-      // Create request body with all necessary information
-      const requestBody = {
-        prompt: template.content || template.subject,
-        variables: {
-          orderId: String(selectedOrder.id),
-          customerName: `${selectedOrder.first_name} ${selectedOrder.last_name}`,
-          orderTotal: formatPrice(selectedOrder.total_amount),
-          orderStatus: selectedOrder.status,
-          installationDate: selectedOrder.installation_date,
-          installationTime: selectedOrder.installation_time,
-          emailType: templateId,
-          includesInstallation: selectedOrder.installation_date ? true : false
-        }
-      };
+      setIsTemplateLoading(true);
+      setLoadingTemplateName(`Generating ${templateId} template...`);
+      setShowEmailComposer(true);
 
-      // Add PWA headers and prevent caching
-      const response = await fetch(`/api/admin/generate-email?_=${Date.now()}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-pwa-request': 'true',
-          'Cache-Control': 'no-store, no-cache, must-revalidate',
-          'Pragma': 'no-cache'
-        },
-        body: JSON.stringify(requestBody),
-        cache: 'no-store'
-      });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+      const response = await fetch(
+        `/api/admin/orders/${selectedOrder.id}/preview-template?templateId=${templateId}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'x-pwa-request': 'true',
+            'x-timestamp': Date.now().toString()
+          },
+          signal: controller.signal
+        }
+      );
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to generate email');
+        const errorData = await response.json().catch(() => ({ error: 'Failed to generate template' }));
+        throw new Error(errorData.error || 'Failed to generate template');
       }
 
       const data = await response.json();
 
-      // Update all states synchronously
-      setEmailState(prev => ({
-        ...prev,
-        content: data.content || '',
-        subject: template.subject || '',
-        isLoading: false,
-        loadingTemplate: '',
-        error: null
-      }));
+      if (!data.content && !data.html) {
+        throw new Error('No content received from server');
+      }
 
-      // Show the email composer
-      setShowEmailComposer(true);
-      setActiveEmailTab('content');
-
-    } catch (error) {
-      console.error('Error generating email:', error);
-      setEmailState(prev => ({
-        ...prev,
-        isLoading: false,
-        loadingTemplate: '',
-        error: error instanceof Error ? error.message : 'Failed to generate email'
-      }));
+      // Set the content and preview HTML
+      setContent(data.content || data.html);
+      setEditedContent(data.content || data.html);
+      setPreviewHtml(data.html || data.content);
       
-      toast({
-        description: error instanceof Error ? error.message : 'Failed to generate email',
-        variant: "destructive"
-      });
+      if (data.subject) {
+        setSubject(data.subject);
+        setEditedSubject(data.subject);
+      }
+
+      handleEmailTabChange('content');
+      setIsGeneratingEmail(false);
+      showToast('Template generated successfully', 'success');
+    } catch (error: any) {
+      console.error('Error generating template:', error);
+      showToast(error.message || 'Failed to generate template', 'error');
+      setShowEmailComposer(false);
+    } finally {
+      setIsTemplateLoading(false);
+      setLoadingTemplateName('');
     }
   };
 
@@ -1752,12 +1706,8 @@ export default function OrdersPage() {
     setIsAiPromptOpen(false);
     setShippingStatus('');
     setIsShippingPromptOpen(false);
-    setEmailState(prev => ({
-      ...prev,
-      isLoading: false,
-      loadingTemplate: '',
-      error: null
-    }));
+    setIsTemplateLoading(false);
+    setLoadingTemplateName('');
     setEmailLogs([]);
     setIsLoadingEmailLogs(false);
   };
@@ -1777,12 +1727,8 @@ export default function OrdersPage() {
     setIsAiPromptOpen(false);
     setShippingStatus('');
     setIsShippingPromptOpen(false);
-    setEmailState(prev => ({
-      ...prev,
-      isLoading: false,
-      loadingTemplate: '',
-      error: null
-    }));
+    setIsTemplateLoading(false);
+    setLoadingTemplateName('');
     setEmailLogs([]);
     setIsLoadingEmailLogs(false);
   };
@@ -3199,12 +3145,7 @@ export default function OrdersPage() {
                       setTemplateVars({});
                       setViewMode('edit');
                       setIsGeneratingEmail(true);
-                      setEmailState(prev => ({
-                        ...prev,
-                        isLoading: true,
-                        loadingTemplate: 'Creating New Email...',
-                        error: null
-                      }));
+                      setLoadingTemplateName('Creating New Email...');
                       setShowEmailComposer(true);
                       setTimeout(() => {
                         setIsGeneratingEmail(false);
@@ -3343,7 +3284,7 @@ export default function OrdersPage() {
                       )}
                       <EmailComposer
                         orderId={String(selectedOrder?.id || '')}
-                        initialContent={emailState.content}
+                        initialContent={editedContent}
                         onContentChange={(content) => {
                           setEditedContent(content);
                         }}

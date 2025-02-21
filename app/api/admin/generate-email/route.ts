@@ -3,6 +3,7 @@ import OpenAI from 'openai'
 import { formatEmailContent } from '@/lib/email-templates'
 import { sql } from '@vercel/postgres'
 import { NextRequest } from 'next/server'
+import { ChatCompletionMessageParam } from 'openai/resources/chat/completions'
 
 interface OrderItem {
   title?: string;
@@ -31,86 +32,163 @@ const toNumber = (value: number | string | null | undefined): number => {
 }
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: process.env.OPENAI_API_KEY
 });
 
 export async function POST(request: NextRequest) {
   try {
-    // Check if this is a PWA request
-    const isPWA = request.headers.get('x-pwa-request') === 'true';
-    
-    // Set cache control headers
-    const headers = {
-      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-      'Pragma': 'no-cache',
-      'Expires': '0',
-    };
-
-    const { prompt, variables } = await request.json();
+    const body = await request.json();
+    const { prompt, variables, isPWA } = body;
 
     if (!prompt) {
-      return NextResponse.json(
-        { error: 'Prompt is required' },
-        { status: 400, headers }
-      );
-    }
-
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4",
-      messages: [
-        {
-          role: "system",
-          content: "You are a professional email composer. Create HTML emails that are well-formatted and responsive."
-        },
-        {
-          role: "user",
-          content: `${prompt}\n\nVariables:\n${JSON.stringify(variables, null, 2)}`
+      return new NextResponse(JSON.stringify({ 
+        error: 'Prompt is required',
+        success: false,
+        isPWA,
+        content: null,
+        html: null
+      }), { 
+        status: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-store'
         }
-      ],
-      temperature: 0.7,
-      max_tokens: 2000,
-    });
-
-    const content = completion.choices[0].message?.content;
-
-    if (!content) {
-      return NextResponse.json(
-        { error: 'No content generated' },
-        { status: 500, headers }
-      );
+      });
     }
 
-    // For PWA requests, we need to ensure the response is properly formatted
-    const formattedContent = isPWA ? 
-      content.replace(/\n/g, '<br>') : 
-      content;
+    try {
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [
+          {
+            role: "system",
+            content: variables?.ai_config?.system_prompt || "You are a helpful assistant."
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        temperature: variables?.ai_config?.temperature || 0.7,
+        max_tokens: variables?.ai_config?.max_tokens || 2000,
+      });
 
-    return NextResponse.json(
-      { 
-        content: formattedContent,
-        html: formattedContent 
-      },
-      { headers }
-    );
+      const content = completion.choices[0]?.message?.content;
 
-  } catch (error: any) {
-    console.error('Email generation error:', error);
-    
-    return NextResponse.json(
-      { 
-        error: error.message || 'Failed to generate email',
-        details: error.response?.data || error.toString()
-      },
-      { 
+      if (!content) {
+        console.error('No content generated from OpenAI');
+        return new NextResponse(JSON.stringify({
+          error: 'No content generated',
+          success: false,
+          isPWA,
+          content: null,
+          html: null
+        }), { 
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-store',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+          }
+        });
+      }
+
+      // Update logo URLs based on PWA status
+      const baseUrl = 'https://wayofglory.com';
+      
+      // Ensure logo URLs are always absolute
+      const logoLight = 'https://wayofglory.com/images/logo/LogoLight.png';
+      const logoNormal = 'https://wayofglory.com/images/logo/logo.png';
+
+      const formattedVariables = {
+        ...variables,
+        logoUrl: logoNormal,
+        logoNormalUrl: logoNormal,
+        logoLightUrl: logoLight,
+        baseUrl,
+        companyName: 'Way of Glory Media',
+        supportEmail: 'help@wayofglory.com',
+        websiteUrl: 'https://wayofglory.com',
+        isPWA: true
+      };
+
+      // Format the content with proper styling
+      const formattedHtml = formatEmailContent(content, formattedVariables);
+
+      // Return both the raw content and formatted HTML
+      return new NextResponse(JSON.stringify({
+        content,
+        html: formattedHtml,
+        success: true,
+        isPWA: true,
+        message: 'Email content generated successfully'
+      }), { 
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-store',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+        }
+      });
+
+    } catch (error: any) {
+      console.error('OpenAI API Error:', {
+        error: error.message,
+        stack: error.stack,
+        details: error.response?.data || error.data || error
+      });
+      
+      return new NextResponse(JSON.stringify({
+        error: 'Failed to generate email content',
+        details: error.message || 'An error occurred during email generation',
+        success: false,
+        isPWA,
+        content: null,
+        html: null,
+        errorData: {
+          message: error.message,
+          type: error.type || error.name,
+          status: error.status || 500,
+          details: error.response?.data || error.data || null
+        }
+      }), { 
         status: error.status || 500,
         headers: {
-          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0',
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-store'
         }
+      });
+    }
+  } catch (error: any) {
+    console.error('Request processing error:', {
+      error: error.message,
+      stack: error.stack,
+      details: error.response?.data || error.data || error
+    });
+    
+    return new NextResponse(JSON.stringify({
+      error: 'Failed to process request',
+      details: error.message || 'Invalid request format',
+      success: false,
+      isPWA: false,
+      content: null,
+      html: null,
+      errorData: {
+        message: error.message,
+        type: error.type || error.name,
+        status: error.status || 400,
+        details: error.response?.data || error.data || null
       }
-    );
+    }), { 
+      status: 400,
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store'
+      }
+    });
   }
-}
-
-export const dynamic = 'force-dynamic'; 
+} 
