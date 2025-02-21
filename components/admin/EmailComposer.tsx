@@ -256,11 +256,12 @@ export default function EmailComposer({
     const timeoutId = setTimeout(() => controller.abort(), 20000) // 20 second timeout
 
     try {
-      const response = await fetch(`/api/admin/orders/${orderId}/preview-template?templateId=custom`, {
+      const response = await fetch(`/api/admin/orders/${orderId}/preview-template?templateId=custom&_=${Date.now()}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content }),
-        signal: controller.signal
+        signal: controller.signal,
+        cache: 'no-store'
       })
 
       clearTimeout(timeoutId)
@@ -302,11 +303,12 @@ export default function EmailComposer({
     const timeoutId = setTimeout(() => controller.abort(), 20000) // 20 second timeout
 
     try {
-      const response = await fetch(`/api/admin/orders/${orderId}/custom-email`, {
+      const response = await fetch(`/api/admin/generate-email?_=${Date.now()}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt }),
-        signal: controller.signal
+        body: JSON.stringify({ prompt: prompt.trim() }),
+        signal: controller.signal,
+        cache: 'no-store'
       })
 
       clearTimeout(timeoutId)
@@ -1011,7 +1013,7 @@ export default function EmailComposer({
                               </h4>
                               <div className="space-y-2">
                                 <div className="space-y-1.5">
-                                  <code className="px-1.5 py-0.5 bg-blue-100/50 rounded text-blue-700 text-xs block">[Customer Name]</code>
+                                  <code className="px-1.5 py-0.5 bg-blue-100 rounded text-blue-700 text-xs block">[Customer Name]</code>
                                   <code className="px-1.5 py-0.5 bg-blue-100/50 rounded text-blue-700 text-xs block">[Order Number]</code>
                                   <code className="px-1.5 py-0.5 bg-blue-100/50 rounded text-blue-700 text-xs block">[Total Amount]</code>
                                 </div>

@@ -1297,57 +1297,29 @@ export default function OrdersPage() {
 
   // Handle quick generate
   const handleQuickGenerate = async (templateId: string) => {
-    if (!selectedOrder) {
-      showToast('Please select an order first', 'error');
-      return;
-    }
-
     try {
       setIsTemplateLoading(true);
       setLoadingTemplateName(`Generating ${templateId} template...`);
       setShowEmailComposer(true);
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-
-      const response = await fetch(
-        `/api/admin/orders/${selectedOrder.id}/preview-template?templateId=${templateId}`,
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache',
-            'x-pwa-request': 'true',
-            'x-timestamp': Date.now().toString()
-          },
-          signal: controller.signal
-        }
-      );
-
-      clearTimeout(timeoutId);
+      // Assuming 'order' is available in scope for the current order
+      const template = getEmailTemplate(templateId, order);
+      const response = await fetch(`/api/admin/generate-email?_=${Date.now()}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: template.prompt, variables: template.variables }),
+        cache: 'no-store'
+      });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Failed to generate template' }));
-        throw new Error(errorData.error || 'Failed to generate template');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate email content');
       }
 
       const data = await response.json();
-
-      if (!data.content && !data.html) {
-        throw new Error('No content received from server');
-      }
-
-      // Set the content and preview HTML
-      setContent(data.content || data.html);
-      setEditedContent(data.content || data.html);
-      setPreviewHtml(data.html || data.content);
-      
-      if (data.subject) {
-        setSubject(data.subject);
-        setEditedSubject(data.subject);
-      }
-
+      setContent(data.content);
+      setSubject(data.subject);
+      setPreviewHtml(data.html);
       handleEmailTabChange('content');
       setIsGeneratingEmail(false);
       showToast('Template generated successfully', 'success');
