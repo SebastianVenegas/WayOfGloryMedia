@@ -167,22 +167,20 @@ export async function GET(request: NextRequest): Promise<Response> {
       }
     } catch (e) {
       console.error('Error in OpenAI generation:', e);
-      // Fallback email content if OpenAI request times out or fails
-      if (e instanceof Error && e.message.includes('timed out')) {
-        emailContent = 'Thank you for your order. We are processing your request and will update you shortly with complete details.';
-      } else {
-        throw e;
-      }
+      // Always fallback to a default email content if any error occurs
+      emailContent = 'Thank you for your order. We are processing your request and will update you shortly with complete details.';
     }
 
     // Format the email with the template
     const formattedEmail = formatEmailContent(emailContent, template.variables);
+    // Fallback for subject if it's empty
+    const finalSubject = template.subject || 'Your Order Update';
 
     return new NextResponse(
       JSON.stringify({
         content: emailContent,
         html: formattedEmail,
-        subject: template.subject
+        subject: finalSubject
       }),
       {
         headers: {
