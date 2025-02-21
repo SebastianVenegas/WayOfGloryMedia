@@ -1297,13 +1297,17 @@ export default function OrdersPage() {
 
   // Handle quick generate
   const handleQuickGenerate = async (templateId: string) => {
+    if (!selectedOrder) {
+      showToast('No order selected for template generation', 'error');
+      return;
+    }
     try {
       setIsTemplateLoading(true);
       setLoadingTemplateName(`Generating ${templateId} template...`);
       setShowEmailComposer(true);
 
-      // Assuming 'order' is available in scope for the current order
-      const template = getEmailTemplate(templateId, selectedOrder);
+      // Use 'selectedOrder' for the current order
+      const template = getEmailTemplate(templateId, selectedOrder!);
       const response = await fetch(`/api/admin/generate-email?_=${Date.now()}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
