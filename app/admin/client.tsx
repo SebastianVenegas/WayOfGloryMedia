@@ -77,7 +77,7 @@ function AdminContent({ children }: AdminClientProps) {
 
   if (isLoginPage || !isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gray-50/50">
+      <div className="min-h-screen bg-gray-50">
         <AdminPWARegister />
         <main>
           {children}
@@ -94,7 +94,7 @@ function AdminContent({ children }: AdminClientProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50/50">
+    <div className="min-h-screen bg-gray-50">
       <AdminPWARegister />
       <Sidebar 
         isExpanded={isExpanded}
@@ -105,7 +105,7 @@ function AdminContent({ children }: AdminClientProps) {
         userName={userName}
       />
       <main className={cn(
-        "relative transition-all duration-300",
+        "relative transition-all duration-300 bg-gray-50 min-h-screen",
         isExpanded ? 'ml-[280px]' : 'ml-[80px]'
       )}>
         {children}

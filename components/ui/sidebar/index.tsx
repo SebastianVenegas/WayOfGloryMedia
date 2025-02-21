@@ -145,7 +145,7 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
       />
       <div 
         className={cn(
-          "absolute top-0 right-0 min-h-screen w-full transition-all duration-200",
+          "absolute top-0 right-0 min-h-screen w-full transition-all duration-200 bg-gray-50",
           "md:w-[calc(100%-80px)] md:left-[80px]",
           isExpanded && "md:w-[calc(100%-280px)] md:left-[280px]",
           "pt-16 md:pt-0"

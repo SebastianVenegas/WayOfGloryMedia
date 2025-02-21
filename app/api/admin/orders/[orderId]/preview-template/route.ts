@@ -90,17 +90,26 @@ async function getOrder(orderId: number): Promise<EmailOrder | null> {
 }
 
 export async function GET(request: NextRequest): Promise<Response> {
-  // Extract orderId from the URL
-  const segments = request.nextUrl.pathname.split('/');
-  const orderIdString = segments[4];
-  if (!orderIdString) {
-    return new NextResponse(JSON.stringify({ error: 'Order ID parameter missing' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  }
+  // Add CORS and cache prevention headers
+  const headers = {
+    'Content-Type': 'application/json',
+    'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0',
+    'Surrogate-Control': 'no-store'
+  };
 
   try {
+    // Extract orderId from the URL
+    const segments = request.nextUrl.pathname.split('/');
+    const orderIdString = segments[4];
+    if (!orderIdString) {
+      return new NextResponse(JSON.stringify({ error: 'Order ID parameter missing' }), {
+        status: 400,
+        headers
+      });
+    }
+
     const { searchParams } = new URL(request.url);
     const templateId = searchParams.get('templateId');
     const customPrompt = searchParams.get('prompt');
@@ -108,7 +117,7 @@ export async function GET(request: NextRequest): Promise<Response> {
     if (!templateId) {
       return new NextResponse(JSON.stringify({ error: 'Template ID is required' }), {
         status: 400,
-        headers: { 'Content-Type': 'application/json' }
+        headers
       });
     }
 
@@ -116,7 +125,7 @@ export async function GET(request: NextRequest): Promise<Response> {
     if (!order) {
       return new NextResponse(JSON.stringify({ error: 'Order not found' }), {
         status: 404,
-        headers: { 'Content-Type': 'application/json' }
+        headers
       });
     }
 
@@ -155,13 +164,14 @@ export async function GET(request: NextRequest): Promise<Response> {
         console.error('No content generated from OpenAI');
         return new NextResponse(JSON.stringify({ error: 'No content generated' }), {
           status: 500,
-          headers: { 'Content-Type': 'application/json' }
+          headers
         });
       }
 
       // Format the email with the template
       const formattedEmail = formatEmailContent(emailContent, template.variables);
 
+      // Return with PWA-specific headers
       return new NextResponse(
         JSON.stringify({
           content: emailContent,
@@ -170,9 +180,9 @@ export async function GET(request: NextRequest): Promise<Response> {
         }),
         {
           headers: {
-            'Content-Type': 'application/json',
-            'Cache-Control': 'no-store, no-cache, must-revalidate',
-            'Pragma': 'no-cache'
+            ...headers,
+            'X-PWA-Generated': 'true',
+            'X-PWA-Version': '1.0'
           }
         }
       );
@@ -186,7 +196,7 @@ export async function GET(request: NextRequest): Promise<Response> {
         }),
         {
           status: 503,
-          headers: { 'Content-Type': 'application/json' }
+          headers
         }
       );
     }
@@ -200,7 +210,7 @@ export async function GET(request: NextRequest): Promise<Response> {
       }),
       {
         status: 500,
-        headers: { 'Content-Type': 'application/json' }
+        headers
       }
     );
   }
