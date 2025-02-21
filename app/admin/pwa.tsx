@@ -87,7 +87,7 @@ export function AdminPWARegister() {
               const handleFetchError = async (request: Request) => {
                 try {
                   // Check if this is an email template request
-                  if (request.url.includes('/preview-template') || request.url.includes('/custom-email') || request.url.includes('/generate-email')) {
+                  if (request.url.includes('/preview-template') || request.url.includes('/custom-email')) {
                     console.log('Retrying email template request:', request.url);
                     
                     // Add PWA headers and prevent caching
