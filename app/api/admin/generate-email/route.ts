@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server'
-import { Configuration, OpenAIApi } from 'openai'
+import OpenAI from 'openai'
 import { formatEmailContent } from '@/lib/email-templates'
 import { sql } from '@vercel/postgres'
 import { NextRequest } from 'next/server'
-import { ChatCompletionMessageParam } from 'openai/resources/chat/completions'
 
 interface OrderItem {
   title?: string;
@@ -31,11 +30,9 @@ const toNumber = (value: number | string | null | undefined): number => {
   return isNaN(num) ? 0 : num
 }
 
-const configuration = new Configuration({
+const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
-
-const openai = new OpenAIApi(configuration);
 
 export async function POST(request: NextRequest) {
   try {
@@ -58,7 +55,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const completion = await openai.createChatCompletion({
+    const completion = await openai.chat.completions.create({
       model: "gpt-4",
       messages: [
         {
@@ -74,7 +71,7 @@ export async function POST(request: NextRequest) {
       max_tokens: 2000,
     });
 
-    const content = completion.data.choices[0].message?.content;
+    const content = completion.choices[0].message?.content;
 
     if (!content) {
       return NextResponse.json(

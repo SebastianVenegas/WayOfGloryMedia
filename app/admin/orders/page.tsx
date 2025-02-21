@@ -67,7 +67,7 @@ import {
   SelectLabel,
 } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
-import { toast } from 'sonner'
+import { useToast } from "@/components/ui/use-toast"
 import dynamic from 'next/dynamic'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import EmailComposer from '@/components/admin/EmailComposer'
@@ -652,6 +652,7 @@ interface EmailState {
 }
 
 export default function OrdersPage() {
+  const { toast } = useToast()
   const [orders, setOrders] = useState<Order[]>([])
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([])
   const [isLoading, setIsLoading] = useState(true)
