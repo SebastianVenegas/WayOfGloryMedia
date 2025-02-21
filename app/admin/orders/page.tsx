@@ -643,6 +643,14 @@ const showToast = (message: string, type: 'success' | 'error' | 'warning' = 'suc
   }
 };
 
+interface EmailState {
+  content: string;
+  subject: string;
+  isLoading: boolean;
+  loadingTemplate: string;
+  error: string | null;
+}
+
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([])
@@ -673,8 +681,6 @@ export default function OrdersPage() {
   const [shippingStatus, setShippingStatus] = useState('')
   const [isShippingPromptOpen, setIsShippingPromptOpen] = useState(false)
   const [isFullScreen, setIsFullScreen] = useState(false)
-  const [isTemplateLoading, setIsTemplateLoading] = useState(false)
-  const [loadingTemplateName, setLoadingTemplateName] = useState('')
   const [emailLogs, setEmailLogs] = useState<EmailLog[]>([])
   const [isLoadingEmailLogs, setIsLoadingEmailLogs] = useState(false)
   const [activeTab, setActiveTab] = useState<EmailTabValue>('content')
@@ -690,6 +696,14 @@ export default function OrdersPage() {
   const [showEmailHistory, setShowEmailHistory] = useState(false)
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [error, setError] = useState('');
+  const [emailState, setEmailState] = useState<EmailState>({
+    content: '',
+    subject: '',
+    isLoading: false,
+    loadingTemplate: '',
+    error: null
+  });
 
   // Calculate revenue and profit totals
   const revenue = calculateTotalRevenue(orders);
@@ -1077,7 +1091,7 @@ export default function OrdersPage() {
 
   // Handle email templates dialog
   const handleEmailTemplatesOpenChange = (open: boolean) => {
-    if (!open && !isTemplateLoading) {
+    if (!open && !emailState.isLoading) {
       clearEmailState()
     }
     setIsEmailTemplatesOpen(open)
@@ -1095,8 +1109,12 @@ export default function OrdersPage() {
       clearEmailState()
       setPreviewHtml('<div class="flex items-center justify-center min-h-[400px]"><div class="text-center"><div class="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent mx-auto mb-4"></div><p class="text-gray-500">Loading template...</p></div></div>')
       setIsGeneratingAI(true)
-      setIsTemplateLoading(true)
-      setLoadingTemplateName(template?.title || 'Email Template')
+      setEmailState(prev => ({
+        ...prev,
+        isLoading: true,
+        loadingTemplate: template?.title || 'Email Template',
+        error: null
+      }))
 
       // Use the API to generate the content
       const response = await fetch(`/api/admin/orders/${selectedOrder.id}/preview-template?templateId=${templateId}`, {
@@ -1137,8 +1155,12 @@ export default function OrdersPage() {
       showToast(err instanceof Error ? err.message : 'Failed to generate email template. Please try again.', 'error')
     } finally {
       setIsGeneratingAI(false)
-      setIsTemplateLoading(false)
-      setLoadingTemplateName('')
+      setEmailState(prev => ({
+        ...prev,
+        isLoading: false,
+        loadingTemplate: '',
+        error: null
+      }))
     }
   }
 
@@ -1171,8 +1193,12 @@ export default function OrdersPage() {
 
     try {
       setIsGeneratingAI(true);
-      setIsTemplateLoading(true);
-      setLoadingTemplateName('Generating custom email...');
+      setEmailState(prev => ({
+        ...prev,
+        isLoading: true,
+        loadingTemplate: 'Generating custom email...',
+        error: null
+      }))
 
       // Use the preview-template endpoint with custom_email template
       const response = await fetch(
@@ -1214,9 +1240,13 @@ export default function OrdersPage() {
         'error'
       );
     } finally {
-      setIsGeneratingAI(false);
-      setIsTemplateLoading(false);
-      setLoadingTemplateName('');
+      setIsGeneratingAI(false)
+      setEmailState(prev => ({
+        ...prev,
+        isLoading: false,
+        loadingTemplate: '',
+        error: null
+      }))
     }
   };
 
@@ -1297,76 +1327,83 @@ export default function OrdersPage() {
 
   // Handle quick generate
   const handleQuickGenerate = async (templateId: string) => {
-    if (!selectedOrder) {
-      showToast('No order selected for template generation', 'error');
-      return;
-    }
-    try {
-      setIsTemplateLoading(true);
-      setLoadingTemplateName(`Generating ${templateId} template...`);
-      setShowEmailComposer(true);
-      setIsGeneratingEmail(true);
+    if (!selectedOrder) return;
 
-      // Use 'selectedOrder' for the current order
-      const template = getEmailTemplate(templateId, selectedOrder!);
+    // Set loading states immediately
+    setEmailState(prev => ({
+      ...prev,
+      isLoading: true,
+      loadingTemplate: templateId,
+      error: null
+    }));
+
+    try {
+      // Get the template content
+      const template = getEmailTemplate(templateId, selectedOrder);
       
-      // Create the request body with a more structured format like the Thank You template
+      // Create request body with all necessary information
       const requestBody = {
         prompt: template.content || template.subject,
         variables: {
-          orderId: selectedOrder.id,
+          orderId: String(selectedOrder.id),
           customerName: `${selectedOrder.first_name} ${selectedOrder.last_name}`,
-          orderTotal: selectedOrder.total_amount,
+          orderTotal: formatPrice(selectedOrder.total_amount),
           orderStatus: selectedOrder.status,
-          emailType: templateId,
-          includesInstallation: selectedOrder.installation_price && Number(selectedOrder.installation_price) > 0,
           installationDate: selectedOrder.installation_date,
-          installationTime: selectedOrder.installation_time
+          installationTime: selectedOrder.installation_time,
+          emailType: templateId,
+          includesInstallation: selectedOrder.installation_date ? true : false
         }
       };
 
-      // Add timeout to the fetch request
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-
+      // Add PWA headers and prevent caching
       const response = await fetch(`/api/admin/generate-email?_=${Date.now()}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-pwa-request': 'true',
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+          'Pragma': 'no-cache'
+        },
         body: JSON.stringify(requestBody),
-        cache: 'no-store',
-        signal: controller.signal
+        cache: 'no-store'
       });
 
-      clearTimeout(timeoutId);
-
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to generate email content');
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to generate email');
       }
 
       const data = await response.json();
+
+      // Update all states synchronously
+      setEmailState(prev => ({
+        ...prev,
+        content: data.content || '',
+        subject: template.subject || '',
+        isLoading: false,
+        loadingTemplate: '',
+        error: null
+      }));
+
+      // Show the email composer
+      setShowEmailComposer(true);
+      setActiveEmailTab('content');
+
+    } catch (error) {
+      console.error('Error generating email:', error);
+      setEmailState(prev => ({
+        ...prev,
+        isLoading: false,
+        loadingTemplate: '',
+        error: error instanceof Error ? error.message : 'Failed to generate email'
+      }));
       
-      // Only update states if we have valid data
-      if (data.content && data.subject) {
-        setContent(data.content);
-        setSubject(data.subject);
-        setPreviewHtml(data.html || data.content);
-        handleEmailTabChange('content');
-        showToast('Template generated successfully', 'success');
-      } else {
-        throw new Error('Generated email content was incomplete');
-      }
-    } catch (error: any) {
-      console.error('Error generating template:', error);
-      showToast(error.message || 'Failed to generate template', 'error');
-      setShowEmailComposer(false);
-      setContent('');
-      setSubject('');
-      setPreviewHtml('');
-    } finally {
-      setIsTemplateLoading(false);
-      setLoadingTemplateName('');
-      setIsGeneratingEmail(false);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : 'Failed to generate email',
+        variant: "destructive"
+      });
     }
   };
 
@@ -1715,8 +1752,12 @@ export default function OrdersPage() {
     setIsAiPromptOpen(false);
     setShippingStatus('');
     setIsShippingPromptOpen(false);
-    setIsTemplateLoading(false);
-    setLoadingTemplateName('');
+    setEmailState(prev => ({
+      ...prev,
+      isLoading: false,
+      loadingTemplate: '',
+      error: null
+    }));
     setEmailLogs([]);
     setIsLoadingEmailLogs(false);
   };
@@ -1736,8 +1777,12 @@ export default function OrdersPage() {
     setIsAiPromptOpen(false);
     setShippingStatus('');
     setIsShippingPromptOpen(false);
-    setIsTemplateLoading(false);
-    setLoadingTemplateName('');
+    setEmailState(prev => ({
+      ...prev,
+      isLoading: false,
+      loadingTemplate: '',
+      error: null
+    }));
     setEmailLogs([]);
     setIsLoadingEmailLogs(false);
   };
@@ -3154,7 +3199,12 @@ export default function OrdersPage() {
                       setTemplateVars({});
                       setViewMode('edit');
                       setIsGeneratingEmail(true);
-                      setLoadingTemplateName('Creating New Email...');
+                      setEmailState(prev => ({
+                        ...prev,
+                        isLoading: true,
+                        loadingTemplate: 'Creating New Email...',
+                        error: null
+                      }));
                       setShowEmailComposer(true);
                       setTimeout(() => {
                         setIsGeneratingEmail(false);
@@ -3293,7 +3343,7 @@ export default function OrdersPage() {
                       )}
                       <EmailComposer
                         orderId={String(selectedOrder?.id || '')}
-                        initialContent={editedContent}
+                        initialContent={emailState.content}
                         onContentChange={(content) => {
                           setEditedContent(content);
                         }}
