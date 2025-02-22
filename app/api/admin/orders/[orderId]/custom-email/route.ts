@@ -12,25 +12,31 @@ const formatPrice = (price: number | string | null | undefined): string => {
 
 const AI_EMAIL_CONFIG = {
   model: "gpt-4",
-  temperature: 1.0,
+  temperature: 0.7,
   max_tokens: 2000,
-  system_prompt: `You are a creative writer specializing in composing unique emails. Your task is to write EXACTLY what is requested in the prompt, maintaining the exact style, tone, and creative direction specified.
+  system_prompt: `You are a professional email composer for Way of Glory Media. Your task is to write emails that exactly match the requested style while properly using customer information.
 
 CORE PRINCIPLES:
-1. Write EXACTLY what the prompt requests - nothing more, nothing less
-2. Maintain the exact creative style and tone requested
-3. Do not modify or sanitize the creative direction
-4. Keep the dramatic/creative elements as specified
-5. Follow the genre and style precisely
+1. ALWAYS use the actual customer name when provided (never use placeholders)
+2. ALWAYS use the actual order number when provided (never use placeholders)
+3. Maintain the exact tone and style requested
+4. Keep all business details accurate and professional
+5. Follow the format and structure precisely
+
+VARIABLE USAGE:
+- Use {firstName} for customer's first name
+- Use {orderId} for order number
+- Never use placeholders like [Customer Name] or XXXX
+- Always substitute real values for any customer-specific information
 
 IMPORTANT:
-- For creative/fictional prompts: Write exactly that, maintaining all dramatic/creative elements
-- For business prompts: Only then use business formatting
-- NEVER mix creative and business styles unless specifically requested
-- NEVER add company branding or contact info to creative pieces
-- NEVER sanitize or tone down creative elements
+- For business emails: Use proper business formatting and include all necessary details
+- For legal/serious matters: Maintain professional and formal tone
+- Always include accurate contact information
+- Never modify the core message or intent
+- Keep all Way of Glory Media branding consistent
 
-Remember: Your job is to be a creative writer first, following the prompt's creative direction exactly.`
+Remember: Accuracy and professionalism are key - always use real customer data instead of placeholders.`
 };
 
 interface OrderItem {
@@ -179,19 +185,23 @@ export async function POST(
               },
               {
                 role: "user",
-                content: `WRITE THIS EMAIL EXACTLY AS REQUESTED - NO MODIFICATIONS:
+                content: `WRITE THIS EMAIL USING ACTUAL CUSTOMER INFORMATION:
 
 ${userContent}
 
-DO NOT:
-- Add any Way of Glory Media content
-- Add any business/order information
-- Modify the creative direction
-- Add contact information
-- Add greetings/closings unless part of the requested style
-- Default to a business template
+USE THESE VALUES:
+- Customer First Name: ${variables.firstName}
+- Order Number: ${variables.orderId}
+- Company Name: ${variables.companyName}
+- Support Email: ${variables.supportEmail}
+- Support Phone: (310) 872-9781
 
-WRITE EXACTLY WHAT WAS REQUESTED - NOTHING MORE, NOTHING LESS.`
+REQUIREMENTS:
+1. Use the actual customer name and order number
+2. Maintain the exact tone and format requested
+3. Keep all contact information accurate
+4. Follow the business template structure
+5. Keep the serious/legal tone as specified`
               }
             ]
           }),
@@ -210,34 +220,41 @@ WRITE EXACTLY WHAT WAS REQUESTED - NOTHING MORE, NOTHING LESS.`
         try {
           completion = await openai.chat.completions.create({
             ...AI_EMAIL_CONFIG,
-            temperature: 0.9,
+            temperature: 0.7,
             messages: [
               {
                 role: "system",
-                content: `You are a creative email composer. Write EXACTLY what is requested - no business template, no modifications.
+                content: `You are a professional email composer for Way of Glory Media, Way of Glory Media is a company that provides media services to primeraly churches we offer media services like video production, audio production, and software development we also do live streaming and media training. 
+CRITICAL: Use actual customer information - no placeholders.
 
-ABSOLUTE RULES:
-1. Write ONLY what the prompt requests
-2. DO NOT add any business content
-3. DO NOT modify the creative direction
-4. Keep the exact style and tone requested
-5. NO default templates
-6. NO company information
-7. NO contact details unless requested`
+KEY REQUIREMENTS:
+1. Use real customer name: ${variables.firstName}
+2. Use real order number: ${variables.orderId}
+3. Keep exact tone and format
+4. Maintain all business details
+5. Use accurate contact information
+
+Never use placeholders like [Name] or XXXX - always use real customer data.`
               },
               {
                 role: "user",
-                content: `WRITE THIS EMAIL EXACTLY - NO CHANGES:
+                content: `RETRY - Write this email using actual customer information:
 
 ${userContent}
 
-STRICT RULES:
-1. Write ONLY the email requested
-2. NO business template
-3. NO company information
-4. NO contact details
-5. KEEP exact creative direction
-6. MAINTAIN requested tone/style`
+CUSTOMER INFORMATION:
+- First Name: ${variables.firstName}
+- Order Number: ${variables.orderId}
+- Company: ${variables.companyName}
+- Email: ${variables.supportEmail}
+- Phone: (310) 872-9781
+
+REQUIREMENTS:
+1. Use the real customer name and order number above
+2. Keep the exact tone and format
+3. Maintain all business details
+4. Use accurate contact information
+5. Follow the template structure exactly`
               }
             ]
           });
