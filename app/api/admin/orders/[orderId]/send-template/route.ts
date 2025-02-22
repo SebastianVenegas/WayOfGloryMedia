@@ -231,8 +231,41 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
       logoLightUrl: `${baseUrl}/images/logo/LogoLight.png`,
       logoNormalUrl: `${baseUrl}/images/logo/logo.png`,
       year: new Date().getFullYear(),
-      installationDate: order.installation_date ? new Date(order.installation_date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : '',
-      installationTime: order.installation_date ? new Date(order.installation_date).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '',
+      installationDate: order.installation_date ? (() => {
+        try {
+          const date = new Date(order.installation_date);
+          if (isNaN(date.getTime())) {
+            console.error('Invalid installation date:', order.installation_date);
+            return '';
+          }
+          return date.toLocaleDateString('en-US', { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+          });
+        } catch (error) {
+          console.error('Error formatting installation date:', error);
+          return '';
+        }
+      })() : '',
+      installationTime: order.installation_date ? (() => {
+        try {
+          const date = new Date(order.installation_date);
+          if (isNaN(date.getTime())) {
+            console.error('Invalid installation date for time:', order.installation_date);
+            return '';
+          }
+          return date.toLocaleTimeString('en-US', { 
+            hour: 'numeric', 
+            minute: '2-digit', 
+            hour12: true 
+          });
+        } catch (error) {
+          console.error('Error formatting installation time:', error);
+          return '';
+        }
+      })() : '',
       includesInstallation: !!order.installation_date || (installationPrice > 0)
     };
 

@@ -62,14 +62,76 @@ function isApiRequest(url) {
   return url.pathname.includes('/api/');
 }
 
-self.addEventListener('fetch', (event) => {
+self.addEventListener('fetch', async (event) => {
   const url = new URL(event.request.url);
+  const isEmailRequest = EMAIL_ENDPOINTS.some(endpoint => url.pathname.includes(endpoint));
+  const isInstallationConfirmation = url.pathname.includes('/installation-confirmation');
 
-  // Handle email-related endpoints with network-only strategy
-  if (isEmailEndpoint(url)) {
-    event.respondWith(
-      handleEmailRequest(event.request)
-    );
+  if (isEmailRequest || isInstallationConfirmation) {
+    event.respondWith((async () => {
+      const retryCount = parseInt(event.request.headers.get('x-retry-count') || '0');
+      const maxRetries = isInstallationConfirmation ? 5 : 3;  // More retries for installation confirmation
+      const baseDelay = isInstallationConfirmation ? 2000 : 1000;  // Longer delay for installation confirmation
+
+      try {
+        const headers = new Headers(event.request.headers);
+        headers.set('x-pwa-request', 'true');
+        headers.set('Cache-Control', 'no-store');
+        
+        const modifiedRequest = new Request(event.request.url, {
+          method: event.request.method,
+          headers: headers,
+          body: event.request.body,
+          credentials: event.request.credentials,
+          mode: event.request.mode,
+          cache: 'no-store'
+        });
+
+        const response = await fetch(modifiedRequest);
+        
+        if (!response.ok && retryCount < maxRetries) {
+          const delay = baseDelay * Math.pow(2, retryCount);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          
+          headers.set('x-retry-count', (retryCount + 1).toString());
+          const retryRequest = new Request(event.request.url, {
+            method: event.request.method,
+            headers: headers,
+            body: event.request.body,
+            credentials: event.request.credentials,
+            mode: event.request.mode,
+            cache: 'no-store'
+          });
+          
+          return fetch(retryRequest);
+        }
+        
+        return response;
+      } catch (error) {
+        console.error('Service Worker fetch error:', error);
+        if (retryCount < maxRetries) {
+          const delay = baseDelay * Math.pow(2, retryCount);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          
+          const headers = new Headers(event.request.headers);
+          headers.set('x-retry-count', (retryCount + 1).toString());
+          headers.set('x-pwa-request', 'true');
+          headers.set('Cache-Control', 'no-store');
+          
+          const retryRequest = new Request(event.request.url, {
+            method: event.request.method,
+            headers: headers,
+            body: event.request.body,
+            credentials: event.request.credentials,
+            mode: event.request.mode,
+            cache: 'no-store'
+          });
+          
+          return fetch(retryRequest);
+        }
+        throw error;
+      }
+    })());
     return;
   }
 
@@ -96,107 +158,6 @@ self.addEventListener('fetch', (event) => {
     );
   }
 });
-
-// Handle email-related requests (network-only with retry)
-async function handleEmailRequest(request) {
-  const MAX_RETRIES = 3;
-  const RETRY_DELAY = 1000;
-  let lastError;
-
-  // Check if this is an installation confirmation request
-  const isInstallation = request.url.includes('/installation-confirmation');
-  const retryDelay = isInstallation ? 2000 : RETRY_DELAY; // Longer delay for installation requests
-
-  for (let i = 0; i < MAX_RETRIES; i++) {
-    try {
-      const requestClone = request.clone();
-      const headers = new Headers(requestClone.headers);
-      
-      // Always add fresh headers for email requests
-      headers.set('x-pwa-request', 'true');
-      headers.set('x-pwa-version', '1.0');
-      headers.set('Cache-Control', 'no-cache, no-store, must-revalidate, proxy-revalidate');
-      headers.set('Pragma', 'no-cache');
-      headers.set('Expires', '0');
-      headers.set('Surrogate-Control', 'no-store');
-
-      // Add special header for installation confirmation
-      if (isInstallation) {
-        headers.set('x-request-type', 'installation-confirmation');
-      }
-
-      // Add CORS mode and credentials for all email requests
-      const response = await fetch(new Request(requestClone.url, {
-        method: requestClone.method,
-        headers: headers,
-        body: requestClone.method !== 'GET' ? await requestClone.clone().text() : undefined,
-        mode: 'cors',
-        credentials: 'include',
-        cache: 'no-store',
-        redirect: 'follow'
-      }));
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      // Clone and log the response for debugging
-      const responseClone = response.clone();
-      const responseBody = await responseClone.text();
-      console.log('Email request successful:', {
-        url: request.url,
-        status: response.status,
-        type: isInstallation ? 'Installation Confirmation' : 'Regular Email',
-        body: responseBody.substring(0, 100) + '...' // Log first 100 chars
-      });
-
-      // Return a new response with PWA headers
-      return new Response(responseBody, {
-        status: response.status,
-        statusText: response.statusText,
-        headers: {
-          ...Object.fromEntries(response.headers.entries()),
-          'x-pwa-generated': 'true',
-          'x-pwa-version': '1.0',
-          'Cache-Control': 'no-store, no-cache, must-revalidate',
-          'Pragma': 'no-cache',
-          'x-request-type': isInstallation ? 'installation-confirmation' : 'email'
-        }
-      });
-    } catch (error) {
-      lastError = error;
-      console.error(`Email request attempt ${i + 1} failed:`, {
-        url: request.url,
-        error: error.message,
-        type: isInstallation ? 'Installation Confirmation' : 'Regular Email',
-        attempt: i + 1
-      });
-
-      if (i < MAX_RETRIES - 1) {
-        await new Promise(resolve => setTimeout(resolve, retryDelay * Math.pow(2, i)));
-      }
-    }
-  }
-
-  return new Response(
-    JSON.stringify({
-      error: 'Failed to complete email request after multiple retries',
-      details: lastError?.message || 'Unknown error',
-      isPWA: true,
-      requestType: isInstallation ? 'installation-confirmation' : 'email'
-    }),
-    {
-      status: 503,
-      headers: {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'no-store',
-        'x-pwa-error': 'true',
-        'x-pwa-version': '1.0',
-        'x-request-type': isInstallation ? 'installation-confirmation' : 'email'
-      }
-    }
-  );
-}
 
 // Handle API requests (network-first with short cache)
 async function handleApiRequest(request) {

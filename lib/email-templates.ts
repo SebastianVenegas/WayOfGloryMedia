@@ -90,9 +90,34 @@ export const getEmailTemplate = (
 
   const showInstallation = ((order.installation_date && order.installation_date.trim() !== '') || (order.installation_price && Number(order.installation_price) > 0)) ? true : false;
 
-  const installationDateTime = order.installation_date ? new Date(order.installation_date) : null;
-  const formattedInstallationDate = installationDateTime ? installationDateTime.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'To be scheduled';
-  const formattedInstallationTime = installationDateTime ? installationDateTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '';
+  const formatInstallationDateTime = (dateStr: string | undefined | null) => {
+    if (!dateStr || dateStr.trim() === '') return { date: '', time: '' };
+    try {
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) {
+        console.error('Invalid installation date:', dateStr);
+        return { date: '', time: '' };
+      }
+      return {
+        date: date.toLocaleDateString('en-US', { 
+          weekday: 'long', 
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric' 
+        }),
+        time: date.toLocaleTimeString('en-US', { 
+          hour: 'numeric', 
+          minute: '2-digit', 
+          hour12: true 
+        })
+      };
+    } catch (error) {
+      console.error('Error formatting installation date/time:', error);
+      return { date: '', time: '' };
+    }
+  };
+
+  const { date: installationDate, time: installationTime } = formatInstallationDateTime(order.installation_date);
 
   const baseVariables = {
     orderId: order.id,
@@ -124,8 +149,8 @@ export const getEmailTemplate = (
       Includes Training: ${hasTrainingService ? 'Yes' : 'No'}`
     },
     installationPrice: order.installation_price,
-    installationDate: formattedInstallationDate,
-    installationTime: formattedInstallationTime,
+    installationDate,
+    installationTime,
   };
 
   // Ensure all templates have consistent structure
@@ -258,8 +283,8 @@ export const getEmailTemplate = (
           - Write from Way of Glory Media's perspective
           - Express excitement about the upcoming installation
           - Confirm installation details for order #${order.id}:
-            * Installation Date: ${installationDateTime ? formattedInstallationDate : 'To be scheduled'}
-            * Installation Time: ${installationDateTime ? formattedInstallationTime : 'To be determined'}
+            * Installation Date: ${installationDate}
+            * Installation Time: ${installationTime}
             * Estimated Duration: ${hasTrainingService ? '3-4' : '2-3'} hours
           - Provide a clear preparation checklist:
             * Clear access to installation area
