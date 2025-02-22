@@ -12,38 +12,27 @@ const formatPrice = (price: number | string | null | undefined): string => {
 
 const AI_EMAIL_CONFIG = {
   model: "gpt-4",
-  temperature: 0.8,
+  temperature: 0.9,
   max_tokens: 2000,
-  system_prompt: `You are an email composer for Way of Glory Media. Your task is to write custom emails that EXACTLY FOLLOW the user's prompt while maintaining our professional standards.
+  system_prompt: `You are a creative email composer. Your PRIMARY and ONLY task is to write emails EXACTLY as specified in the user's prompt, with NO modifications or additions.
 
-MOST IMPORTANT RULES:
-1. Follow the user's prompt EXACTLY - this is your absolute top priority
-2. Generate ONLY what the user asks for in their prompt
-3. Do not add any content that wasn't specifically requested
-4. Do not default to a thank you email
-5. Do not ignore the user's specific instructions
+KEY RULES:
+1. ONLY write what the prompt specifically requests
+2. DO NOT add any Way of Glory Media content unless explicitly requested
+3. DO NOT add any business/order information unless explicitly requested
+4. DO NOT modify the creative direction of the prompt
+5. DO NOT add contact information unless requested
+6. DO NOT add greetings/closings unless they're part of the requested style
+7. MAINTAIN the exact tone and style specified in the prompt
 
-STRUCTURE (only use relevant parts based on the prompt):
-1. Opening: Use customer's first name
-2. Content: EXACTLY what the user's prompt specifies
-3. Closing: Professional but matching the tone requested in prompt
-4. Include order number where appropriate
-5. Include contact info only if relevant to prompt
+IMPORTANT:
+- If the prompt is creative/fictional, write EXACTLY that
+- If the prompt is business-related, write EXACTLY that
+- NEVER default to a business template
+- NEVER add company information unless requested
+- NEVER modify the creative intent of the prompt
 
-TONE:
-- Match the tone requested in the prompt
-- If no tone specified, keep it professional but natural
-- Avoid overly formal language unless requested
-
-RESTRICTIONS:
-- Never mention physical locations
-- Never mention specific employee names
-- Only include pricing if specifically requested
-- Only mention installation/training if relevant to prompt
-
-CONTACT INFO (only include if relevant):
-- Email: help@wayofglory.com
-- Phone: (310) 872-9781`
+Your ONLY job is to write EXACTLY what the prompt requests - nothing more, nothing less.`
 };
 
 interface OrderItem {
@@ -192,23 +181,19 @@ export async function POST(
               },
               {
                 role: "user",
-                content: `Write exactly this type of email for order #${variables.orderId}:
+                content: `WRITE THIS EMAIL EXACTLY AS REQUESTED - NO MODIFICATIONS:
 
 ${userContent}
 
-Available Information (only use what's relevant to the prompt):
-- Customer: ${variables.firstName} ${variables.lastName}
-- Order #${variables.orderId}
-- Status: ${variables.status}
-${variables.includesInstallation ? `- Installation Date: ${variables.installationDate}
-- Installation Time: ${variables.installationTime}` : ''}
+DO NOT:
+- Add any Way of Glory Media content
+- Add any business/order information
+- Modify the creative direction
+- Add contact information
+- Add greetings/closings unless part of the requested style
+- Default to a business template
 
-IMPORTANT: 
-1. Follow the prompt EXACTLY
-2. Only include information that's relevant to the prompt
-3. Do not add content that wasn't requested
-4. Do not default to a thank you email
-5. Write the email directly (not about what to write)`
+WRITE EXACTLY WHAT WAS REQUESTED - NOTHING MORE, NOTHING LESS.`
               }
             ]
           }),
@@ -227,29 +212,34 @@ IMPORTANT:
         try {
           completion = await openai.chat.completions.create({
             ...AI_EMAIL_CONFIG,
-            temperature: 0.7,
+            temperature: 0.9,
             messages: [
               {
                 role: "system",
-                content: AI_EMAIL_CONFIG.system_prompt + "\n\nIMPORTANT: This is a retry attempt. Follow the prompt EXACTLY as written - do not modify or add to it."
+                content: `You are a creative email composer. Write EXACTLY what is requested - no business template, no modifications.
+
+ABSOLUTE RULES:
+1. Write ONLY what the prompt requests
+2. DO NOT add any business content
+3. DO NOT modify the creative direction
+4. Keep the exact style and tone requested
+5. NO default templates
+6. NO company information
+7. NO contact details unless requested`
               },
               {
                 role: "user",
-                content: `RETRY REQUEST - Write exactly this email, no modifications:
+                content: `WRITE THIS EMAIL EXACTLY - NO CHANGES:
 
 ${userContent}
 
-Order Information (only use if relevant to prompt):
-- Customer: ${variables.firstName} ${variables.lastName}
-- Order #${variables.orderId}
-${variables.includesInstallation ? `- Installation Date: ${variables.installationDate}
-- Installation Time: ${variables.installationTime}` : ''}
-
-STRICT REQUIREMENTS:
-1. Generate EXACTLY what was requested - no additions
-2. Do not add any content not specified in the prompt
-3. Do not default to a generic or thank you email
-4. Keep ONLY the content requested in the original prompt`
+STRICT RULES:
+1. Write ONLY the email requested
+2. NO business template
+3. NO company information
+4. NO contact details
+5. KEEP exact creative direction
+6. MAINTAIN requested tone/style`
               }
             ]
           });
@@ -264,27 +254,19 @@ STRICT REQUIREMENTS:
         throw new Error('Invalid response from AI service');
       }
 
-      // Validate email content
-      if (!aiResponse.includes(variables.firstName) || !aiResponse.includes(orderIdInt.toString())) {
-        throw new Error('Generated email missing required information');
-      }
-
       // Process the content
-      let subject = `Order Update - Way of Glory #${orderIdInt}`;
+      let subject = `Custom Email - Way of Glory #${orderIdInt}`;
       let emailContent = aiResponse.trim();
 
-      // Extract and validate subject
+      // Extract subject if provided in the content
       const subjectMatch = emailContent.match(/^(?:Subject:|Re:|Regarding:)\s*(.+?)[\n\r]/i);
       if (subjectMatch) {
-        const extractedSubject = subjectMatch[1].trim();
-        if (extractedSubject.length >= 10 && extractedSubject.length <= 100) {
-          subject = extractedSubject;
-          emailContent = emailContent.replace(/^(?:Subject:|Re:|Regarding:)\s*.+?[\n\r]/, '').trim();
-        }
+        subject = subjectMatch[1].trim();
+        emailContent = emailContent.replace(/^(?:Subject:|Re:|Regarding:)\s*.+?[\n\r]/, '').trim();
       }
 
-      // Validate email content length
-      if (emailContent.length < 50) {
+      // Basic validation - only check length
+      if (emailContent.length < 20) {
         throw new Error('Generated email content too short');
       }
 
@@ -308,12 +290,7 @@ STRICT REQUIREMENTS:
         throw new Error('Failed to format email content');
       }
 
-      // Validate formatted content
-      if (!formattedContent.includes('way-of-glory-email')) {
-        throw new Error('Email formatting validation failed');
-      }
-
-      // Return the response with validation headers
+      // Return the response
       return new NextResponse(
         JSON.stringify({
           subject,
@@ -321,8 +298,6 @@ STRICT REQUIREMENTS:
           html: formattedContent,
           success: true,
           validation: {
-            hasCustomerName: true,
-            hasOrderNumber: true,
             contentLength: emailContent.length,
             isFormatted: true
           }
