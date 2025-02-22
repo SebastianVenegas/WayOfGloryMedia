@@ -87,7 +87,9 @@ export function AdminPWARegister() {
               const handleFetchError = async (request: Request) => {
                 try {
                   // Check if this is an email template request
-                  if (request.url.includes('/preview-template') || request.url.includes('/custom-email')) {
+                  if (request.url.includes('/preview-template') || 
+                      request.url.includes('/custom-email') || 
+                      request.url.includes('/generate-email')) {
                     console.log('Retrying email template request:', request.url);
                     
                     // Add PWA headers and prevent caching
@@ -104,7 +106,8 @@ export function AdminPWARegister() {
                       },
                       body: request.method !== 'GET' ? await request.clone().text() : undefined,
                       cache: 'no-store',
-                      credentials: 'include'
+                      credentials: 'include',
+                      mode: 'cors'
                     });
 
                     if (!retryResponse.ok) {
@@ -121,7 +124,8 @@ export function AdminPWARegister() {
                       ...Object.fromEntries(request.headers.entries()),
                       'x-pwa-request': 'true'
                     },
-                    cache: 'no-store'
+                    cache: 'no-store',
+                    mode: 'cors'
                   });
                 } catch (error) {
                   console.error('Retry failed:', error);
