@@ -217,20 +217,22 @@ export async function POST(
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
     try {
-      // Generate email content with timeout
-      const completion = await Promise.race([
-        openai.chat.completions.create({
-          model: AI_EMAIL_CONFIG.model,
-          temperature: AI_EMAIL_CONFIG.temperature,
-          max_tokens: AI_EMAIL_CONFIG.max_tokens,
-          messages: [
-            {
-              role: "system",
-              content: AI_EMAIL_CONFIG.system_prompt
-            },
-            {
-              role: "user",
-              content: `Write a custom email for order #${variables.orderId} following these requirements:
+      // Generate email content with timeout and validation
+      let completion;
+      try {
+        completion = await Promise.race([
+          openai.chat.completions.create({
+            model: AI_EMAIL_CONFIG.model,
+            temperature: AI_EMAIL_CONFIG.temperature,
+            max_tokens: AI_EMAIL_CONFIG.max_tokens,
+            messages: [
+              {
+                role: "system",
+                content: AI_EMAIL_CONFIG.system_prompt
+              },
+              {
+                role: "user",
+                content: `Write a custom email for order #${variables.orderId} following these requirements:
 
 ${userContent}
 
@@ -246,14 +248,52 @@ Remember to:
 1. Write directly to the customer (not about what to write)
 2. Keep the tone professional and warm
 3. Include order number and relevant details
-4. Maintain Way of Glory Media's voice`
-            }
-          ]
-        }),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('OpenAI request timed out')), 30000) // Increased timeout to 30 seconds
-        )
-      ]) as OpenAI.Chat.ChatCompletion;
+4. Maintain Way of Glory Media's voice
+
+VALIDATION REQUIREMENTS:
+1. Must include customer's name
+2. Must include order number
+3. Must be written in email format
+4. Must maintain professional tone`
+              }
+            ]
+          }),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('OpenAI request timed out')), 30000)
+          )
+        ]) as OpenAI.Chat.ChatCompletion;
+      } catch (error) {
+        console.error('OpenAI API error:', {
+          error,
+          orderId: orderIdInt,
+          attempt: 1
+        });
+        
+        // Retry once with different temperature
+        try {
+          completion = await openai.chat.completions.create({
+            ...AI_EMAIL_CONFIG,
+            temperature: 0.5, // Lower temperature for retry
+            messages: [
+              {
+                role: "system",
+                content: AI_EMAIL_CONFIG.system_prompt + "\n\nIMPORTANT: This is a retry attempt. Please ensure the response is clear and direct."
+              },
+              {
+                role: "user",
+                content: `Write a simple, direct email for order #${variables.orderId}:
+                - Customer: ${variables.firstName} ${variables.lastName}
+                - Purpose: ${userContent}
+                - Keep it brief and clear
+                - Include order number
+                - Professional tone`
+              }
+            ]
+          });
+        } catch (retryError) {
+          throw new Error('Failed to generate email after retry');
+        }
+      }
 
       const aiResponse = completion.choices[0]?.message?.content;
       
@@ -261,38 +301,68 @@ Remember to:
         throw new Error('Invalid response from AI service');
       }
 
+      // Validate email content
+      if (!aiResponse.includes(variables.firstName) || !aiResponse.includes(orderIdInt.toString())) {
+        throw new Error('Generated email missing required information');
+      }
+
       // Process the content
       let subject = `Order Update - Way of Glory #${orderIdInt}`;
       let emailContent = aiResponse.trim();
 
-      // Extract subject if present (improved regex)
+      // Extract and validate subject
       const subjectMatch = emailContent.match(/^(?:Subject:|Re:|Regarding:)\s*(.+?)[\n\r]/i);
       if (subjectMatch) {
-        subject = subjectMatch[1].trim();
-        emailContent = emailContent.replace(/^(?:Subject:|Re:|Regarding:)\s*.+?[\n\r]/, '').trim();
+        const extractedSubject = subjectMatch[1].trim();
+        if (extractedSubject.length >= 10 && extractedSubject.length <= 100) {
+          subject = extractedSubject;
+          emailContent = emailContent.replace(/^(?:Subject:|Re:|Regarding:)\s*.+?[\n\r]/, '').trim();
+        }
       }
 
-      // Format the content
-      const formattedContent = formatEmailContent(emailContent, {
-        ...variables,
-        emailType: 'Custom Email',
-        companyName: 'Way of Glory Media',
-        supportEmail: 'help@wayofglory.com',
-        websiteUrl: 'https://wayofglory.com',
-        logoUrl: 'https://wayofglory.com/images/logo/LogoLight.png',
-        logoNormalUrl: 'https://wayofglory.com/images/logo/logo.png',
-        logoLightUrl: 'https://wayofglory.com/images/logo/LogoLight.png',
-        year: new Date().getFullYear(),
-        baseUrl: 'https://wayofglory.com'
-      });
+      // Validate email content length
+      if (emailContent.length < 50) {
+        throw new Error('Generated email content too short');
+      }
 
-      // Return the response
+      // Format the content with error handling
+      let formattedContent;
+      try {
+        formattedContent = formatEmailContent(emailContent, {
+          ...variables,
+          emailType: 'Custom Email',
+          companyName: 'Way of Glory Media',
+          supportEmail: 'help@wayofglory.com',
+          websiteUrl: 'https://wayofglory.com',
+          logoUrl: 'https://wayofglory.com/images/logo/LogoLight.png',
+          logoNormalUrl: 'https://wayofglory.com/images/logo/logo.png',
+          logoLightUrl: 'https://wayofglory.com/images/logo/LogoLight.png',
+          year: new Date().getFullYear(),
+          baseUrl: 'https://wayofglory.com'
+        });
+      } catch (formatError) {
+        console.error('Email formatting error:', formatError);
+        throw new Error('Failed to format email content');
+      }
+
+      // Validate formatted content
+      if (!formattedContent.includes('way-of-glory-email')) {
+        throw new Error('Email formatting validation failed');
+      }
+
+      // Return the response with validation headers
       return new NextResponse(
         JSON.stringify({
           subject,
           content: emailContent,
           html: formattedContent,
-          success: true
+          success: true,
+          validation: {
+            hasCustomerName: true,
+            hasOrderNumber: true,
+            contentLength: emailContent.length,
+            isFormatted: true
+          }
         }),
         {
           status: 200,
@@ -301,7 +371,8 @@ Remember to:
             'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
             'Pragma': 'no-cache',
             'Expires': '0',
-            'Surrogate-Control': 'no-store'
+            'Surrogate-Control': 'no-store',
+            'x-content-validation': 'passed'
           }
         }
       );

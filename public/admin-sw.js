@@ -23,6 +23,57 @@ const EMAIL_ENDPOINTS = [
   '/installation-confirmation'
 ];
 
+// Add retry configuration
+const RETRY_CONFIG = {
+  custom_email: {
+    maxRetries: 5,
+    baseDelay: 3000,
+    maxDelay: 15000
+  },
+  installation: {
+    maxRetries: 5,
+    baseDelay: 2000,
+    maxDelay: 10000
+  },
+  default: {
+    maxRetries: 3,
+    baseDelay: 1000,
+    maxDelay: 5000
+  }
+};
+
+// Helper function to get retry config
+function getRetryConfig(isCustomEmail, isInstallation) {
+  if (isCustomEmail) return RETRY_CONFIG.custom_email;
+  if (isInstallation) return RETRY_CONFIG.installation;
+  return RETRY_CONFIG.default;
+}
+
+// Helper function to handle retries
+async function handleRetry(request, retryCount, config) {
+  const delay = Math.min(
+    config.baseDelay * Math.pow(2, retryCount),
+    config.maxDelay
+  );
+  await new Promise(resolve => setTimeout(resolve, delay));
+  
+  const headers = new Headers(request.headers);
+  headers.set('x-retry-count', (retryCount + 1).toString());
+  headers.set('x-pwa-request', 'true');
+  headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+  headers.set('Pragma', 'no-cache');
+  headers.set('Expires', '0');
+  
+  return new Request(request.url, {
+    method: request.method,
+    headers: headers,
+    body: request.body,
+    credentials: request.credentials,
+    mode: 'cors',
+    cache: 'no-store'
+  });
+}
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
     Promise.all([
@@ -71,8 +122,7 @@ self.addEventListener('fetch', async (event) => {
   if (isEmailRequest) {
     event.respondWith((async () => {
       const retryCount = parseInt(event.request.headers.get('x-retry-count') || '0');
-      const maxRetries = isCustomEmail ? 5 : (isInstallationConfirmation ? 5 : 3);
-      const baseDelay = isCustomEmail ? 2000 : (isInstallationConfirmation ? 2000 : 1000);
+      const config = getRetryConfig(isCustomEmail, isInstallationConfirmation);
 
       try {
         const headers = new Headers(event.request.headers);
@@ -80,6 +130,7 @@ self.addEventListener('fetch', async (event) => {
         headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
         headers.set('Pragma', 'no-cache');
         headers.set('Expires', '0');
+        headers.set('x-request-attempt', '1');
         
         if (isCustomEmail) {
           headers.set('x-request-type', 'custom-email');
@@ -89,41 +140,50 @@ self.addEventListener('fetch', async (event) => {
           method: event.request.method,
           headers: headers,
           body: event.request.body,
-          credentials: event.request.credentials,
+          credentials: request.credentials,
           mode: 'cors',
           cache: 'no-store'
         });
 
-        const response = await fetch(modifiedRequest);
+        let response = await fetch(modifiedRequest);
+        let attempts = 1;
         
-        if (!response.ok && retryCount < maxRetries) {
-          console.log(`Retrying ${isCustomEmail ? 'custom email' : 'email'} request (${retryCount + 1}/${maxRetries})`);
-          const delay = baseDelay * Math.pow(2, retryCount);
-          await new Promise(resolve => setTimeout(resolve, delay));
+        // Retry on non-200 responses
+        while (!response.ok && retryCount < config.maxRetries) {
+          console.log(`Attempt ${attempts + 1}/${config.maxRetries + 1} for ${isCustomEmail ? 'custom email' : 'email'} request`);
           
-          headers.set('x-retry-count', (retryCount + 1).toString());
-          const retryRequest = new Request(event.request.url, {
-            method: event.request.method,
-            headers: headers,
-            body: event.request.body,
-            credentials: event.request.credentials,
-            mode: 'cors',
-            cache: 'no-store'
-          });
+          const retryRequest = await handleRetry(event.request, retryCount, config);
+          response = await fetch(retryRequest);
+          attempts++;
           
-          return fetch(retryRequest);
+          if (response.ok) break;
         }
 
-        // Clone and log the response for debugging
+        if (!response.ok) {
+          throw new Error(`Failed after ${attempts} attempts. Status: ${response.status}`);
+        }
+
+        // Clone and validate response
         const responseClone = response.clone();
         const responseBody = await responseClone.text();
-        console.log('Email request successful:', {
-          url: request.url,
-          status: response.status,
-          type: isCustomEmail ? 'Custom Email' : 'Regular Email',
-          body: responseBody.substring(0, 100) + '...'
-        });
         
+        try {
+          // Validate JSON response
+          JSON.parse(responseBody);
+        } catch (e) {
+          console.error('Invalid JSON response:', responseBody.substring(0, 100));
+          throw new Error('Invalid response format');
+        }
+
+        // Log success
+        console.log('Email request successful:', {
+          url: event.request.url,
+          type: isCustomEmail ? 'Custom Email' : 'Regular Email',
+          attempts,
+          status: response.status
+        });
+
+        // Return response with enhanced headers
         return new Response(responseBody, {
           status: response.status,
           statusText: response.statusText,
@@ -131,40 +191,42 @@ self.addEventListener('fetch', async (event) => {
             ...Object.fromEntries(response.headers.entries()),
             'x-pwa-generated': 'true',
             'x-pwa-version': '1.0',
+            'x-attempts': attempts.toString(),
             'Cache-Control': 'no-store, no-cache, must-revalidate',
             'Pragma': 'no-cache',
             'x-request-type': isCustomEmail ? 'custom-email' : 'email'
           }
         });
+
       } catch (error) {
-        console.error('Service Worker fetch error:', error);
-        if (retryCount < maxRetries) {
-          const delay = baseDelay * Math.pow(2, retryCount);
-          await new Promise(resolve => setTimeout(resolve, delay));
-          
-          const headers = new Headers(event.request.headers);
-          headers.set('x-retry-count', (retryCount + 1).toString());
-          headers.set('x-pwa-request', 'true');
-          headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
-          headers.set('Pragma', 'no-cache');
-          headers.set('Expires', '0');
-          
-          if (isCustomEmail) {
-            headers.set('x-request-type', 'custom-email');
-          }
-          
-          const retryRequest = new Request(event.request.url, {
-            method: event.request.method,
-            headers: headers,
-            body: event.request.body,
-            credentials: event.request.credentials,
-            mode: 'cors',
-            cache: 'no-store'
-          });
-          
-          return fetch(retryRequest);
+        console.error('Service Worker fetch error:', {
+          url: event.request.url,
+          type: isCustomEmail ? 'Custom Email' : 'Regular Email',
+          error: error.message,
+          retryCount
+        });
+
+        if (retryCount < config.maxRetries) {
+          return fetch(await handleRetry(event.request, retryCount, config));
         }
-        throw error;
+
+        // Return a structured error response
+        return new Response(
+          JSON.stringify({
+            error: 'Request failed',
+            details: error.message,
+            type: isCustomEmail ? 'custom-email' : 'email',
+            attempts: retryCount + 1
+          }),
+          {
+            status: 503,
+            headers: {
+              'Content-Type': 'application/json',
+              'Cache-Control': 'no-store',
+              'x-error-type': 'retry-exhausted'
+            }
+          }
+        );
       }
     })());
     return;
