@@ -85,61 +85,91 @@ export function AdminPWARegister() {
               
               // Handle the fetch error
               const handleFetchError = async (request: Request) => {
-                try {
-                  // Check if this is an email template request
-                  if (request.url.includes('/preview-template') || 
-                      request.url.includes('/custom-email') || 
-                      request.url.includes('/generate-email')) {
-                    console.log('Retrying email template request:', request.url);
-                    
-                    // Add PWA headers and prevent caching
-                    const retryResponse = await fetch(request.url, {
-                      method: request.method,
+                const MAX_RETRIES = 3;
+                const RETRY_DELAY = 1000;
+                let lastError;
+
+                for (let i = 0; i < MAX_RETRIES; i++) {
+                  try {
+                    // Check if this is an email template request
+                    if (request.url.includes('/preview-template') || 
+                        request.url.includes('/custom-email') || 
+                        request.url.includes('/generate-email')) {
+                      console.log('Retrying email template request:', request.url);
+                      
+                      // Add PWA headers and prevent caching
+                      const retryResponse = await fetch(request.url, {
+                        method: request.method,
+                        headers: {
+                          ...Object.fromEntries(request.headers.entries()),
+                          'x-pwa-request': 'true',
+                          'x-pwa-version': '1.0',
+                          'Cache-Control': 'no-cache, no-store, must-revalidate, proxy-revalidate',
+                          'Pragma': 'no-cache',
+                          'Expires': '0',
+                          'Surrogate-Control': 'no-store'
+                        },
+                        body: request.method !== 'GET' ? await request.clone().text() : undefined,
+                        cache: 'no-store',
+                        credentials: 'include',
+                        mode: 'cors',
+                        redirect: 'follow'
+                      });
+
+                      if (!retryResponse.ok) {
+                        throw new Error(`Retry failed with status ${retryResponse.status}`);
+                      }
+
+                      // Log successful response
+                      const responseClone = retryResponse.clone();
+                      const responseBody = await responseClone.text();
+                      console.log('Email request successful:', {
+                        url: request.url,
+                        status: retryResponse.status,
+                        body: responseBody.substring(0, 100) + '...' // Log first 100 chars
+                      });
+
+                      return retryResponse;
+                    }
+
+                    // For other requests, just retry with PWA header
+                    return await fetch(request.url, {
+                      ...request,
                       headers: {
                         ...Object.fromEntries(request.headers.entries()),
-                        'x-pwa-request': 'true',
-                        'x-pwa-version': '1.0',
-                        'Cache-Control': 'no-cache, no-store, must-revalidate, proxy-revalidate',
-                        'Pragma': 'no-cache',
-                        'Expires': '0',
-                        'Surrogate-Control': 'no-store'
+                        'x-pwa-request': 'true'
                       },
-                      body: request.method !== 'GET' ? await request.clone().text() : undefined,
                       cache: 'no-store',
-                      credentials: 'include',
-                      mode: 'cors'
+                      mode: 'cors',
+                      redirect: 'follow'
+                    });
+                  } catch (error) {
+                    lastError = error;
+                    console.error('Retry attempt failed:', {
+                      url: request.url,
+                      error: error instanceof Error ? error.message : 'Unknown error',
+                      attempt: i + 1
                     });
 
-                    if (!retryResponse.ok) {
-                      throw new Error(`Retry failed with status ${retryResponse.status}`);
+                    if (i < MAX_RETRIES - 1) {
+                      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * Math.pow(2, i)));
                     }
-
-                    return retryResponse;
                   }
-
-                  // For other requests, just retry with PWA header
-                  return await fetch(request.url, {
-                    ...request,
-                    headers: {
-                      ...Object.fromEntries(request.headers.entries()),
-                      'x-pwa-request': 'true'
-                    },
-                    cache: 'no-store',
-                    mode: 'cors'
-                  });
-                } catch (error) {
-                  console.error('Retry failed:', error);
-                  return new Response(
-                    JSON.stringify({ 
-                      error: 'Network error', 
-                      details: error instanceof Error ? error.message : 'Unknown error'
-                    }),
-                    { 
-                      status: 503,
-                      headers: { 'Content-Type': 'application/json' }
-                    }
-                  );
                 }
+
+                return new Response(
+                  JSON.stringify({ 
+                    error: 'Network error', 
+                    details: lastError instanceof Error ? lastError.message : 'Unknown error'
+                  }),
+                  { 
+                    status: 503,
+                    headers: { 
+                      'Content-Type': 'application/json',
+                      'Cache-Control': 'no-store'
+                    }
+                  }
+                );
               };
 
               if (event.target instanceof Request) {
