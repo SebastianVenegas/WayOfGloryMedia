@@ -258,14 +258,23 @@ export const getEmailTemplate = (
           - Write from Way of Glory Media's perspective
           - Express excitement about the upcoming installation
           - Confirm installation details for order #${order.id}:
-            * Installation Date: ${baseVariables.installationDate}
-            * Installation Time: ${baseVariables.installationTime}
+            * Installation Date: ${installationDateTime ? formattedInstallationDate : 'To be scheduled'}
+            * Installation Time: ${installationDateTime ? formattedInstallationTime : 'To be determined'}
             * Estimated Duration: ${hasTrainingService ? '3-4' : '2-3'} hours
-          - Provide a clear preparation checklist
-          - Explain what to expect during installation
-          ${hasTrainingService ? '- Include information about the training session' : ''}
+          - Provide a clear preparation checklist:
+            * Clear access to installation area
+            * Power outlets availability
+            * Any existing equipment to be removed
+            * Staff member available for walkthrough
+          - Explain what to expect during installation:
+            * Equipment placement and mounting
+            * System configuration and testing
+            * Basic operation demonstration
+            ${hasTrainingService ? '* Training session scheduling' : ''}
           - Include our support contact information (help@wayofglory.com and (310) 872-9781)
-          - End with an enthusiastic closing`)
+          - End with an enthusiastic closing
+          
+          Note: Ensure all installation details are clearly presented and the preparation steps are easy to follow.`)
       };
 
     default:

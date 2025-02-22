@@ -346,18 +346,9 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
             `${baseUrl}/images/logo/logo.png`,
           baseUrl: isPWA ? 'https://wayofglory.com' : baseUrl,
           year: new Date().getFullYear(),
-          installationDate: order.installation_date ? new Date(order.installation_date).toLocaleDateString('en-US', { 
-            weekday: 'long', 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric' 
-          }) : '',
-          installationTime: order.installation_date ? new Date(order.installation_date).toLocaleTimeString('en-US', { 
-            hour: 'numeric', 
-            minute: '2-digit', 
-            hour12: true 
-          }) : '',
-          includesInstallation: !!order.installation_date || (installationPrice > 0)
+          installationDate: baseVariables.installationDate,
+          installationTime: baseVariables.installationTime,
+          includesInstallation: baseVariables.includesInstallation
         };
 
         // Generate content using the generate-email endpoint
