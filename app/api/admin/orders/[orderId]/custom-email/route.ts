@@ -230,87 +230,78 @@ export async function POST(
             },
             {
               role: "user",
-              content: `PROMPT: ${userContent}
+              content: `Write a custom email for order #${variables.orderId} following these requirements:
 
-REQUIRED ORDER CONTEXT:
-- Customer: ${variables.firstName} ${variables.lastName}
+${userContent}
+
+CUSTOMER DETAILS:
+- Name: ${variables.firstName} ${variables.lastName}
 - Order #${variables.orderId}
-${variables.includesInstallation ? `- Installation scheduled for ${variables.installationDate} at ${variables.installationTime}` : ''}
-- Current status: ${variables.status}
-${variables.includesInstallation ? '- Installation is included' : '- No installation included'}
-${variables.includesTraining ? '- Training is included' : '- No training included'}
+- Status: ${variables.status}
+${variables.includesInstallation ? `- Installation Date: ${variables.installationDate}
+- Installation Time: ${variables.installationTime}` : ''}
+${variables.includesTraining ? '- Training service included' : ''}
 
-Write the email exactly as requested in the prompt while naturally incorporating this order information. Don't add any content that wasn't specifically requested.`
+Remember to:
+1. Write directly to the customer (not about what to write)
+2. Keep the tone professional and warm
+3. Include order number and relevant details
+4. Maintain Way of Glory Media's voice`
             }
           ]
         }),
         new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('OpenAI request timed out')), 15000)
+          setTimeout(() => reject(new Error('OpenAI request timed out')), 30000) // Increased timeout to 30 seconds
         )
       ]) as OpenAI.Chat.ChatCompletion;
 
       const aiResponse = completion.choices[0]?.message?.content;
       
-      // Validate OpenAI response
       if (!aiResponse || typeof aiResponse !== 'string') {
-        console.error('OpenAI returned invalid content:', { aiResponse });
-        return NextResponse.json(
-          { error: 'Generation failed', details: 'Invalid or empty content returned from AI' },
-          { status: 500 }
-        );
+        throw new Error('Invalid response from AI service');
       }
 
       // Process the content
       let subject = `Order Update - Way of Glory #${orderIdInt}`;
       let emailContent = aiResponse.trim();
 
-      // Extract subject if present
-      const subjectMatch = emailContent.match(/^(?:subject:|re:|regarding:)\s*(.+?)(?:\n|$)/i);
+      // Extract subject if present (improved regex)
+      const subjectMatch = emailContent.match(/^(?:Subject:|Re:|Regarding:)\s*(.+?)[\n\r]/i);
       if (subjectMatch) {
         subject = subjectMatch[1].trim();
-        emailContent = emailContent.replace(/^(?:subject:|re:|regarding:)\s*.+?\n/, '').trim();
+        emailContent = emailContent.replace(/^(?:Subject:|Re:|Regarding:)\s*.+?[\n\r]/, '').trim();
       }
 
-      // Validate processed content
-      if (!emailContent) {
-        console.error('Empty content after processing');
-        return NextResponse.json(
-          { error: 'Processing failed', details: 'Email content is empty after processing' },
-          { status: 500 }
-        );
-      }
-
-      // Log the generated content for debugging
-      console.log('Generated email content:', {
-        prompt: userContent,
-        subject,
-        contentPreview: emailContent.substring(0, 200) + '...'
-      });
-
-      // Format the content using the same template as other emails
+      // Format the content
       const formattedContent = formatEmailContent(emailContent, {
         ...variables,
-        emailType: subject.replace(' - Way of Glory', '').replace(` #${variables.orderId}`, ''),
+        emailType: 'Custom Email',
         companyName: 'Way of Glory Media',
         supportEmail: 'help@wayofglory.com',
-        logoUrl: '/images/logo/LogoLight.png',
-        logoNormalUrl: '/images/logo/logo.png',
+        websiteUrl: 'https://wayofglory.com',
+        logoUrl: 'https://wayofglory.com/images/logo/LogoLight.png',
+        logoNormalUrl: 'https://wayofglory.com/images/logo/logo.png',
+        logoLightUrl: 'https://wayofglory.com/images/logo/LogoLight.png',
         year: new Date().getFullYear(),
-        baseUrl: process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
+        baseUrl: 'https://wayofglory.com'
       });
 
-      // Return the response with cache prevention headers
+      // Return the response
       return new NextResponse(
         JSON.stringify({
           subject,
           content: emailContent,
-          html: formattedContent
+          html: formattedContent,
+          success: true
         }),
         {
+          status: 200,
           headers: {
             'Content-Type': 'application/json',
-            'Cache-Control': 'no-store, no-cache, must-revalidate',
-            'Pragma': 'no-cache'
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0',
+            'Surrogate-Control': 'no-store'
           }
         }
       );
@@ -318,15 +309,23 @@ Write the email exactly as requested in the prompt while naturally incorporating
     } catch (aiError) {
       console.error('AI service error:', {
         error: aiError,
-        message: aiError instanceof Error ? aiError.message : 'Unknown error'
+        message: aiError instanceof Error ? aiError.message : 'Unknown error',
+        stack: aiError instanceof Error ? aiError.stack : undefined
       });
 
-      return NextResponse.json(
-        { 
+      return new NextResponse(
+        JSON.stringify({ 
           error: 'Email generation failed',
-          details: aiError instanceof Error ? aiError.message : 'AI service error'
-        },
-        { status: 503 }
+          details: aiError instanceof Error ? aiError.message : 'AI service error',
+          success: false
+        }),
+        { 
+          status: 503,
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-store'
+          }
+        }
       );
     }
 
