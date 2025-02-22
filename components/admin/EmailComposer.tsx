@@ -253,27 +253,36 @@ export default function EmailComposer({
     setError('')
 
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 20000) // 20 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout for PWA
 
     try {
       const response = await fetch(`/api/admin/orders/${orderId}/preview-template?templateId=custom`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-pwa-request': 'true',
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+          'Pragma': 'no-cache'
+        },
         body: JSON.stringify({ content }),
         signal: controller.signal
       })
 
       clearTimeout(timeoutId)
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to generate preview')
+      const data = await response.json()
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Failed to generate preview')
       }
 
-      const data = await response.json()
       setPreviewHtml(data.html)
       onPreviewHtmlChange?.(data.html)
       setError('')
+      
+      // Clear loading states
+      setIsGenerating(false)
+      setIsLoadingPreview(false)
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to generate preview'
       if (error instanceof Error && error.name === 'AbortError') {
@@ -286,7 +295,9 @@ export default function EmailComposer({
         description: errorMessage,
         variant: 'destructive'
       })
-    } finally {
+      
+      // Clear loading states on error
+      setIsGenerating(false)
       setIsLoadingPreview(false)
     }
   }, [orderId, content, onPreviewHtmlChange, toast])
@@ -299,24 +310,29 @@ export default function EmailComposer({
     setError('')
 
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 20000) // 20 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout for PWA
 
     try {
       const response = await fetch(`/api/admin/orders/${orderId}/custom-email`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-pwa-request': 'true',
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+          'Pragma': 'no-cache'
+        },
         body: JSON.stringify({ prompt }),
         signal: controller.signal
       })
 
       clearTimeout(timeoutId)
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to generate email')
+      const data = await response.json()
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Failed to generate email')
       }
 
-      const data = await response.json()
       setContent(data.content)
       setSubject(data.subject)
       setPreviewHtml(data.html)
@@ -325,6 +341,9 @@ export default function EmailComposer({
       onPreviewHtmlChange?.(data.html)
       setError('')
       onAiPromptOpenChange?.(false)
+      
+      // Clear loading states
+      setIsGenerating(false)
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to generate email'
       if (error instanceof Error && error.name === 'AbortError') {
@@ -337,7 +356,8 @@ export default function EmailComposer({
         description: errorMessage,
         variant: 'destructive'
       })
-    } finally {
+      
+      // Clear loading states on error
       setIsGenerating(false)
     }
   }, [orderId, isGeneratingAI, onContentChange, onSubjectChange, onPreviewHtmlChange, onAiPromptOpenChange, toast])
@@ -378,7 +398,7 @@ export default function EmailComposer({
       setIsGenerating(true)
       // Set a loading preview if we don't have content yet
       if (!content.trim()) {
-        setPreviewHtml('<div class="flex items-center justify-center min-h-[400px]"><div class="text-center"><div class="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent mx-auto mb-4"></div><p class="text-gray-500">Loading template...</p></div></div>')
+        setPreviewHtml('<div class="flex items-center justify-center min-h-[400px]"><div class="text-center"><div class="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent"></div><p class="text-gray-500">Loading template...</p></div></div>')
       }
     } else {
       // Only clear loading state if we have content

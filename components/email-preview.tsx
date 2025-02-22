@@ -20,9 +20,23 @@ const EmailPreview: React.FC<EmailPreviewProps> = ({
   isLoading = false
 }) => {
   const [isFrameLoaded, setIsFrameLoaded] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+  const maxRetries = 3;
 
   const handleFrameLoad = () => {
     setIsFrameLoaded(true);
+    setRetryCount(0);
+  };
+
+  const handleFrameError = () => {
+    if (retryCount < maxRetries) {
+      setRetryCount(prev => prev + 1);
+      setIsFrameLoaded(false);
+      // Retry loading after a delay
+      setTimeout(() => {
+        setIsFrameLoaded(false);
+      }, 1000);
+    }
   };
 
   // Check if the HTML includes DOCTYPE or html tags
@@ -35,6 +49,7 @@ const EmailPreview: React.FC<EmailPreviewProps> = ({
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="color-scheme" content="light">
         <style>
           body {
             margin: 0;
@@ -58,6 +73,7 @@ const EmailPreview: React.FC<EmailPreviewProps> = ({
           img {
             max-width: 100%;
             height: auto;
+            display: block;
           }
           .content-wrapper {
             max-width: 600px;
@@ -80,6 +96,14 @@ const EmailPreview: React.FC<EmailPreviewProps> = ({
           a {
             word-wrap: break-word;
             overflow-wrap: break-word;
+            color: #2563eb;
+            text-decoration: none;
+          }
+          @media (prefers-color-scheme: dark) {
+            body {
+              background-color: #ffffff;
+              color: #374151;
+            }
           }
         </style>
       </head>
@@ -98,7 +122,9 @@ const EmailPreview: React.FC<EmailPreviewProps> = ({
           <div className="absolute inset-0 flex items-center justify-center bg-white">
             <div className="flex flex-col items-center gap-4">
               <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent"></div>
-              <p className="text-gray-500">Loading preview...</p>
+              <p className="text-gray-500">
+                {retryCount > 0 ? `Retrying... (${retryCount}/${maxRetries})` : 'Loading preview...'}
+              </p>
             </div>
           </div>
         )}
@@ -109,6 +135,7 @@ const EmailPreview: React.FC<EmailPreviewProps> = ({
           title="Email Preview"
           className="bg-white rounded-lg shadow-sm border border-gray-200 w-full"
           onLoad={handleFrameLoad}
+          onError={handleFrameError}
         />
       </div>
       
@@ -118,7 +145,7 @@ const EmailPreview: React.FC<EmailPreviewProps> = ({
             <Button
               onClick={onSendEmail}
               className="gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
-              disabled={isSending}
+              disabled={isSending || !isFrameLoaded}
             >
               {isSending ? (
                 <>

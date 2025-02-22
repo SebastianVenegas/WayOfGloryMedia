@@ -96,7 +96,9 @@ export async function GET(request: NextRequest): Promise<Response> {
     'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
     'Pragma': 'no-cache',
     'Expires': '0',
-    'Surrogate-Control': 'no-store'
+    'Surrogate-Control': 'no-store',
+    'X-PWA-Generated': 'true',
+    'X-PWA-Version': '1.0'
   };
 
   try {
@@ -113,6 +115,7 @@ export async function GET(request: NextRequest): Promise<Response> {
     const { searchParams } = new URL(request.url);
     const templateId = searchParams.get('templateId');
     const customPrompt = searchParams.get('prompt');
+    const isPWA = request.headers.get('x-pwa-request') === 'true';
 
     if (!templateId) {
       return new NextResponse(JSON.stringify({ error: 'Template ID is required' }), {
@@ -154,7 +157,7 @@ export async function GET(request: NextRequest): Promise<Response> {
           ]
         }),
         new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('OpenAI request timed out')), 15000)
+          setTimeout(() => reject(new Error('OpenAI request timed out')), 20000)
         )
       ]) as OpenAI.Chat.ChatCompletion;
 
@@ -162,29 +165,36 @@ export async function GET(request: NextRequest): Promise<Response> {
 
       if (!emailContent) {
         console.error('No content generated from OpenAI');
-        return new NextResponse(JSON.stringify({ error: 'No content generated' }), {
+        return new NextResponse(JSON.stringify({ 
+          error: 'No content generated',
+          isPWA,
+          success: false
+        }), {
           status: 500,
           headers
         });
       }
 
       // Format the email with the template
-      const formattedEmail = formatEmailContent(emailContent, template.variables);
+      const formattedEmail = formatEmailContent(emailContent, {
+        ...template.variables,
+        isPWA: true,
+        baseUrl: 'https://wayofglory.com',
+        logoUrl: 'https://wayofglory.com/images/logo/logo.png',
+        logoNormalUrl: 'https://wayofglory.com/images/logo/logo.png',
+        logoLightUrl: 'https://wayofglory.com/images/logo/LogoLight.png'
+      });
 
       // Return with PWA-specific headers
       return new NextResponse(
         JSON.stringify({
           content: emailContent,
           html: formattedEmail,
-          subject: template.subject
+          subject: template.subject,
+          isPWA,
+          success: true
         }),
-        {
-          headers: {
-            ...headers,
-            'X-PWA-Generated': 'true',
-            'X-PWA-Version': '1.0'
-          }
-        }
+        { headers }
       );
 
     } catch (aiError) {
@@ -192,7 +202,9 @@ export async function GET(request: NextRequest): Promise<Response> {
       return new NextResponse(
         JSON.stringify({ 
           error: 'Failed to generate email content',
-          details: aiError instanceof Error ? aiError.message : 'Unknown error'
+          details: aiError instanceof Error ? aiError.message : 'Unknown error',
+          isPWA,
+          success: false
         }),
         {
           status: 503,
@@ -206,7 +218,9 @@ export async function GET(request: NextRequest): Promise<Response> {
     return new NextResponse(
       JSON.stringify({ 
         error: 'Failed to generate email template',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: error instanceof Error ? error.message : 'Unknown error',
+        isPWA: request.headers.get('x-pwa-request') === 'true',
+        success: false
       }),
       {
         status: 500,
