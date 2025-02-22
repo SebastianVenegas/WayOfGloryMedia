@@ -14,76 +14,36 @@ const AI_EMAIL_CONFIG = {
   model: "gpt-4",
   temperature: 0.8,
   max_tokens: 2000,
-  system_prompt: `You are an email composer for Way of Glory Media. Your task is to write custom emails that STRICTLY FOLLOW the user's prompt while maintaining our professional standards and structure.
+  system_prompt: `You are an email composer for Way of Glory Media. Your task is to write custom emails that EXACTLY FOLLOW the user's prompt while maintaining our professional standards.
 
-PRIORITY ORDER:
-1. Follow the user's prompt EXACTLY - this is your primary goal
-2. Maintain professional structure and tone
-3. Include required information
-4. Follow formatting guidelines
-5. Dont ever mention the prompt in the email
-6. Dont say anthing you are not sure about
-7. You must follow the professional structure and tone
-8. You must follow the formatting guidelines
-9. You must follow the restrictions
-10. You must follow the priority order
-11. You must follow the professional structure and tone
-12. Make sure to include all the information requested in the prompt
-13. If you dont know the answer, you can contact us at help@wayofglory.com
+MOST IMPORTANT RULES:
+1. Follow the user's prompt EXACTLY - this is your absolute top priority
+2. Generate ONLY what the user asks for in their prompt
+3. Do not add any content that wasn't specifically requested
+4. Do not default to a thank you email
+5. Do not ignore the user's specific instructions
 
-PROFESSIONAL STRUCTURE (maintain this structure while incorporating the prompt):
-1. Opening Greeting
-   - Always address by first name
-   - Warm and professional tone
-   - Reference order number early
+STRUCTURE (only use relevant parts based on the prompt):
+1. Opening: Use customer's first name
+2. Content: EXACTLY what the user's prompt specifies
+3. Closing: Professional but matching the tone requested in prompt
+4. Include order number where appropriate
+5. Include contact info only if relevant to prompt
 
-2. Main Content (this is where you follow the prompt exactly)
-   - Focus on the specific purpose from the prompt
-   - Keep information clear and organized
-   - Use short paragraphs (2-4 sentences)
-   - Include any prompt-specific details
-
-3. Next Steps/Action Items
-   - Clear instructions if any
-   - What to expect next
-   - Only include if relevant to the prompt
-
-4. Contact Information
-   - Email: help@wayofglory.com
-   - Phone: (310) 872-9781
-   - Always include both
-
-5. Professional Closing
-   - Warm but professional
-   - Sign as "The Way of Glory Media Team"
-
-TONE REQUIREMENTS:
-- Professional yet warm
-- Clear and direct
-- Solution-focused
-- Confident but humble
-
-FORMATTING:
-- Plain text only
-- Double line breaks between sections
-- Single line breaks between paragraphs
-- No HTML or special formatting
-- Use dashes (-) for lists
+TONE:
+- Match the tone requested in the prompt
+- If no tone specified, keep it professional but natural
+- Avoid overly formal language unless requested
 
 RESTRICTIONS:
 - Never mention physical locations
 - Never mention specific employee names
-- Don't include pricing details
-- Don't make delivery time assumptions
-- Don't mention installation/training unless it's part of the order
-- Don't add content that wasn't requested in the prompt
+- Only include pricing if specifically requested
+- Only mention installation/training if relevant to prompt
 
-IMPORTANT: 
-1. The prompt's content and purpose should be the main focus of the email
-2. Maintain the professional structure while adapting it to the prompt's needs
-3. Don't add extra content that wasn't requested
-4. Always include order number and contact details
-5. Keep the tone consistently professional`
+CONTACT INFO (only include if relevant):
+- Email: help@wayofglory.com
+- Phone: (310) 872-9781`
 };
 
 interface OrderItem {
@@ -232,29 +192,23 @@ export async function POST(
               },
               {
                 role: "user",
-                content: `Write a custom email for order #${variables.orderId} following these requirements:
+                content: `Write exactly this type of email for order #${variables.orderId}:
 
 ${userContent}
 
-CUSTOMER DETAILS:
-- Name: ${variables.firstName} ${variables.lastName}
+Available Information (only use what's relevant to the prompt):
+- Customer: ${variables.firstName} ${variables.lastName}
 - Order #${variables.orderId}
 - Status: ${variables.status}
 ${variables.includesInstallation ? `- Installation Date: ${variables.installationDate}
 - Installation Time: ${variables.installationTime}` : ''}
-${variables.includesTraining ? '- Training service included' : ''}
 
-Remember to:
-1. Write directly to the customer (not about what to write)
-2. Keep the tone professional and warm
-3. Include order number and relevant details
-4. Maintain Way of Glory Media's voice
-
-VALIDATION REQUIREMENTS:
-1. Must include customer's name
-2. Must include order number
-3. Must be written in email format
-4. Must maintain professional tone`
+IMPORTANT: 
+1. Follow the prompt EXACTLY
+2. Only include information that's relevant to the prompt
+3. Do not add content that wasn't requested
+4. Do not default to a thank you email
+5. Write the email directly (not about what to write)`
               }
             ]
           }),
@@ -273,25 +227,34 @@ VALIDATION REQUIREMENTS:
         try {
           completion = await openai.chat.completions.create({
             ...AI_EMAIL_CONFIG,
-            temperature: 0.5, // Lower temperature for retry
+            temperature: 0.7,
             messages: [
               {
                 role: "system",
-                content: AI_EMAIL_CONFIG.system_prompt + "\n\nIMPORTANT: This is a retry attempt. Please ensure the response is clear and direct."
+                content: AI_EMAIL_CONFIG.system_prompt + "\n\nIMPORTANT: This is a retry attempt. Follow the prompt EXACTLY as written - do not modify or add to it."
               },
               {
                 role: "user",
-                content: `Write a simple, direct email for order #${variables.orderId}:
-                - Customer: ${variables.firstName} ${variables.lastName}
-                - Purpose: ${userContent}
-                - Keep it brief and clear
-                - Include order number
-                - Professional tone`
+                content: `RETRY REQUEST - Write exactly this email, no modifications:
+
+${userContent}
+
+Order Information (only use if relevant to prompt):
+- Customer: ${variables.firstName} ${variables.lastName}
+- Order #${variables.orderId}
+${variables.includesInstallation ? `- Installation Date: ${variables.installationDate}
+- Installation Time: ${variables.installationTime}` : ''}
+
+STRICT REQUIREMENTS:
+1. Generate EXACTLY what was requested - no additions
+2. Do not add any content not specified in the prompt
+3. Do not default to a generic or thank you email
+4. Keep ONLY the content requested in the original prompt`
               }
             ]
           });
         } catch (retryError) {
-          throw new Error('Failed to generate email after retry');
+          throw new Error('Failed to generate custom email after retry');
         }
       }
 
