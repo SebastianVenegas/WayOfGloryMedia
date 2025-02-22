@@ -12,27 +12,25 @@ const formatPrice = (price: number | string | null | undefined): string => {
 
 const AI_EMAIL_CONFIG = {
   model: "gpt-4",
-  temperature: 0.9,
+  temperature: 1.0,
   max_tokens: 2000,
-  system_prompt: `You are a creative email composer. Your PRIMARY and ONLY task is to write emails EXACTLY as specified in the user's prompt, with NO modifications or additions.
+  system_prompt: `You are a creative writer specializing in composing unique emails. Your task is to write EXACTLY what is requested in the prompt, maintaining the exact style, tone, and creative direction specified.
 
-KEY RULES:
-1. ONLY write what the prompt specifically requests
-2. DO NOT add any Way of Glory Media content unless explicitly requested
-3. DO NOT add any business/order information unless explicitly requested
-4. DO NOT modify the creative direction of the prompt
-5. DO NOT add contact information unless requested
-6. DO NOT add greetings/closings unless they're part of the requested style
-7. MAINTAIN the exact tone and style specified in the prompt
+CORE PRINCIPLES:
+1. Write EXACTLY what the prompt requests - nothing more, nothing less
+2. Maintain the exact creative style and tone requested
+3. Do not modify or sanitize the creative direction
+4. Keep the dramatic/creative elements as specified
+5. Follow the genre and style precisely
 
 IMPORTANT:
-- If the prompt is creative/fictional, write EXACTLY that
-- If the prompt is business-related, write EXACTLY that
-- NEVER default to a business template
-- NEVER add company information unless requested
-- NEVER modify the creative intent of the prompt
+- For creative/fictional prompts: Write exactly that, maintaining all dramatic/creative elements
+- For business prompts: Only then use business formatting
+- NEVER mix creative and business styles unless specifically requested
+- NEVER add company branding or contact info to creative pieces
+- NEVER sanitize or tone down creative elements
 
-Your ONLY job is to write EXACTLY what the prompt requests - nothing more, nothing less.`
+Remember: Your job is to be a creative writer first, following the prompt's creative direction exactly.`
 };
 
 interface OrderItem {
@@ -255,39 +253,70 @@ STRICT RULES:
       }
 
       // Process the content
-      let subject = `Custom Email - Way of Glory #${orderIdInt}`;
+      let subject = aiResponse.match(/^(?:Subject:|Re:|Regarding:)\s*(.+?)[\n\r]/i)?.[1]?.trim() || 'Custom Email';
       let emailContent = aiResponse.trim();
 
-      // Extract subject if provided in the content
-      const subjectMatch = emailContent.match(/^(?:Subject:|Re:|Regarding:)\s*(.+?)[\n\r]/i);
-      if (subjectMatch) {
-        subject = subjectMatch[1].trim();
-        emailContent = emailContent.replace(/^(?:Subject:|Re:|Regarding:)\s*.+?[\n\r]/, '').trim();
-      }
+      // Remove subject line if present
+      emailContent = emailContent.replace(/^(?:Subject:|Re:|Regarding:)\s*.+?[\n\r]/, '').trim();
 
-      // Basic validation - only check length
+      // Basic validation
       if (emailContent.length < 20) {
         throw new Error('Generated email content too short');
       }
 
-      // Format the content with error handling
+      // For creative content, skip the template formatting
+      const isCreativeContent = !userContent.toLowerCase().includes('way of glory') && 
+                              !userContent.toLowerCase().includes('order') &&
+                              !userContent.toLowerCase().includes('business');
+
       let formattedContent;
-      try {
-        formattedContent = formatEmailContent(emailContent, {
-          ...variables,
-          emailType: 'Custom Email',
-          companyName: 'Way of Glory Media',
-          supportEmail: 'help@wayofglory.com',
-          websiteUrl: 'https://wayofglory.com',
-          logoUrl: 'https://wayofglory.com/images/logo/LogoLight.png',
-          logoNormalUrl: 'https://wayofglory.com/images/logo/logo.png',
-          logoLightUrl: 'https://wayofglory.com/images/logo/LogoLight.png',
-          year: new Date().getFullYear(),
-          baseUrl: 'https://wayofglory.com'
-        });
-      } catch (formatError) {
-        console.error('Email formatting error:', formatError);
-        throw new Error('Failed to format email content');
+      if (isCreativeContent) {
+        // Create a simple HTML wrapper for creative content
+        formattedContent = `
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <style>
+                body {
+                  font-family: Arial, sans-serif;
+                  line-height: 1.6;
+                  color: #333;
+                  max-width: 800px;
+                  margin: 20px auto;
+                  padding: 20px;
+                }
+                p {
+                  margin: 1em 0;
+                  white-space: pre-wrap;
+                }
+              </style>
+            </head>
+            <body>
+              ${emailContent.split('\n').map(line => `<p>${line}</p>`).join('\n')}
+            </body>
+          </html>
+        `;
+      } else {
+        // Use template formatting only for business emails
+        try {
+          formattedContent = formatEmailContent(emailContent, {
+            ...variables,
+            emailType: 'Custom Email',
+            companyName: 'Way of Glory Media',
+            supportEmail: 'help@wayofglory.com',
+            websiteUrl: 'https://wayofglory.com',
+            logoUrl: 'https://wayofglory.com/images/logo/LogoLight.png',
+            logoNormalUrl: 'https://wayofglory.com/images/logo/logo.png',
+            logoLightUrl: 'https://wayofglory.com/images/logo/LogoLight.png',
+            year: new Date().getFullYear(),
+            baseUrl: 'https://wayofglory.com'
+          });
+        } catch (formatError) {
+          console.error('Email formatting error:', formatError);
+          throw new Error('Failed to format email content');
+        }
       }
 
       // Return the response
@@ -297,6 +326,7 @@ STRICT RULES:
           content: emailContent,
           html: formattedContent,
           success: true,
+          isCreative: isCreativeContent,
           validation: {
             contentLength: emailContent.length,
             isFormatted: true
@@ -309,8 +339,7 @@ STRICT RULES:
             'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
             'Pragma': 'no-cache',
             'Expires': '0',
-            'Surrogate-Control': 'no-store',
-            'x-content-validation': 'passed'
+            'Surrogate-Control': 'no-store'
           }
         }
       );
