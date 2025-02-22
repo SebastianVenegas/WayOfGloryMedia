@@ -19,7 +19,8 @@ const EMAIL_ENDPOINTS = [
   '/preview-template',
   '/custom-email',
   '/generate-email',
-  '/send-template'
+  '/send-template',
+  '/installation-confirmation'
 ];
 
 self.addEventListener('install', (event) => {

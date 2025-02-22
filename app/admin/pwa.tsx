@@ -94,7 +94,8 @@ export function AdminPWARegister() {
                     // Check if this is an email template request
                     if (request.url.includes('/preview-template') || 
                         request.url.includes('/custom-email') || 
-                        request.url.includes('/generate-email')) {
+                        request.url.includes('/generate-email') ||
+                        request.url.includes('/installation-confirmation')) {
                       console.log('Retrying email template request:', request.url);
                       
                       // Add PWA headers and prevent caching
