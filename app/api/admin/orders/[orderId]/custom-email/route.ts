@@ -14,29 +14,30 @@ const AI_EMAIL_CONFIG = {
   model: "gpt-4",
   temperature: 0.7,
   max_tokens: 2000,
-  system_prompt: `You are a professional email composer for Way of Glory Media. Your task is to write emails that exactly match the requested style while properly using customer information.
+  system_prompt: `You are a professional email composer for Way of Glory Media. You must directly substitute the provided customer information in your emails you are creating the final email not a draft so there canot be any placeholders.
 
-CORE PRINCIPLES:
-1. ALWAYS use the actual customer name when provided (never use placeholders)
-2. ALWAYS use the actual order number when provided (never use placeholders)
-3. Maintain the exact tone and style requested
-4. Keep all business details accurate and professional
-5. Follow the format and structure precisely
+DIRECT SUBSTITUTION RULES:
+1. Replace "[Customer's First Name]" with the actual firstName provided
+2. Replace "[Order number]" with the actual orderId provided
+3. Replace "[Name]" with the actual firstName provided
+4. Replace "XXXX" with the actual orderId provided
+5. NEVER use any placeholders - always use the actual values
 
-VARIABLE USAGE:
-- Use {firstName} for customer's first name
-- Use {orderId} for order number
-- Never use placeholders like [Customer Name] or XXXX
-- Always substitute real values for any customer-specific information
+EXAMPLE:
+Instead of: "Dear [Customer's First Name],"
+Write: "Dear John," (if firstName = "John")
 
-IMPORTANT:
-- For business emails: Use proper business formatting and include all necessary details
-- For legal/serious matters: Maintain professional and formal tone
-- Always include accurate contact information
-- Never modify the core message or intent
-- Keep all Way of Glory Media branding consistent
+Instead of: "Order #XXXX"
+Write: "Order #12345" (if orderId = "12345")
 
-Remember: Accuracy and professionalism are key - always use real customer data instead of placeholders.`
+CRITICAL:
+- Always use the exact customer name provided
+- Always use the exact order number provided
+- Never use brackets [] or placeholders
+- Never use XXXX or generic numbers
+- Always substitute real values
+
+Remember: Every placeholder must be replaced with actual customer data.`
 };
 
 interface OrderItem {
@@ -185,23 +186,23 @@ export async function POST(
               },
               {
                 role: "user",
-                content: `WRITE THIS EMAIL USING ACTUAL CUSTOMER INFORMATION:
+                content: `WRITE THIS EMAIL WITH EXACT CUSTOMER INFORMATION:
 
 ${userContent}
 
-USE THESE VALUES:
-- Customer First Name: ${variables.firstName}
-- Order Number: ${variables.orderId}
-- Company Name: ${variables.companyName}
-- Support Email: ${variables.supportEmail}
-- Support Phone: (310) 872-9781
+REPLACE ALL PLACEHOLDERS WITH THESE EXACT VALUES:
+First Name = "${variables.firstName}"
+Order Number = "${variables.orderId}"
+Company = "${variables.companyName}"
+Support Email = "${variables.supportEmail}"
+Support Phone = "(310) 872-9781"
 
 REQUIREMENTS:
-1. Use the actual customer name and order number
-2. Maintain the exact tone and format requested
-3. Keep all contact information accurate
-4. Follow the business template structure
-5. Keep the serious/legal tone as specified`
+1. Replace ALL [Customer's First Name] with "${variables.firstName}"
+2. Replace ALL [Order number] with "${variables.orderId}"
+3. Replace ALL [Name] with "${variables.firstName}"
+4. Replace ALL XXXX with "${variables.orderId}"
+5. Use exact values - no placeholders allowed`
               }
             ]
           }),
@@ -224,37 +225,40 @@ REQUIREMENTS:
             messages: [
               {
                 role: "system",
-                content: `You are a professional email composer for Way of Glory Media, Way of Glory Media is a company that provides media services to primeraly churches we offer media services like video production, audio production, and software development we also do live streaming and media training. 
-CRITICAL: Use actual customer information - no placeholders.
+                content: `CRITICAL: Replace ALL placeholders with these exact values:
+First Name = "${variables.firstName}"
+Order Number = "${variables.orderId}"
 
-KEY REQUIREMENTS:
-1. Use real customer name: ${variables.firstName}
-2. Use real order number: ${variables.orderId}
-3. Keep exact tone and format
-4. Maintain all business details
-5. Use accurate contact information
+EXAMPLES OF REQUIRED REPLACEMENTS:
+✗ "Dear [Customer's First Name]," -> ✓ "Dear ${variables.firstName},"
+✗ "Order #XXXX" -> ✓ "Order #${variables.orderId}"
+✗ "Hello [Name]" -> ✓ "Hello ${variables.firstName}"
 
-Never use placeholders like [Name] or XXXX - always use real customer data.`
+ABSOLUTE REQUIREMENTS:
+1. Use "${variables.firstName}" for ALL customer name references
+2. Use "${variables.orderId}" for ALL order number references
+3. NO placeholders or brackets [] allowed
+4. NO generic numbers (XXXX) allowed
+5. EVERY customer reference must use actual name`
               },
               {
                 role: "user",
-                content: `RETRY - Write this email using actual customer information:
+                content: `RETRY - Replace ALL placeholders in this email:
 
 ${userContent}
 
-CUSTOMER INFORMATION:
-- First Name: ${variables.firstName}
-- Order Number: ${variables.orderId}
-- Company: ${variables.companyName}
-- Email: ${variables.supportEmail}
-- Phone: (310) 872-9781
+MANDATORY REPLACEMENTS:
+• [Customer's First Name] → "${variables.firstName}"
+• [Order number] → "${variables.orderId}"
+• [Name] → "${variables.firstName}"
+• XXXX → "${variables.orderId}"
 
-REQUIREMENTS:
-1. Use the real customer name and order number above
-2. Keep the exact tone and format
-3. Maintain all business details
-4. Use accurate contact information
-5. Follow the template structure exactly`
+CHECK EACH LINE:
+1. Replace every instance of [Customer's First Name]
+2. Replace every instance of [Order number]
+3. Replace every instance of [Name]
+4. Replace every instance of XXXX
+5. Verify no placeholders remain`
               }
             ]
           });
