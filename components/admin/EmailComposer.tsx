@@ -465,11 +465,7 @@ export default function EmailComposer({
       const data = await response.json()
 
       if (response.ok || data.html || data.content) {
-        toast({
-          title: "Success",
-          description: "Email sent successfully!",
-          variant: "default"
-        })
+        // Call onEmailSent callback
         if (onEmailSent) {
           onEmailSent()
         }

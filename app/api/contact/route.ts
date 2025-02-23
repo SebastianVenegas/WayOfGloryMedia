@@ -117,7 +117,6 @@ export async function POST(request: Request) {
     const userEmailContent = `
       <div class="content-wrapper">
         <div class="header">
-          <img src="${emailVariables.logoNormalUrl}" alt="Way of Glory Media" style="width: 180px; margin: 0 auto;" />
         </div>
         
         <h2 style="color: #1e293b; font-size: 24px; font-weight: 600; margin-bottom: 20px;">Thank You for Contacting Way of Glory Media</h2>
@@ -171,12 +170,6 @@ export async function POST(request: Request) {
       to: "help@wayofglory.com",
       replyTo: email,
       subject: emailSubject,
-      attachments: [{
-        filename: 'icon.png',
-        path: 'public/images/logo/icon.png',
-        cid: 'company-logo',
-        contentDisposition: 'inline' as const
-      }],
       html: formatEmailContent(adminEmailContent, emailVariables)
     }
 
@@ -186,17 +179,11 @@ export async function POST(request: Request) {
       // Send confirmation email to the user
       const confirmationMailOptions = {
         from: {
-          name: 'Way of Glory Digital Services',
+          name: 'Way of Glory',
           address: gmailUser
         },
         to: email,
         subject: 'Thank You for Contacting Way of Glory Media',
-        attachments: [{
-          filename: 'icon.png',
-          path: 'public/images/logo/icon.png',
-          cid: 'company-logo',
-          contentDisposition: 'inline' as const
-        }],
         html: formatEmailContent(userEmailContent, emailVariables)
       }
       

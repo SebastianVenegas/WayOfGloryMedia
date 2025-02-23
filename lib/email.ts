@@ -320,12 +320,6 @@ export const sendContractEmail = async ({
       to: email,
       subject: `Your Way of Glory Order #${orderId} Confirmation`,
       attachments: [
-        {
-          filename: 'icon.png',
-          path: 'public/images/logo/icon.png',
-          cid: 'company-logo',
-          contentDisposition: 'inline' as const
-        },
         ...(signatureBuffer ? [{
           filename: 'signature.png',
           content: signatureBuffer,

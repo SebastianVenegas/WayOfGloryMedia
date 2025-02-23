@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react"
 import Header from "@/components/Header"
 import Footer from "@/components/Footer"
+import { useToast } from "@/components/ui/use-toast"
+import { Toaster } from "@/components/ui/toaster"
 import {
   Globe,
   Smartphone,
@@ -109,6 +111,7 @@ const solutions = [
 ]
 
 export default function DigitalServicesPage() {
+  const { toast } = useToast()
   const [selectedFeature, setSelectedFeature] = useState(0)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
 
@@ -129,6 +132,7 @@ export default function DigitalServicesPage() {
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-b from-[#0A0F1C] to-[#1A2035] overflow-x-hidden">
       <Header />
+      <Toaster />
       
       <main className="flex-grow">
         {/* Hero Section */}

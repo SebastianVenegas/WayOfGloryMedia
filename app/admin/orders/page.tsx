@@ -1643,25 +1643,10 @@ export default function OrdersPage() {
   };
 
   const handleEmailSent = () => {
-    setShowEmailComposer(false);
-    setActiveEmailTab('content');
-    setEditedContent('');
-    setEmailSubject('');
-    setEditedSubject('');
-    setTemplateVars({});
-    setIsGeneratingAI(false);
-    setIsGeneratingEmail(false);
-    setIsSendingEmail(false);
-    setSendingTemplateId(null);
-    setAiPrompt('');
-    setIsAiPromptOpen(false);
-    setShippingStatus('');
-    setIsShippingPromptOpen(false);
-    setIsTemplateLoading(false);
-    setLoadingTemplateName('');
-    setEmailLogs([]);
-    setIsLoadingEmailLogs(false);
-  };
+    showToast("Email sent successfully! 🎉", "success")
+    setSelectedOrder(null)
+    setShowEmailComposer(false)
+  }
 
   const handleCloseEmailComposer = () => {
     setShowEmailComposer(false);

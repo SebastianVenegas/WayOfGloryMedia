@@ -2,10 +2,12 @@
 
 import { useState } from 'react'
 import { Music2, Mail, Users, MessageSquare } from 'lucide-react'
+import { useToast } from "@/components/ui/use-toast"
 
 export default function QuoteSection() {
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [submitStatus, setSubmitStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle')
+  const [status, setStatus] = useState('')
+  const { toast } = useToast()
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -21,60 +23,54 @@ export default function QuoteSection() {
     }))
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setIsSubmitting(true)
-    setSubmitStatus('submitting')
+    setStatus('')
+
+    const formData = new FormData(e.currentTarget)
+    const data = {
+      name: formData.get('name'),
+      email: formData.get('email'),
+      churchName: formData.get('churchName'),
+      message: formData.get('message'),
+    }
 
     try {
-      // Add validation
-      if (!formData.name || !formData.email || !formData.churchName || !formData.message) {
-        throw new Error('Please fill in all fields')
-      }
-
-      // Validate email format
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-      if (!emailRegex.test(formData.email)) {
-        throw new Error('Please enter a valid email address')
-      }
-
       const response = await fetch('/api/contact', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          ...formData,
-          subject: `New Quote Request from ${formData.churchName}`,
-          type: 'quote_request'
-        }),
+        body: JSON.stringify(data),
       })
+
+      const result = await response.json()
 
       if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.message || 'Failed to send message')
+        throw new Error(result.error || 'Failed to send message')
       }
 
-      setSubmitStatus('success')
-      setFormData({
-        name: '',
-        email: '',
-        churchName: '',
-        message: ''
+      // Clear the form
+      e.currentTarget.reset()
+      setStatus('Message sent successfully!')
+      
+      // Show success toast
+      toast({
+        title: "Message Sent Successfully! 🎉",
+        description: "We'll get back to you shortly.",
+        className: "bg-green-50 border-green-200",
       })
 
-      // Scroll to success message
-      setTimeout(() => {
-        const successMessage = document.getElementById('submit-status')
-        successMessage?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      }, 100)
-
     } catch (error) {
-      console.error('Error:', error)
-      setSubmitStatus('error')
-      // Show error message to user
-      const errorMessage = error instanceof Error ? error.message : 'Failed to send message'
-      alert(errorMessage)
+      setStatus(error instanceof Error ? error.message : 'Failed to send message')
+      
+      // Show error toast
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to send message",
+        variant: "destructive",
+      })
     } finally {
       setIsSubmitting(false)
     }
@@ -205,23 +201,23 @@ export default function QuoteSection() {
                   className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-3 bg-[#0F172A] text-white 
                            rounded-xl font-medium min-w-[200px] hover:bg-[#1E293B] transform hover:-translate-y-0.5 
                            hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none 
-                           disabled:shadow-none transition-all duration-200"
+                           disabled:shadow-none transition-all duration-200 space-x-2"
                 >
-                  {isSubmitting ? 'Sending...' : 'Schedule a Consultation'}
+                  {isSubmitting ? (
+                    <>
+                      <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                      <span>Sending...</span>
+                    </>
+                  ) : (
+                    'Schedule a Consultation'
+                  )}
                 </button>
 
                 {/* Status Messages */}
-                {submitStatus === 'success' && (
+                {status && (
                   <div className="bg-green-50 border border-green-200 rounded-lg p-4 w-full text-center">
                     <p className="text-green-600 font-medium">
-                      Message sent successfully! We'll be in touch soon.
-                    </p>
-                  </div>
-                )}
-                {submitStatus === 'error' && (
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-4 w-full text-center">
-                    <p className="text-red-600 font-medium">
-                      Failed to send message. Please try again or contact us directly at help@wayofglory.com
+                      {status}
                     </p>
                   </div>
                 )}

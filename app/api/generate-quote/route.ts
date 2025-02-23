@@ -120,12 +120,6 @@ export async function POST(request: Request) {
       },
       to: email,
       subject: 'Your Way of Glory Media Quote',
-      attachments: [{
-        filename: 'icon.png',
-        path: 'public/images/logo/icon.png',
-        cid: 'company-logo',
-        contentDisposition: 'inline' as const
-      }],
       html: quoteHtml
     });
 
