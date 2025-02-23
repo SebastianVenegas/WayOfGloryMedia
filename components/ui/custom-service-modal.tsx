@@ -463,7 +463,7 @@ export default function CustomServiceModal({
         }[generationStyle]
       };
 
-      const response = await fetch('/api/admin/generate-service', {
+      const response = await fetch('/api/generate-service', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
