@@ -1174,15 +1174,28 @@ export default function OrdersPage() {
       setIsTemplateLoading(true);
       setLoadingTemplateName('Generating custom email...');
 
-      // Use the preview-template endpoint with custom_email template
+      // Use the custom-email endpoint with customer information  
       const response = await fetch(
-        `/api/admin/orders/${selectedOrder.id}/preview-template?templateId=custom_email&prompt=${encodeURIComponent(prompt)}`,
+        `/api/admin/orders/${selectedOrder.id}/custom-email`,
         {
-          method: 'GET',
+          method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'x-pwa-request': 'true'
-          }
+          },
+          body: JSON.stringify({
+            prompt,
+            variables: {
+              firstName: selectedOrder.first_name,
+              lastName: selectedOrder.last_name,
+              orderId: selectedOrder.id,
+              email: selectedOrder.email,
+              status: selectedOrder.status,
+              totalAmount: selectedOrder.total_amount,
+              installationDate: selectedOrder.installation_date,
+              installationTime: selectedOrder.installation_time
+            }
+          })
         }
       );
 
@@ -1190,6 +1203,10 @@ export default function OrdersPage() {
 
       if (!response.ok) {
         throw new Error(data.error || 'Failed to generate email');
+      }
+
+      if (!data.content && !data.html) {
+        throw new Error('No content received from server');
       }
 
       // Set the content and preview HTML
@@ -1292,72 +1309,6 @@ export default function OrdersPage() {
       showToast(error instanceof Error ? error.message : 'Failed to send email', 'error');
     } finally {
       setIsSendingEmail(false);  // Clear the loading state
-    }
-  };
-
-  // Handle quick generate
-  const handleQuickGenerate = async (templateId: string) => {
-    if (!selectedOrder) {
-      showToast('Please select an order first', 'error');
-      return;
-    }
-
-    try {
-      setIsTemplateLoading(true);
-      setLoadingTemplateName(`Generating ${templateId} template...`);
-      setShowEmailComposer(true);
-
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-
-      const response = await fetch(
-        `/api/admin/orders/${selectedOrder.id}/preview-template?templateId=${templateId}`,
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache',
-            'x-pwa-request': 'true',
-            'x-timestamp': Date.now().toString()
-          },
-          signal: controller.signal
-        }
-      );
-
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Failed to generate template' }));
-        throw new Error(errorData.error || 'Failed to generate template');
-      }
-
-      const data = await response.json();
-
-      if (!data.content && !data.html) {
-        throw new Error('No content received from server');
-      }
-
-      // Set the content and preview HTML
-      setContent(data.content || data.html);
-      setEditedContent(data.content || data.html);
-      setPreviewHtml(data.html || data.content);
-      
-      if (data.subject) {
-        setSubject(data.subject);
-        setEditedSubject(data.subject);
-      }
-
-      handleEmailTabChange('content');
-      setIsGeneratingEmail(false);
-      showToast('Template generated successfully', 'success');
-    } catch (error: any) {
-      console.error('Error generating template:', error);
-      showToast(error.message || 'Failed to generate template', 'error');
-      setShowEmailComposer(false);
-    } finally {
-      setIsTemplateLoading(false);
-      setLoadingTemplateName('');
     }
   };
 

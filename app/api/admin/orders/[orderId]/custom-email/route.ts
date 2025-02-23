@@ -10,42 +10,12 @@ const formatPrice = (price: number | string | null | undefined): string => {
   return isNaN(numericPrice) ? '0.00' : numericPrice.toFixed(2);
 };
 
-const AI_EMAIL_CONFIG = {
-  model: "gpt-4",
-  temperature: 0.7,
-  max_tokens: 2000,
-  system_prompt: `You are a professional email composer for Way of Glory Media. You must directly substitute the provided customer information in your emails you are creating the final email not a draft so there canot be any placeholders.
-
-DIRECT SUBSTITUTION RULES:
-1. Replace "[Customer's First Name]" with the actual firstName provided
-2. Replace "[Order number]" with the actual orderId provided
-3. Replace "[Name]" with the actual firstName provided
-4. Replace "XXXX" with the actual orderId provided
-5. NEVER use any placeholders - always use the actual values
-
-EXAMPLE:
-Instead of: "Dear [Customer's First Name],"
-Write: "Dear John," (if firstName = "John")
-
-Instead of: "Order #XXXX"
-Write: "Order #12345" (if orderId = "12345")
-
-CRITICAL:
-- Always use the exact customer name provided
-- Always use the exact order number provided
-- Never use brackets [] or placeholders
-- Never use XXXX or generic numbers
-- Always substitute real values
-
-Remember: Every placeholder must be replaced with actual customer data.`
-};
-
 interface OrderItem {
   title?: string;
   quantity: number;
   price?: number;
   pricePerUnit?: number;
-  price_at_time?: number | string;
+  price_at_time?: number;
   product?: {
     title?: string;
     description?: string;
@@ -156,6 +126,51 @@ export async function POST(
       logoUrl: '/images/logo/LogoLight.png'
     };
 
+    const AI_EMAIL_CONFIG = {
+      model: "gpt-4",
+      temperature: 0.7,
+      max_tokens: 2000,
+      system_prompt: `You are writing a final email for Way of Glory Media. Use these EXACT customer details:
+
+CUSTOMER INFORMATION (REQUIRED - DO NOT MODIFY):
+• First Name: "${variables.firstName}"
+• Last Name: "${variables.lastName}"
+• Order Number: ${variables.orderId}
+• Email: ${variables.email}
+• Order Status: ${variables.status}
+
+COMPANY INFORMATION (REQUIRED - DO NOT MODIFY):
+• Company: Way of Glory Media
+• Support Email: help@wayofglory.com
+• Support Phone: (310) 872-9781
+• Website: wayofglory.com
+
+STRICT RULES:
+1. Write the final email exactly as it will be sent
+2. Use the customer's actual name ("${variables.firstName}")
+3. Use the actual order number (${variables.orderId})
+4. NEVER use placeholders like [Name] or [Order Number]
+5. NEVER use XXXX or generic numbers
+6. Include the support email and phone number exactly as provided above
+7. NEVER mention any employee names - always use "our team" or "the Way of Glory team"
+8. NEVER sign the email with a specific person's name or placeholder - ALWAYS end with "The Way of Glory Team"
+9. This is the FINAL email that will be sent - NO placeholders of any kind are allowed
+10. Do NOT use [your name], [name], [signature] or any other placeholder in the signature
+
+SIGNATURE RULES:
+✓ CORRECT: "Best regards, The Way of Glory Team"
+✗ INCORRECT: "Best regards, [Your Name]"
+✗ INCORRECT: "Sincerely, [Name]"
+✗ INCORRECT: "Thanks, [Representative Name]"
+
+EXAMPLES:
+CORRECT: "Dear ${variables.firstName}, Thank you for your order #${variables.orderId}. Our team will... Best regards, The Way of Glory Team"
+INCORRECT: "Dear [Name], Thank you for your order #[Order Number]. John will... Best regards, [Your Name]"
+INCORRECT: "Dear Customer, Thank you for your order #XXXX. Mike from our team... Sincerely, [Name]"
+
+Remember: This is the FINAL version that will be sent to the customer. Every placeholder must be replaced with actual data.`
+    };
+
     // Log request details
     console.log('Generating custom email with:', {
       orderId: orderIdInt,
@@ -182,27 +197,58 @@ export async function POST(
             messages: [
               {
                 role: "system",
-                content: AI_EMAIL_CONFIG.system_prompt
+                content: `You are writing a final email for Way of Glory Media. Use these EXACT customer details:
+
+CUSTOMER INFORMATION (REQUIRED - DO NOT MODIFY):
+• First Name: "${variables.firstName}"
+• Last Name: "${variables.lastName}"
+• Order Number: ${variables.orderId}
+• Email: ${variables.email}
+• Order Status: ${variables.status}
+
+COMPANY INFORMATION (REQUIRED - DO NOT MODIFY):
+• Company: Way of Glory Media
+• Support Email: help@wayofglory.com
+• Support Phone: (310) 872-9781
+• Website: wayofglory.com
+
+STRICT RULES:
+1. Write the final email exactly as it will be sent
+2. Use the customer's actual name ("${variables.firstName}")
+3. Use the actual order number (${variables.orderId})
+4. NEVER use placeholders like [Name] or [Order Number]
+5. NEVER use XXXX or generic numbers
+6. Include the support email and phone number exactly as provided above
+7. NEVER mention any employee names - always use "our team" or "the Way of Glory team"
+8. NEVER sign the email with a specific person's name or placeholder - ALWAYS end with "The Way of Glory Team"
+9. This is the FINAL email that will be sent - NO placeholders of any kind are allowed
+10. Do NOT use [your name], [name], [signature] or any other placeholder in the signature
+11. NEVER mention any employee names - always use "our team" or "the Way of Glory team"
+
+SIGNATURE RULES:
+✓ CORRECT: "Best regards, The Way of Glory Team"
+✗ INCORRECT: "Best regards, [Your Name]"
+✗ INCORRECT: "Sincerely, [Name]"
+✗ INCORRECT: "Thanks, [Representative Name]"
+
+EXAMPLES:
+CORRECT: "Dear ${variables.firstName}, Thank you for your order #${variables.orderId}. Our team will... Best regards, The Way of Glory Team"
+INCORRECT: "Dear [Name], Thank you for your order #[Order Number]. John will... Best regards, [Your Name]"
+INCORRECT: "Dear Customer, Thank you for your order #XXXX. Mike from our team... Sincerely, [Name]"
+
+Remember: This is the FINAL version that will be sent to the customer. Every placeholder must be replaced with actual data.`
               },
               {
                 role: "user",
-                content: `WRITE THIS EMAIL WITH EXACT CUSTOMER INFORMATION:
+                content: `Write the final email using the exact customer information provided above:
 
 ${userContent}
 
-REPLACE ALL PLACEHOLDERS WITH THESE EXACT VALUES:
-First Name = "${variables.firstName}"
-Order Number = "${variables.orderId}"
-Company = "${variables.companyName}"
-Support Email = "${variables.supportEmail}"
-Support Phone = "(310) 872-9781"
-
-REQUIREMENTS:
-1. Replace ALL [Customer's First Name] with "${variables.firstName}"
-2. Replace ALL [Order number] with "${variables.orderId}"
-3. Replace ALL [Name] with "${variables.firstName}"
-4. Replace ALL XXXX with "${variables.orderId}"
-5. Use exact values - no placeholders allowed`
+Remember:
+• Use "${variables.firstName}" as the customer's name
+• Reference Order #${variables.orderId}
+• Include our contact details exactly as provided
+• Write the final version - no placeholders allowed`
               }
             ]
           }),
@@ -299,23 +345,123 @@ CHECK EACH LINE:
             <head>
               <meta charset="utf-8">
               <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <meta name="color-scheme" content="light">
               <style>
                 body {
-                  font-family: Arial, sans-serif;
-                  line-height: 1.6;
-                  color: #333;
-                  max-width: 800px;
-                  margin: 20px auto;
+                  margin: 0;
                   padding: 20px;
+                  background-color: #ffffff;
+                  -webkit-font-smoothing: antialiased;
+                  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+                  color: #374151;
+                  font-size: 16px;
+                  line-height: 1.6;
+                  word-wrap: break-word;
+                  overflow-wrap: break-word;
+                  max-width: 100%;
                 }
                 p {
                   margin: 1em 0;
+                  line-height: 1.6;
                   white-space: pre-wrap;
+                  word-wrap: break-word;
+                  overflow-wrap: break-word;
+                }
+                img {
+                  max-width: 100%;
+                  height: auto;
+                  display: block;
+                }
+                .content-wrapper {
+                  max-width: 600px;
+                  margin: 0 auto;
+                  padding: 20px;
+                  background: #ffffff;
+                  border-radius: 8px;
+                  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+                }
+                .header {
+                  text-align: center;
+                  padding: 20px;
+                  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+                  border-radius: 8px 8px 0 0;
+                  margin: -20px -20px 20px -20px;
+                }
+                .header img {
+                  width: 180px;
+                  margin: 0 auto;
+                }
+                .footer {
+                  text-align: center;
+                  margin-top: 40px;
+                  padding-top: 20px;
+                  border-top: 1px solid #e5e7eb;
+                  color: #6b7280;
+                  font-size: 14px;
+                }
+                table {
+                  width: 100%;
+                  border-collapse: collapse;
+                  margin: 1em 0;
+                }
+                th, td {
+                  padding: 12px;
+                  text-align: left;
+                  border-bottom: 1px solid #e5e7eb;
+                }
+                th {
+                  background-color: #f9fafb;
+                  font-weight: 600;
+                }
+                a {
+                  color: #2563eb;
+                  text-decoration: none;
+                }
+                a:hover {
+                  text-decoration: underline;
+                }
+                .button {
+                  display: inline-block;
+                  padding: 12px 24px;
+                  background-color: #2563eb;
+                  color: white;
+                  text-decoration: none;
+                  border-radius: 6px;
+                  font-weight: 500;
+                  margin: 1em 0;
+                }
+                .button:hover {
+                  background-color: #1d4ed8;
+                  text-decoration: none;
+                }
+                @media (max-width: 600px) {
+                  body {
+                    padding: 10px;
+                  }
+                  .content-wrapper {
+                    padding: 15px;
+                  }
+                  .header {
+                    margin: -15px -15px 15px -15px;
+                  }
                 }
               </style>
             </head>
             <body>
-              ${emailContent.split('\n').map(line => `<p>${line}</p>`).join('\n')}
+              <div class="content-wrapper">
+                <div class="header">
+                  <img src="https://wayofglory.com/images/logo/logo.png" alt="Way of Glory Media" />
+                </div>
+                ${emailContent.split('\n').map(line => `<p>${line}</p>`).join('\n')}
+                <div class="footer">
+                  <p>© ${new Date().getFullYear()} Way of Glory Media. All rights reserved.</p>
+                  <p>
+                    <a href="mailto:help@wayofglory.com">help@wayofglory.com</a> |
+                    <a href="tel:+13108729781">(310) 872-9781</a> |
+                    <a href="https://wayofglory.com">wayofglory.com</a>
+                  </p>
+                </div>
+              </div>
             </body>
           </html>
         `;

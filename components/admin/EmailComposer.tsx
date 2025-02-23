@@ -122,49 +122,12 @@ if (typeof document !== 'undefined') {
 }
 
 const enhancePrompt = (prompt: string): string => {
-  // Extract key components from the prompt
-  const purpose = prompt.toLowerCase();
-  const isPaymentRelated = purpose.includes('payment') || purpose.includes('invoice');
-  const isInstallationRelated = purpose.includes('installation') || purpose.includes('setup');
-  const isUpdateRelated = purpose.includes('update') || purpose.includes('status');
-  const isThankYouRelated = purpose.includes('thank') || purpose.includes('appreciation');
-  
-  // Build enhanced prompt based on type
-  let enhancedPrompt = 'Write a professional and engaging email that';
-  
-  if (isPaymentRelated) {
-    enhancedPrompt = `Create a polite and clear payment-related email that ${purpose}. Include:
-- Specific payment details and methods
-- Clear deadlines if applicable
-- Professional payment instructions
-- Maintain a courteous tone while conveying urgency`;
-  } else if (isInstallationRelated) {
-    enhancedPrompt = `Compose a detailed installation communication that ${purpose}. Include:
-- Clear preparation instructions
-- Specific installation details
-- Safety and access requirements
-- What to expect during the process`;
-  } else if (isUpdateRelated) {
-    enhancedPrompt = `Draft a comprehensive status update that ${purpose}. Include:
-- Current status details
-- Next steps and timeline
-- Clear expectations
-- Proactive addressing of common concerns`;
-  } else if (isThankYouRelated) {
-    enhancedPrompt = `Craft a sincere appreciation message that ${purpose}. Include:
-- Genuine gratitude expression
-- Specific references to their business
-- Future relationship building
-- Open door for feedback`;
-  } else {
-    enhancedPrompt = `Compose a professional and detailed email that ${purpose}. Include:
-- Clear and specific information
-- Action items if applicable
-- Next steps
-- Relevant contact details`;
-  }
-  
-  return enhancedPrompt + '\n\nMaintain a warm, professional tone throughout the email.';
+  return `Write this email using the customer's actual information:
+
+${prompt}
+
+The email should be professional, clear, and ready to send immediately.
+Do not use any placeholders - write the final version of the email.`;
 };
 
 const improvePromptWithAI = async (prompt: string): Promise<string> => {
@@ -176,19 +139,10 @@ const improvePromptWithAI = async (prompt: string): Promise<string> => {
       },
       body: JSON.stringify({
         prompt,
-        systemPrompt: `You are an expert at improving email prompts. Make the prompt more specific and actionable. Keep it concise and clear.
-
-Rules:
-1. Return ONLY the improved prompt text
-2. No formatting, bullets, or special characters
-3. Keep it under 3 sentences
-4. Focus on key details and tone
-5. Be direct and specific
-
-Example input: "Write a thank you email"
-Example output: "Write a warm thank you email expressing gratitude for their order, mentioning the specific products purchased, and inviting them to reach out with any questions."
-
-Improve this prompt:`
+        instructions: `Improve this email prompt while maintaining its core message. 
+        Write it as a direct instruction for composing the final email.
+        Do not use any placeholders - the email should be written with actual customer information.
+        Focus on clarity, professionalism, and actionable content.`
       })
     });
 
@@ -1031,9 +985,12 @@ export default function EmailComposer({
                               </h4>
                               <div className="space-y-2">
                                 <div className="space-y-1.5">
-                                  <code className="px-1.5 py-0.5 bg-blue-100/50 rounded text-blue-700 text-xs block">[Customer Name]</code>
-                                  <code className="px-1.5 py-0.5 bg-blue-100/50 rounded text-blue-700 text-xs block">[Order Number]</code>
-                                  <code className="px-1.5 py-0.5 bg-blue-100/50 rounded text-blue-700 text-xs block">[Total Amount]</code>
+                                  <div className="text-sm font-medium text-gray-700">Available Information:</div>
+                                  <div className="px-2 py-1.5 bg-blue-50 rounded text-sm">
+                                    <div className="text-blue-700">Order Number: {orderId}</div>
+                                    <div className="text-blue-700">Support Email: help@wayofglory.com</div>
+                                    <div className="text-blue-700">Support Phone: (310) 872-9781</div>
+                                  </div>
                                 </div>
                               </div>
                             </div>
@@ -1045,9 +1002,11 @@ export default function EmailComposer({
                               </h4>
                               <div className="space-y-2">
                                 <div className="space-y-1.5">
-                                  <code className="px-1.5 py-0.5 bg-emerald-100/50 rounded text-emerald-700 text-xs block">[Installation Date]</code>
-                                  <code className="px-1.5 py-0.5 bg-emerald-100/50 rounded text-emerald-700 text-xs block">[Status]</code>
-                                  <code className="px-1.5 py-0.5 bg-emerald-100/50 rounded text-emerald-700 text-xs block">[Company Info]</code>
+                                  <div className="px-2 py-1.5 bg-emerald-50 rounded text-sm">
+                                    <div className="text-emerald-700">Company: Way of Glory Media</div>
+                                    <div className="text-emerald-700">Website: wayofglory.com</div>
+                                    <div className="text-emerald-700">Location: Remote Service</div>
+                                  </div>
                                 </div>
                               </div>
                             </div>

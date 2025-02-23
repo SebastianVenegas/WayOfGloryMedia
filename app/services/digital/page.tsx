@@ -1,196 +1,116 @@
-'use client'
+"use client"
 
-import { useState, useEffect, useRef } from 'react'
-import Header from '../../../components/Header'
-import Footer from '@/components/Footer'
-import { Globe, Smartphone, Code, Gauge, Layout, Users, Server, Shield, ChevronRight, Star, ArrowRight, MessageCircle } from 'lucide-react'
-import Image from 'next/image'
-import ScrollAnimation from '../../../components/ui/scroll-animation'
-import QuoteSection from '../../../components/QuoteSection'
-import { motion, useAnimation, type AnimationControls } from 'framer-motion'
-import { LazyMotion, domAnimation } from 'framer-motion'
-import { useInView } from 'react-intersection-observer'
+import { useState, useEffect } from "react"
+import Header from "@/components/Header"
+import Footer from "@/components/Footer"
+import {
+  Globe,
+  Smartphone,
+  Code,
+  Gauge,
+  Layout,
+  Users,
+  Server,
+  ChevronRight,
+  Star,
+  ArrowRight,
+  MessageCircle,
+} from "lucide-react"
+import Image from "next/image"
+import ScrollAnimation from "@/components/ui/scroll-animation"
+import QuoteSection from "@/components/QuoteSection"
+import { motion } from "framer-motion"
+
+// Animation variants
+const fadeInUp = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0, transition: { duration: 0.6 } },
+}
+
+const images = [
+  "https://images.unsplash.com/photo-1498050108023-c5249f4df085?q=80&w=2072&auto=format&fit=crop"
+];
 
 const features = [
   {
-    title: "Custom Church Website Development",
-    description: "Stunning, responsive designs that reflect your church's unique mission and values.",
+    title: "Modern Church Websites",
+    description: "Beautiful, responsive websites with powerful features designed specifically for churches.",
     icon: Globe,
+    image: "https://images.unsplash.com/photo-1600267185393-e158a98703de?q=80&w=2070&auto=format&fit=crop",
     details: [
-      "Modern, mobile-first design",
-      "Interactive events calendar with online registrations",
-      "Prayer request submission system",
-      "Online giving and donation platform",
-      "Sermon archives and streaming",
-      "Community engagement tools"
+      "Live service streaming integration",
+      "Online giving & donation platform",
+      "Sermon archive & media library",
+      "Event registration & calendar",
+      "Member portal & directory"
     ],
-    image: "https://images.unsplash.com/photo-1581291518633-83b4ebd1d83e?q=80&w=3270&auto=format&fit=crop"
   },
   {
-    title: "Custom Software Solutions",
-    description: "Tailored software to streamline your church's operations and enhance congregation engagement.",
-    icon: Code,
-    details: [
-      "Tailored member management systems",
-      "Bespoke event & service planning tools",
-      "Custom analytics & reporting dashboards",
-      "Integrated communication platforms",
-      "Customized financial management",
-      "Personalized ministry tools"
-    ],
-    image: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=2426&auto=format&fit=crop"
-  },
-  {
-    title: "Custom Mobile Applications",
-    description: "Develop a unique mobile experience that connects your congregation on-the-go, tailored to your church's needs.",
+    title: "Digital Ministry Tools",
+    description: "Comprehensive digital tools that help you manage and grow your ministry effectively.",
     icon: Smartphone,
+    image: "https://images.unsplash.com/photo-1551650975-87deedd944c3?q=80&w=1974&auto=format&fit=crop",
     details: [
-      "Native iOS and Android development",
-      "Push notifications for events",
-      "Mobile prayer requests",
-      "Digital bible study tools",
-      "Mobile giving integration",
-      "Community features"
+      "Prayer request management",
+      "Small group coordination",
+      "Volunteer scheduling",
+      "Ministry team collaboration",
+      "Attendance tracking"
     ],
-    image: "https://images.unsplash.com/photo-1555774698-0b77e0d5fac6?q=80&w=3270&auto=format&fit=crop"
-  }
-]
-
-const technologies = [
+  },
   {
-    name: "React & Next.js",
-    description: "Modern web framework for fast, interactive experiences",
+    title: "Engagement Platform",
+    description: "Keep your congregation connected and engaged with interactive features.",
     icon: Code,
-    color: "from-[#40B5E5]/20 to-[#7DD3F7]/20"
+    image: "https://images.unsplash.com/photo-1551434678-e076c223a692?q=80&w=2070&auto=format&fit=crop",
+    details: [
+      "Mobile-friendly experience",
+      "Social media integration",
+      "Email & SMS notifications",
+      "Community discussion boards",
+      "Member engagement analytics"
+    ],
   },
-  {
-    name: "React Native",
-    description: "Native mobile app development for iOS and Android",
-    icon: Smartphone,
-    color: "from-[#40B5E5]/20 to-[#7DD3F7]/20"
-  },
-  {
-    name: "Cloud Infrastructure",
-    description: "Scalable, reliable hosting and deployment",
-    icon: Server,
-    color: "from-[#40B5E5]/20 to-[#7DD3F7]/20"
-  },
-  {
-    name: "Security First",
-    description: "Enterprise-grade security and data protection",
-    icon: Shield,
-    color: "from-[#40B5E5]/20 to-[#7DD3F7]/20"
-  }
-]
-
-const portfolioItems = [
-  {
-    title: "Modern Church Website",
-    description: "Responsive website with integrated live streaming and donations",
-    image: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=2426&auto=format&fit=crop"
-  },
-  {
-    title: "Church Mobile App",
-    description: "Custom mobile app with event management and push notifications",
-    image: "https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?q=80&w=2340&auto=format&fit=crop"
-  },
-  {
-    title: "Community Platform",
-    description: "Integrated web and mobile platform for church community",
-    image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=2340&auto=format&fit=crop"
-  }
-]
-
-// Add animation variants
-const fadeInUp = {
-  initial: { opacity: 0, y: 20 },
-  animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.5 }
-}
-
-const staggerContainer = {
-  animate: {
-    transition: {
-      staggerChildren: 0.1
-    }
-  }
-}
-
-const floatingAnimation = {
-  initial: { y: 0 },
-  animate: {
-    y: [0, -10, 0],
-    transition: {
-      duration: 3,
-      repeat: Infinity,
-      ease: "easeInOut"
-    }
-  }
-}
-
-// Add these new animation variants
-const slideInFromLeft = {
-  initial: { x: -100, opacity: 0 },
-  animate: { x: 0, opacity: 1, transition: { duration: 0.8, ease: "easeOut" } }
-}
-
-const slideInFromRight = {
-  initial: { x: 100, opacity: 0 },
-  animate: { x: 0, opacity: 1, transition: { duration: 0.8, ease: "easeOut" } }
-}
-
-const scaleIn = {
-  initial: { scale: 0.8, opacity: 0 },
-  animate: { scale: 1, opacity: 1, transition: { duration: 0.6 } }
-}
-
-// Add this at the top of the file after imports
-const imageLoader = ({ src, width, quality = 75 }: { src: string; width: number; quality?: number }) => {
-  return `${src}?w=${width}&q=${quality}&auto=format`
-}
-
-// Add this after the existing imports
-const stats = [
-  { label: 'Active Users', value: '50+', suffix: ' Churches' },
-  { label: 'Years Experience', value: '10+', suffix: ' Years' },
-  { label: 'Success Rate', value: '99', suffix: '%' },
 ]
 
 const solutions = [
   {
     title: "Tailored Member Management Systems",
     description: "Custom-built solutions to efficiently manage your congregation's unique needs and preferences.",
-    icon: Users
+    icon: Users,
   },
   {
     title: "Bespoke Event & Service Planning Tools",
     description: "Personalized planning systems designed around your church's specific events and services.",
-    icon: Layout
+    icon: Layout,
   },
   {
     title: "Custom Analytics & Reporting Dashboards",
     description: "Tailor-made dashboards providing insights that matter most to your ministry's growth and impact.",
-    icon: Gauge
+    icon: Gauge,
   },
   {
     title: "Integrated Communication Platforms",
-    description: "Custom-developed systems to foster community engagement aligned with your church's communication style.",
-    icon: MessageCircle
+    description:
+      "Custom-developed systems to foster community engagement aligned with your church's communication style.",
+    icon: MessageCircle,
   },
   {
     title: "Customized Financial Management Solutions",
     description: "Bespoke financial tools designed to handle your church's specific tithing and donation processes.",
-    icon: Server
+    icon: Server,
   },
   {
     title: "Custom Mobile Applications",
-    description: "Develop a unique mobile experience that connects your congregation on-the-go, tailored to your church's needs.",
-    icon: Smartphone
-  }
+    description:
+      "Develop a unique mobile experience that connects your congregation on-the-go, tailored to your church's needs.",
+    icon: Smartphone,
+  },
 ]
 
 export default function DigitalServicesPage() {
   const [selectedFeature, setSelectedFeature] = useState(0)
+  const [currentImageIndex, setCurrentImageIndex] = useState(0)
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -199,188 +119,128 @@ export default function DigitalServicesPage() {
     return () => clearInterval(interval)
   }, [])
 
+  useEffect(() => {
+    const imageInterval = setInterval(() => {
+      setCurrentImageIndex((prev) => (prev + 1) % images.length)
+    }, 6000)
+    return () => clearInterval(imageInterval)
+  }, [])
+
   return (
-    <div className="flex flex-col min-h-screen bg-[#FAFAFA] overflow-x-hidden">
+    <div className="flex flex-col min-h-screen bg-gradient-to-b from-[#0A0F1C] to-[#1A2035] overflow-x-hidden">
       <Header />
       
-      <main className="flex-grow pt-24">
+      <main className="flex-grow">
         {/* Hero Section */}
-        <section className="relative min-h-[90vh] flex items-center">
-          {/* Background Elements */}
+        <section className="relative min-h-[85vh] flex items-center pt-20">
           <div className="absolute inset-0">
-            <div className="absolute inset-0 bg-[#FAFAFA]"></div>
-            <div className="absolute inset-0 bg-[linear-gradient(to_right,#00000005_1px,transparent_1px),linear-gradient(to_bottom,#00000005_1px,transparent_1px)] bg-[size:4rem_4rem]" />
-            <div className="absolute top-0 left-0 w-[40rem] h-[40rem] bg-gradient-to-br from-[#40B5E5]/20 to-[#7DD3F7]/20 rounded-full blur-[100px] -translate-x-1/2 -translate-y-1/2" />
-            <div className="absolute bottom-0 right-0 w-[40rem] h-[40rem] bg-gradient-to-br from-[#7DD3F7]/20 to-[#40B5E5]/20 rounded-full blur-[100px] translate-x-1/2 translate-y-1/2" />
-            
-            {/* Animated Grid Pattern */}
-            <div className="absolute inset-0 bg-[linear-gradient(to_right,#40B5E510_1px,transparent_1px),linear-gradient(to_bottom,#40B5E510_1px,transparent_1px)] bg-[size:14px_14px]" />
-            
-            {/* Decorative Circles */}
-            <div className="absolute top-1/4 left-1/4 w-4 h-4 rounded-full bg-gradient-to-r from-[#40B5E5] to-[#7DD3F7] opacity-20" />
-            <div className="absolute top-3/4 right-1/4 w-6 h-6 rounded-full bg-gradient-to-r from-[#7DD3F7] to-[#40B5E5] opacity-30" />
-            <div className="absolute top-1/2 left-3/4 w-3 h-3 rounded-full bg-[#40B5E5] opacity-20" />
+            <Image
+              src={images[0]}
+              alt="Modern church website design across multiple devices"
+              fill
+              className="object-cover object-center brightness-125 scale-105 transform-gpu hover:scale-[1.06] transition-transform duration-700"
+              sizes="100vw"
+              quality={100}
+              priority
+              style={{ objectPosition: '50% 40%' }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-br from-[#0A0F1C]/80 via-[#0A0F1C]/70 to-[#0A0F1C]/60" />
+            <div className="absolute inset-0 bg-[#0A0F1C]/30" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0A0F1C] via-[#0A0F1C]/30 to-transparent" />
           </div>
 
-          <div className="container relative mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
-              {/* Left Content */}
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8 }}
-                className="relative z-10"
-              >
-                {/* Trust Badge */}
-                <div className="inline-flex items-center gap-2 bg-white pl-2 pr-4 py-2 rounded-full shadow-md mb-6">
-                  <div className="bg-gradient-to-r from-[#40B5E5] to-[#7DD3F7] rounded-full p-1">
-                    <Star className="w-4 h-4 text-white" />
+          <div className="container relative mx-auto px-6 lg:px-8">
+            <motion.div
+              initial="initial"
+              animate="animate"
+              variants={fadeInUp}
+              className="max-w-4xl"
+            >
+              <div className="flex items-center gap-2 mb-8">
+                <div className="flex items-center gap-2 bg-blue-600/20 backdrop-blur-xl pl-2 pr-3 py-1.5 rounded-full border border-blue-400/30">
+                  <div className="w-5 h-5 rounded-full bg-blue-500/30 flex items-center justify-center backdrop-blur-xl">
+                    <Globe className="w-3 h-3 text-blue-300" />
                   </div>
-                  <span className="text-sm font-medium bg-gradient-to-r from-[#40B5E5] to-[#7DD3F7] bg-clip-text text-transparent">
-                    Digital Solutions
-                  </span>
-                </div>
-
-                {/* Main Heading */}
-                <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-gray-900 mb-6 tracking-tight leading-tight">
-                  Elevate Your Church's
-                  <span className="relative ml-3">
-                    Digital Presence
-                  </span>
-                </h1>
-
-                <p className="text-xl text-gray-600 mb-8 max-w-2xl">
-                  Empower your ministry with cutting-edge web solutions tailored for the modern church.
-                  We create digital experiences that connect and engage your congregation.
-                </p>
-
-                {/* Trust Indicators */}
-                <div className="flex items-center gap-6 mb-8">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-[#40B5E5]/10 rounded-lg flex items-center justify-center">
-                      <Users className="w-6 h-6 text-[#40B5E5]" />
-                    </div>
-                    <div>
-                      <div className="text-2xl font-bold text-gray-900">50+</div>
-                      <div className="text-sm text-gray-600">Churches Served</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-[#40B5E5]/10 rounded-lg flex items-center justify-center">
-                      <Star className="w-6 h-6 text-[#40B5E5]" />
-                    </div>
-                    <div>
-                      <div className="text-2xl font-bold text-gray-900">99%</div>
-                      <div className="text-sm text-gray-600">Success Rate</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-[#40B5E5]/10 rounded-lg flex items-center justify-center">
-                      <Code className="w-6 h-6 text-[#40B5E5]" />
-                    </div>
-                    <div>
-                      <div className="text-2xl font-bold text-gray-900">10+</div>
-                      <div className="text-sm text-gray-600">Years Experience</div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* CTA Buttons */}
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => document.getElementById('quote')?.scrollIntoView({ behavior: 'smooth' })}
-                    className="group relative px-8 py-4 bg-gradient-to-r from-[#40B5E5] to-[#7DD3F7] text-white rounded-xl 
-                             font-medium shadow-lg shadow-[#40B5E5]/20 overflow-hidden"
-                  >
-                    <div className="absolute inset-0 bg-white/20 translate-y-12 group-hover:translate-y-0 transition-transform duration-300"></div>
-                    <span className="relative flex items-center justify-center">
-                      Start Your Project
-                      <ArrowRight className="ml-2 w-5 h-5 transition-transform duration-300 group-hover:translate-x-1" />
-                    </span>
-                  </motion.button>
-
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}
-                    className="group px-8 py-4 bg-white text-gray-900 rounded-xl font-medium border border-gray-200
-                             hover:border-[#40B5E5] hover:bg-[#40B5E5]/5 transition-all duration-300 shadow-md"
-                  >
-                    <span className="relative flex items-center justify-center">
-                      Explore Features
-                      <ChevronRight className="ml-2 w-5 h-5 opacity-0 group-hover:opacity-100 transition-all" />
-                    </span>
-                  </motion.button>
-                </div>
-
-                {/* Floating Badge */}
-                <div className="absolute -right-8 bottom-1/4">
-                  <motion.div
-                    animate={floatingAnimation}
-                    className="flex items-center gap-2 bg-white/80 backdrop-blur-sm px-4 py-2 rounded-xl shadow-lg"
-                  >
-                    <div className="w-2 h-2 rounded-full bg-[#40B5E5]"></div>
-                    <span className="text-sm font-medium text-gray-600">24/7 Support</span>
-                  </motion.div>
-                </div>
-              </motion.div>
-
-              {/* Right Content - Feature Showcase */}
-              <div className="relative lg:ml-12 hidden lg:block">
-                <div className="relative aspect-[4/3] rounded-3xl overflow-hidden shadow-2xl">
-                  {features.map((feature, index) => (
-                    <motion.div
-                      key={feature.title}
-                      initial={{ opacity: 0 }}
-                      animate={{ 
-                        opacity: selectedFeature === index ? 1 : 0,
-                        scale: selectedFeature === index ? 1 : 0.95
-                      }}
-                      transition={{ duration: 0.5 }}
-                      className="absolute inset-0"
-                      style={{ display: selectedFeature === index ? 'block' : 'none' }}
-                    >
-                      <Image
-                        src={feature.image}
-                        alt={feature.title}
-                        fill
-                        className="object-cover brightness-[0.7]"
-                        priority={index === 0}
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent" />
-                      
-                      <div className="absolute bottom-0 left-0 right-0 p-8">
-                        <div className="flex items-center space-x-3 mb-4">
-                          <div className="p-2 bg-white/10 backdrop-blur-sm rounded-lg">
-                            <feature.icon className="w-6 h-6 text-white" />
-                          </div>
-                          <h3 className="text-2xl font-bold text-white">{feature.title}</h3>
-                        </div>
-                        <p className="text-white/90 text-lg">{feature.description}</p>
-                      </div>
-                    </motion.div>
-                  ))}
-
-                  {/* Feature Navigation Dots */}
-                  <div className="absolute right-8 top-1/2 -translate-y-1/2 flex flex-col space-y-3">
-                    {features.map((_, index) => (
-                      <button
-                        key={index}
-                        onClick={() => setSelectedFeature(index)}
-                        className={`w-2 h-8 rounded-full transition-all duration-300 ${
-                          index === selectedFeature 
-                            ? 'bg-gradient-to-r from-[#40B5E5] to-[#7DD3F7] scale-100' 
-                            : 'bg-white/50 scale-75 hover:scale-90 hover:bg-white/70'
-                        }`}
-                        aria-label={`Go to feature ${index + 1}`}
-                      />
-                    ))}
-                  </div>
+                  <span className="text-sm font-medium text-blue-100">Professional Church Websites</span>
                 </div>
               </div>
-            </div>
+
+              <h1 className="text-5xl lg:text-7xl font-bold text-white tracking-tight leading-[1.1] drop-shadow-lg mb-8">
+                Elevate Your{' '}
+                <br className="hidden lg:block" />
+                Ministry's{' '}
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-300 via-blue-400 to-blue-500 inline-block">
+                  Digital Experience
+                </span>
+              </h1>
+
+              <p className="text-lg text-blue-100 max-w-2xl leading-relaxed mb-10 drop-shadow-lg">
+                Build a powerful church website with live streaming, online giving, event registration, 
+                and member engagement tools. Our complete digital solution helps you reach and connect 
+                with your congregation 24/7.
+              </p>
+
+              <div className="grid grid-cols-3 gap-8 py-10">
+                {[
+                  { icon: Users, value: "1000+", label: "Active Members Engaged" },
+                  { icon: Star, value: "100%", label: "Uptime Guarantee" },
+                  { icon: Code, value: "15+", label: "Website Features" }
+                ].map((stat, index) => (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6, delay: 0.1 * index }}
+                    className="flex items-center gap-4"
+                  >
+                    <div className="p-3 bg-blue-600/20 backdrop-blur-xl rounded-xl border border-blue-400/30">
+                      <stat.icon className="w-6 h-6 text-blue-300" />
+                    </div>
+                    <div>
+                      <div className="text-3xl font-bold text-white drop-shadow-lg">{stat.value}</div>
+                      <div className="text-sm text-blue-200 font-medium">{stat.label}</div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-4 pt-6">
+                <motion.button
+                  whileHover={{ scale: 1.02, translateY: -2 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => document.getElementById('quote')?.scrollIntoView({ behavior: 'smooth' })}
+                  className="px-8 py-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-medium 
+                           transition-all duration-200 flex items-center justify-center gap-2 shadow-xl shadow-blue-500/25
+                           hover:shadow-2xl hover:shadow-blue-500/40 border border-blue-400/30 backdrop-blur-xl"
+                >
+                  Start Your Project
+                  <ArrowRight className="w-5 h-5" />
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.02, translateY: -2 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}
+                  className="px-8 py-4 bg-white/10 hover:bg-white/15 text-white rounded-xl font-medium 
+                           transition-all duration-200 flex items-center justify-center gap-2 backdrop-blur-xl
+                           border border-white/20 hover:border-white/30 hover:text-blue-200"
+                >
+                  View Solutions
+                  <ChevronRight className="w-5 h-5" />
+                </motion.button>
+              </div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.6, delay: 0.8 }}
+              className="absolute top-4 right-4 bg-blue-600/20 backdrop-blur-xl px-5 py-2.5 rounded-xl
+                       border border-blue-400/30 flex items-center gap-3 hover:bg-blue-600/30 
+                       transition-all duration-300 cursor-pointer group"
+            >
+              <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse shadow-lg shadow-green-400/50" />
+              <span className="text-sm font-medium text-blue-100 group-hover:text-blue-200 transition-colors">24/7 Support</span>
+            </motion.div>
           </div>
         </section>
 
@@ -418,10 +278,9 @@ export default function DigitalServicesPage() {
                     whileHover={{ scale: 1.02 }}
                     className="group relative bg-white rounded-2xl overflow-hidden shadow-lg border border-gray-100 hover:border-blue-200 transition-all duration-300"
                   >
-                    {/* Image */}
                     <div className="relative h-48 overflow-hidden">
                       <Image
-                        src={feature.image}
+                        src={feature.image || "/placeholder.svg"}
                         alt={feature.title}
                         fill
                         className="object-cover group-hover:scale-105 transition-transform duration-700"
@@ -437,7 +296,6 @@ export default function DigitalServicesPage() {
                       </div>
                     </div>
 
-                    {/* Content */}
                     <div className="p-6">
                       <p className="text-gray-600 mb-6">{feature.description}</p>
                       <ul className="space-y-3">
@@ -456,7 +314,7 @@ export default function DigitalServicesPage() {
           </div>
         </section>
 
-        {/* Solutions Section - Replacing Technologies Section */}
+        {/* Solutions Section */}
         <section className="py-24 bg-gray-50 relative overflow-hidden">
           <div className="absolute inset-0">
             <div className="absolute inset-0 bg-[linear-gradient(to_right,#00000005_1px,transparent_1px),linear-gradient(to_bottom,#00000005_1px,transparent_1px)] bg-[size:4rem_4rem]" />
@@ -466,7 +324,6 @@ export default function DigitalServicesPage() {
 
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative">
             <div className="max-w-5xl mx-auto">
-              {/* Section Header */}
               <div className="text-center mb-16">
                 <div className="inline-flex items-center justify-center space-x-2 mb-4">
                   <div className="p-2 bg-[#40B5E5]/10 rounded-lg">
@@ -501,20 +358,17 @@ export default function DigitalServicesPage() {
                       className="group relative bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl 
                                 border border-gray-100 hover:border-[#40B5E5]/50 transition-all duration-300"
                     >
-                      {/* Background Gradient */}
                       <div className="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-gradient-to-br 
                                     from-[#40B5E5]/20 to-[#7DD3F7]/20 rounded-full blur-2xl opacity-50 
                                     group-hover:opacity-70 transition-opacity duration-300" />
 
                       <div className="relative">
-                        {/* Icon Container */}
                         <div className="w-14 h-14 bg-gradient-to-br from-[#40B5E5]/10 to-[#7DD3F7]/10 
                                       rounded-xl flex items-center justify-center mb-6 
                                       group-hover:scale-110 transition-transform duration-300">
                           <solution.icon className="w-7 h-7 text-[#40B5E5]" />
                         </div>
 
-                        {/* Content */}
                         <h3 className="text-xl font-bold text-gray-900 mb-3 group-hover:text-[#40B5E5] transition-colors">
                           {solution.title}
                         </h3>
@@ -522,7 +376,6 @@ export default function DigitalServicesPage() {
                           {solution.description}
                         </p>
 
-                        {/* Hover Indicator */}
                         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-0 h-1 bg-[#40B5E5] 
                                       group-hover:w-full transition-all duration-300 opacity-0 
                                       group-hover:opacity-100" />
@@ -532,7 +385,6 @@ export default function DigitalServicesPage() {
                 ))}
               </div>
 
-              {/* CTA Section */}
               <div className="mt-16 text-center">
                 <motion.button
                   whileHover={{ scale: 1.02 }}
@@ -559,4 +411,5 @@ export default function DigitalServicesPage() {
       <Footer />
     </div>
   )
-} 
+}
+
