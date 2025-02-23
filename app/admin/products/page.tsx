@@ -1095,7 +1095,15 @@ export default function ProductsPage() {
               title: item.product.title,
               price: item.our_price || item.price,
               quantity: item.quantity,
-              category: item.product.category
+              category: item.product.category,
+              description: item.product.description,
+              technical_details: item.product.technical_details,
+              features: item.product.features,
+              included_items: item.product.included_items,
+              warranty_info: item.product.warranty_info,
+              installation_available: item.product.installation_available,
+              is_service: item.product.is_service,
+              is_custom: item.product.is_custom
             }))}
             onClose={() => setIsCheckoutOpen(false)}
             onSubmit={handleCheckout}

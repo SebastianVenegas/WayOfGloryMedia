@@ -85,11 +85,17 @@ export const sendContractEmail = async ({
   const itemsList = orderItems
     .map(
       (item) =>
-        `${item.product.title} (x${item.quantity}) - $${formatPrice(
-          Number(item.price_at_time) * item.quantity
-        )}`
+        `<tr>
+          <td style="padding: 12px 0; border-bottom: 1px solid #e2e8f0;">
+            <div style="font-weight: 500;">${item.product.title}</div>
+          </td>
+          <td style="padding: 12px 0; border-bottom: 1px solid #e2e8f0; text-align: center;">${item.quantity}x</td>
+          <td style="padding: 12px 0; border-bottom: 1px solid #e2e8f0; text-align: right;">$${formatPrice(
+            Number(item.price_at_time) * item.quantity
+          )}</td>
+        </tr>`
     )
-    .join('<br>')
+    .join('')
 
   const getPaymentMethodDetails = (method: string) => {
     switch (method) {
@@ -110,57 +116,6 @@ export const sendContractEmail = async ({
     }
   }
 
-  const paymentSection = `
-    <div style="margin-bottom: 20px;">
-      <h3 style="font-size: 16px; color: #1a1a1a; margin-bottom: 12px;">Payment Information</h3>
-      <div style="background-color: #f9fafb; padding: 16px; border-radius: 8px;">
-        <p style="margin: 0 0 8px 0;">
-          <strong>Payment Method:</strong> ${paymentMethod.replace('_', ' ').charAt(0).toUpperCase() + paymentMethod.slice(1).replace('_', ' ')}
-        </p>
-        <p style="margin: 0; color: #666;">
-          ${getPaymentMethodDetails(paymentMethod)}
-        </p>
-      </div>
-    </div>
-  `
-
-  const installationSection = installationAddress
-    ? `
-      <div style="margin-bottom: 20px;">
-        <h3 style="font-size: 16px; color: #1a1a1a; margin-bottom: 12px;">Installation Details</h3>
-        <div style="background-color: #f9fafb; padding: 16px; border-radius: 8px;">
-          <p style="margin: 0 0 8px 0;"><strong>Installation Address:</strong><br>
-            ${formatAddress(
-              installationAddress,
-              installationCity!,
-              installationState!,
-              installationZip!
-            )}
-          </p>
-          <p style="margin: 0 0 8px 0;"><strong>Scheduled Date & Time:</strong><br>
-            ${new Date(installationDate!).toLocaleDateString('en-US', { 
-              weekday: 'long', 
-              year: 'numeric', 
-              month: 'long', 
-              day: 'numeric' 
-            })} at ${installationTime}
-          </p>
-          <p style="margin: 0 0 8px 0;"><strong>On-site Contact:</strong><br>
-            Name: ${contactOnSite}<br>
-            Phone: ${contactOnSitePhone}
-          </p>
-          ${
-            accessInstructions
-              ? `<p style="margin: 0;"><strong>Access Instructions:</strong><br>
-                  ${accessInstructions}
-                </p>`
-              : ''
-          }
-        </div>
-      </div>
-    `
-    : ''
-
   try {
     // Verify email configuration
     if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
@@ -176,25 +131,19 @@ export const sendContractEmail = async ({
       }
     }
 
-    const mailOptions = {
-      from: process.env.GMAIL_USER,
-      to: email,
-      subject: `Your Way of Glory Order #${orderId} Confirmation`,
-      attachments: signatureBuffer ? [
-        {
-          filename: 'signature.png',
-          content: signatureBuffer,
-          cid: 'signature@wayofglory.com'
-        }
-      ] : [],
-      html: `
-        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+    const emailContent = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; max-width: 600px; margin: 0 auto; line-height: 1.6; color: #374151;">
+        <div style="text-align: center; padding: 32px 16px; background: linear-gradient(135deg, #2563eb, #1d4ed8); border-radius: 16px 16px 0 0;">
+          <img src="https://wayofglory.com/images/logo/logo.png" alt="Way of Glory Media" style="width: 180px; max-width: 80%; height: auto; display: block; margin: 0 auto;">
+        </div>
+        
+        <div style="padding: 32px 24px; background-color: #ffffff;">
           <h1 style="color: #1a1a1a; font-size: 24px; margin-bottom: 20px;">
             Thank you for your order, ${firstName}!
           </h1>
           
           <p style="color: #666; margin-bottom: 30px;">
-            We're excited to confirm your order #${orderId}. Below you'll find your contract details.
+            We're excited to confirm your order #${orderId}. Below you'll find your order details.
           </p>
 
           <div style="margin-bottom: 20px;">
@@ -242,70 +191,136 @@ export const sendContractEmail = async ({
             </div>
           </div>
 
-          ${installationSection}
+          ${installationAddress ? `
+            <div style="margin-bottom: 20px;">
+              <h3 style="font-size: 16px; color: #1a1a1a; margin-bottom: 12px;">Installation Details</h3>
+              <div style="background-color: #f9fafb; padding: 16px; border-radius: 8px;">
+                <p style="margin: 0 0 8px 0;"><strong>Installation Address:</strong><br>
+                  ${formatAddress(
+                    installationAddress,
+                    installationCity!,
+                    installationState!,
+                    installationZip!
+                  )}
+                </p>
+                <p style="margin: 0 0 8px 0;"><strong>Scheduled Date & Time:</strong><br>
+                  ${new Date(installationDate!).toLocaleDateString('en-US', { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                  })} at ${installationTime}
+                </p>
+                <p style="margin: 0 0 8px 0;"><strong>On-site Contact:</strong><br>
+                  Name: ${contactOnSite}<br>
+                  Phone: ${contactOnSitePhone}
+                </p>
+                ${
+                  accessInstructions
+                    ? `<p style="margin: 0;"><strong>Access Instructions:</strong><br>
+                        ${accessInstructions}
+                      </p>`
+                    : ''
+                }
+              </div>
+            </div>
+          ` : ''}
 
           <div style="margin-bottom: 20px;">
             <h3 style="font-size: 16px; color: #1a1a1a; margin-bottom: 12px;">Order Summary</h3>
             <div style="background-color: #f9fafb; padding: 16px; border-radius: 8px;">
-              <div style="margin-bottom: 16px;">
-                ${itemsList}
-              </div>
-              <div style="margin: 0 0 8px 0; padding-top: 12px; border-top: 1px solid #e5e7eb;">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                  <span style="color: #666;">Products Subtotal:</span>
-                  <span style="font-weight: 500; color: #1a1a1a;">
-                    $${formatPrice(Number(totalAmount) - Number(taxAmount) - Number(installationPrice))}
-                  </span>
-                </div>
-                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                  <span style="color: #666;">Sales Tax:</span>
-                  <span style="font-weight: 500; color: #1a1a1a;">
-                    $${formatPrice(taxAmount)}
-                  </span>
-                </div>
-                ${Number(installationPrice) > 0 ? `
-                  <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                    <span style="color: #666;">Installation (No Tax):</span>
-                    <span style="font-weight: 500; color: #1a1a1a;">
-                      $${formatPrice(installationPrice)}
-                    </span>
-                  </div>
-                ` : ''}
-                <div style="display: flex; justify-content: space-between; padding-top: 12px; border-top: 1px solid #e5e7eb; margin-top: 12px;">
-                  <span style="font-weight: 600; color: #1a1a1a;">Total:</span>
-                  <span style="font-weight: 600; color: #2563eb; font-size: 18px;">
-                    $${formatPrice(Number(totalAmount))}
-                  </span>
-                </div>
-              </div>
+              <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                  <tr style="border-bottom: 2px solid #e2e8f0;">
+                    <th style="text-align: left; padding: 8px 0; color: #64748b; font-weight: 500;">Item</th>
+                    <th style="text-align: center; padding: 8px 0; color: #64748b; font-weight: 500;">Quantity</th>
+                    <th style="text-align: right; padding: 8px 0; color: #64748b; font-weight: 500;">Price</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${itemsList}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colspan="2" style="padding: 12px 0; text-align: right; font-weight: 500;">Subtotal:</td>
+                    <td style="padding: 12px 0; text-align: right;">$${formatPrice(Number(totalAmount) - Number(taxAmount) - Number(installationPrice))}</td>
+                  </tr>
+                  ${Number(taxAmount) > 0 ? `
+                    <tr>
+                      <td colspan="2" style="padding: 12px 0; text-align: right; font-weight: 500;">Tax:</td>
+                      <td style="padding: 12px 0; text-align: right;">$${formatPrice(taxAmount)}</td>
+                    </tr>
+                  ` : ''}
+                  ${Number(installationPrice) > 0 ? `
+                    <tr>
+                      <td colspan="2" style="padding: 12px 0; text-align: right; font-weight: 500;">Installation:</td>
+                      <td style="padding: 12px 0; text-align: right;">$${formatPrice(installationPrice)}</td>
+                    </tr>
+                  ` : ''}
+                  <tr>
+                    <td colspan="2" style="padding: 16px 0 0 0; text-align: right; font-weight: 600; border-top: 2px solid #e2e8f0;">Total:</td>
+                    <td style="padding: 16px 0 0 0; text-align: right; font-weight: 600; color: #2563eb; font-size: 18px;">$${formatPrice(totalAmount)}</td>
+                  </tr>
+                </tfoot>
+              </table>
             </div>
           </div>
 
-          ${paymentSection}
-
-          ${signatureBuffer ? `
           <div style="margin-bottom: 20px;">
-            <h3 style="font-size: 16px; color: #1a1a1a; margin-bottom: 12px;">Customer Signature</h3>
+            <h3 style="font-size: 16px; color: #1a1a1a; margin-bottom: 12px;">Payment Information</h3>
             <div style="background-color: #f9fafb; padding: 16px; border-radius: 8px;">
-              <img 
-                src="cid:signature@wayofglory.com"
-                alt="Customer Signature" 
-                style="max-width: 100%; height: auto; display: block; margin: 0 auto; background: white;"
-              />
-              <p style="margin: 8px 0 0 0; text-align: center; color: #666; font-size: 12px;">
-                Signed electronically on ${new Date().toLocaleDateString()}
+              <p style="margin: 0 0 8px 0;">
+                <strong>Payment Method:</strong> ${paymentMethod.replace('_', ' ').charAt(0).toUpperCase() + paymentMethod.slice(1).replace('_', ' ')}
+              </p>
+              <p style="margin: 0; color: #666;">
+                ${getPaymentMethodDetails(paymentMethod)}
               </p>
             </div>
           </div>
-          ` : ''}
 
-          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-            <p style="color: #666; font-size: 14px;">
-              If you have any questions about your order, please contact us at ${process.env.GMAIL_USER}
-            </p>
-          </div>
+          ${signatureBuffer ? `
+            <div style="margin-bottom: 20px;">
+              <h3 style="font-size: 16px; color: #1a1a1a; margin-bottom: 12px;">Customer Signature</h3>
+              <div style="background-color: #f9fafb; padding: 16px; border-radius: 8px;">
+                <img 
+                  src="cid:signature@wayofglory.com"
+                  alt="Customer Signature" 
+                  style="max-width: 100%; height: auto; display: block; margin: 0 auto; background: white;"
+                />
+                <p style="margin: 8px 0 0 0; text-align: center; color: #666; font-size: 12px;">
+                  Signed electronically on ${new Date().toLocaleDateString()}
+                </p>
+              </div>
+            </div>
+          ` : ''}
         </div>
-      `,
+
+        <div style="text-align: center; padding: 40px 24px; background: linear-gradient(to bottom, #f8fafc, #f1f5f9); border-top: 1px solid #e2e8f0; border-radius: 0 0 16px 16px;">
+          <img src="https://wayofglory.com/images/logo/LogoLight.png" alt="Way of Glory Media" style="width: 140px; height: auto; display: block; margin: 0 auto 32px; opacity: 0.85;">
+          <p style="margin: 0 0 20px 0; color: #475569; font-size: 15px; font-weight: 500;">Questions? Contact our support team:</p>
+          <div style="margin-bottom: 32px; text-align: center;">
+            <a href="mailto:help@wayofglory.com" style="color: #2563eb; text-decoration: none; font-weight: 500; padding: 8px 16px; border-radius: 8px; background: rgba(37, 99, 235, 0.05); white-space: nowrap; display: inline-block; margin: 4px;">help@wayofglory.com</a>
+            <a href="tel:+13108729781" style="color: #2563eb; text-decoration: none; font-weight: 500; padding: 8px 16px; border-radius: 8px; background: rgba(37, 99, 235, 0.05); white-space: nowrap; display: inline-block; margin: 4px;">(310) 872-9781</a>
+            <a href="https://wayofglory.com" style="color: #2563eb; text-decoration: none; font-weight: 500; padding: 8px 16px; border-radius: 8px; background: rgba(37, 99, 235, 0.05); white-space: nowrap; display: inline-block; margin: 4px;">wayofglory.com</a>
+          </div>
+          <p style="margin: 0 0 8px 0; font-size: 13px; color: #64748b; font-weight: 500;">© ${new Date().getFullYear()} Way of Glory Media. All rights reserved.</p>
+          <p style="margin: 0; font-size: 12px; color: #94a3b8; font-weight: 400;">Dedicated to serving churches and non-profits with excellence</p>
+        </div>
+      </div>
+    `
+
+    const mailOptions = {
+      from: process.env.GMAIL_USER,
+      to: email,
+      subject: `Your Way of Glory Order #${orderId} Confirmation`,
+      attachments: signatureBuffer ? [
+        {
+          filename: 'signature.png',
+          content: signatureBuffer,
+          cid: 'signature@wayofglory.com'
+        }
+      ] : [],
+      html: emailContent,
     }
 
     await transporter.sendMail(mailOptions)

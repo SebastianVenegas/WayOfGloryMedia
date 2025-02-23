@@ -27,16 +27,32 @@ export default function QuoteSection() {
     setSubmitStatus('submitting')
 
     try {
+      // Add validation
+      if (!formData.name || !formData.email || !formData.churchName || !formData.message) {
+        throw new Error('Please fill in all fields')
+      }
+
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(formData.email)) {
+        throw new Error('Please enter a valid email address')
+      }
+
       const response = await fetch('/api/contact', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          subject: `New Quote Request from ${formData.churchName}`,
+          type: 'quote_request'
+        }),
       })
 
       if (!response.ok) {
-        throw new Error('Failed to send message')
+        const error = await response.json()
+        throw new Error(error.message || 'Failed to send message')
       }
 
       setSubmitStatus('success')
@@ -46,9 +62,19 @@ export default function QuoteSection() {
         churchName: '',
         message: ''
       })
+
+      // Scroll to success message
+      setTimeout(() => {
+        const successMessage = document.getElementById('submit-status')
+        successMessage?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }, 100)
+
     } catch (error) {
       console.error('Error:', error)
       setSubmitStatus('error')
+      // Show error message to user
+      const errorMessage = error instanceof Error ? error.message : 'Failed to send message'
+      alert(errorMessage)
     } finally {
       setIsSubmitting(false)
     }
@@ -74,10 +100,10 @@ export default function QuoteSection() {
               <span className="text-blue-600 font-medium">Get Started</span>
             </div>
             <h2 className="text-3xl sm:text-4xl md:text-[2.75rem] font-bold text-gray-900 mb-4 tracking-tight leading-tight">
-              Ready to Transform Your Church's<br className="hidden sm:block" />Audio Experience?
+              Ready to Transform Your Church's<br className="hidden sm:block" />Digital Experience?
             </h2>
             <p className="text-base sm:text-lg text-gray-600 max-w-2xl mx-auto">
-              Let's discuss how we can help enhance your worship services with professional audio solutions.
+              Let's discuss how we can help enhance your ministry with professional digital solutions.
             </p>
           </div>
 
@@ -172,7 +198,7 @@ export default function QuoteSection() {
               </div>
 
               {/* Submit Button */}
-              <div className="flex flex-col items-center justify-center pt-4 space-y-4">
+              <div id="submit-status" className="flex flex-col items-center justify-center pt-4 space-y-4">
                 <button
                   type="submit"
                   disabled={isSubmitting}
@@ -186,14 +212,18 @@ export default function QuoteSection() {
 
                 {/* Status Messages */}
                 {submitStatus === 'success' && (
-                  <p className="text-green-600 font-medium text-center">
-                    Message sent successfully! We'll be in touch soon.
-                  </p>
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4 w-full text-center">
+                    <p className="text-green-600 font-medium">
+                      Message sent successfully! We'll be in touch soon.
+                    </p>
+                  </div>
                 )}
                 {submitStatus === 'error' && (
-                  <p className="text-red-600 font-medium text-center">
-                    Failed to send message. Please try again or contact us directly.
-                  </p>
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4 w-full text-center">
+                    <p className="text-red-600 font-medium">
+                      Failed to send message. Please try again or contact us directly at help@wayofglory.com
+                    </p>
+                  </div>
                 )}
               </div>
             </form>

@@ -661,7 +661,15 @@ Total: $${totalAmount.toFixed(2)}`,
               price: product.price,
               our_price: product.our_price,
               category: product.category,
-              quantity: product.quantity
+              quantity: product.quantity,
+              description: product.description,
+              technical_details: product.technical_details,
+              features: product.features,
+              included_items: product.included_items,
+              warranty_info: product.warranty_info,
+              installation_available: product.installation_available,
+              is_service: product.is_service,
+              is_custom: product.is_custom
             }))}
             onClose={() => setIsCheckoutOpen(false)}
             onSubmit={handleCheckout}

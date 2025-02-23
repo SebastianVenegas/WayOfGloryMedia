@@ -4,13 +4,15 @@ import { useState, useRef } from 'react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { motion as m, AnimatePresence } from "framer-motion"
-import { ChevronRight, ChevronLeft, X, Calendar, Clock, MapPin, CreditCard, Building2, Truck, FileText, PenLine, Banknote, BanknoteIcon, FileCheck, User, Loader2, Wrench, Package, ClipboardCopy, Info, Phone } from "lucide-react"
+import { ChevronRight, ChevronLeft, X, Calendar, Clock, MapPin, CreditCard, Building2, Truck, FileText, PenLine, Banknote, BanknoteIcon, FileCheck, User, Loader2, Wrench, Package, ClipboardCopy, Info, Phone, CheckCircle2, Shield, Check } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
 import SignaturePad from 'react-signature-canvas'
 import type SignaturePadType from 'react-signature-canvas'
 import { toast } from 'sonner'
 import { LucideIcon } from 'lucide-react'
 import Image from 'next/image'
+import { Badge } from "@/components/ui/badge"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog"
 
 export interface CheckoutFormData {
   contractNumber: string;
@@ -54,6 +56,12 @@ interface CheckoutProps {
     category: string;
     is_service?: boolean;
     is_custom?: boolean;
+    description?: string;
+    technical_details?: Record<string, string>;
+    features?: string[];
+    included_items?: string[];
+    warranty_info?: string;
+    installation_available?: boolean;
   }>;
   onClose: () => void;
   onSubmit: (data: CheckoutFormData) => void;
@@ -907,6 +915,14 @@ const ReviewStep: React.FC<StepProps & {
     <div className="space-y-8">
       <ContractHeader contractNumber={formData.contractNumber} />
       
+      <OrderSummary
+        products={products}
+        installationPrice={installationPrice}
+        productsTax={productsTax}
+        total={total}
+        formData={formData}
+      />
+
       <div className="grid md:grid-cols-2 gap-6">
         <div className="space-y-6">
           <CustomerInformation formData={formData} />
@@ -923,14 +939,6 @@ const ReviewStep: React.FC<StepProps & {
           )}
         </div>
       </div>
-
-      <OrderSummary
-        products={products}
-        installationPrice={installationPrice}
-        productsTax={productsTax}
-        total={total}
-        formData={formData}
-      />
       
       <TermsAndConditions />
       
@@ -944,103 +952,262 @@ const ReviewStep: React.FC<StepProps & {
   );
 };
 
-// Update OrderSummary component
-const OrderSummary: React.FC<OrderSummaryProps> = ({ products, installationPrice, productsTax, total, formData }) => (
-  <div className="bg-gradient-to-br from-gray-50 to-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-    <div className="p-6">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="bg-blue-100 p-2.5 rounded-lg">
-          <Package className="h-5 w-5 text-blue-600" />
-        </div>
-        <h3 className="text-lg font-semibold text-gray-900">Order Summary</h3>
-      </div>
-      <div className="bg-white rounded-lg border border-gray-100 overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="bg-gray-50 border-b border-gray-100">
-              <th className="px-6 py-4 text-left text-gray-600 font-medium">Item</th>
-              <th className="px-6 py-4 text-center text-gray-600 font-medium">Quantity</th>
-              <th className="px-6 py-4 text-right text-gray-600 font-medium">Price</th>
-              <th className="px-6 py-4 text-right text-gray-600 font-medium">Total</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {products.map((product, index) => (
-              <tr key={index} className="hover:bg-gray-50 transition-colors">
-                <td className="px-6 py-4">
-                  <div>
-                    <p className="font-medium text-gray-900">{product.title}</p>
-                    {product.is_service && (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mt-1">
-                        Service
-                      </span>
-                    )}
-                  </div>
-                </td>
-                <td className="px-6 py-4 text-center text-gray-900">{product.quantity}</td>
-                <td className="px-6 py-4 text-right text-gray-900">{formatCurrency(product.price)}</td>
-                <td className="px-6 py-4 text-right font-medium text-gray-900">
-                  {formatCurrency(product.price * product.quantity)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <div className="mt-6 bg-white rounded-lg border border-gray-100 p-4">
-        <div className="space-y-3">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-gray-600">Subtotal</span>
-            <span className="font-medium text-gray-900">
-              {formatCurrency(products.reduce((sum, p) => sum + p.price * p.quantity, 0))}
-            </span>
+// Update ProductDetailsModal component
+const ProductDetailsModal: React.FC<{
+  product: CheckoutProps['products'][0] | null;
+  isOpen: boolean;
+  onClose: () => void;
+}> = ({ product, isOpen, onClose }) => {
+  if (!product) return null;
+
+  const hasDetails = product.description || 
+                    (product.technical_details && Object.keys(product.technical_details).length > 0) ||
+                    (product.features && product.features.length > 0) ||
+                    (product.included_items && product.included_items.length > 0) ||
+                    product.warranty_info;
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl max-h-[80vh] bg-white p-6 rounded-2xl overflow-y-auto">
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="flex items-start justify-between">
+            <div>
+              <DialogTitle className="text-2xl font-bold text-gray-900 mb-2">
+                {product.title}
+              </DialogTitle>
+              <div className="flex items-center gap-3">
+                <Badge variant={product.is_service ? "secondary" : "default"}>
+                  {product.category}
+                </Badge>
+                {product.installation_available && (
+                  <Badge variant="outline" className="flex items-center gap-1">
+                    <Wrench className="w-3 h-3" />
+                    Installation Available
+                  </Badge>
+                )}
+              </div>
+            </div>
+            <DialogClose className="text-gray-400 hover:text-gray-500">
+              <X className="w-5 h-5" />
+            </DialogClose>
           </div>
-          {installationPrice > 0 && (
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-600">Installation</span>
-              <span className="font-medium text-gray-900">{formatCurrency(installationPrice)}</span>
+
+          {/* Price Information */}
+          <div className="bg-gray-50 p-4 rounded-xl">
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-bold text-gray-900">
+                {formatCurrency(Number(product.price))}
+              </span>
+              <span className="text-sm text-gray-500">Per Unit</span>
+            </div>
+          </div>
+
+          {hasDetails ? (
+            <div className="space-y-6">
+              {/* Description */}
+              {product.description && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Description</h3>
+                  <p className="text-gray-600">{product.description}</p>
+                </div>
+              )}
+
+              {/* Technical Details */}
+              {product.technical_details && Object.keys(product.technical_details).length > 0 && (
+                <div>
+                  <h3 className="text-base font-semibold text-gray-900 mb-2">Technical Details</h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-2 gap-2">
+                    {Object.entries(product.technical_details).map(([key, value]) => (
+                      <div key={key} className="bg-gray-50 p-2 rounded-lg">
+                        <div className="text-xs font-medium text-gray-500">{key}</div>
+                        <div className="text-sm text-gray-900">{value}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Features */}
+              {product.features && product.features.length > 0 && (
+                <div>
+                  <h3 className="text-base font-semibold text-gray-900 mb-2">Features</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {product.features.map((feature, index) => (
+                      <div key={index} className="flex items-start gap-2">
+                        <Check className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+                        <span className="text-sm text-gray-600">{feature}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Included Items */}
+              {product.included_items && product.included_items.length > 0 && (
+                <div>
+                  <h3 className="text-base font-semibold text-gray-900 mb-2">What's Included</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {product.included_items.map((item, index) => (
+                      <div key={index} className="flex items-start gap-2">
+                        <Package className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
+                        <span className="text-sm text-gray-600">{item}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Warranty Information */}
+              {product.warranty_info && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Warranty Information</h3>
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <div className="flex items-start gap-3">
+                      <Shield className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                      <p className="text-gray-600">{product.warranty_info}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <div className="mx-auto w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+                <Info className="w-6 h-6 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No Additional Details Available</h3>
+              <p className="text-gray-500">Basic product information is shown above.</p>
             </div>
           )}
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-gray-600">Tax</span>
-            <span className="font-medium text-gray-900">{formatCurrency(productsTax)}</span>
-          </div>
-          <div className="pt-3 border-t border-gray-100">
-            <div className="flex items-center justify-between">
-              <span className="text-lg font-semibold text-gray-900">Total</span>
-              <span className="text-lg font-bold text-blue-600">{formatCurrency(total)}</span>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// Update OrderSummary component
+const OrderSummary: React.FC<OrderSummaryProps> = ({ products, installationPrice, productsTax, total, formData }) => {
+  const [selectedProduct, setSelectedProduct] = useState<CheckoutProps['products'][0] | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const handleProductClick = (product: CheckoutProps['products'][0]) => {
+    setSelectedProduct(product);
+    setIsModalOpen(true);
+  };
+
+  return (
+    <>
+      <div className="bg-gradient-to-br from-gray-50 to-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="p-6">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="bg-blue-100 p-2.5 rounded-lg">
+              <Package className="h-5 w-5 text-blue-600" />
             </div>
-            {formData.paymentPlan === 'installments' ? (
-              <div className="mt-4 space-y-2 bg-gray-50 p-4 rounded-lg">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium text-gray-700">Due Today (Down Payment)</span>
-                  <span className="font-bold text-blue-600">{formatCurrency(formData.downPayment || 0)}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium text-gray-700">Remaining Balance</span>
-                  <span className="font-medium text-gray-900">{formatCurrency(formData.totalDueAfterFirst || 0)}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium text-gray-700">Payment Plan</span>
-                  <span className="font-medium text-gray-900">
-                    {formData.numberOfInstallments} payments of {formatCurrency(formData.installmentAmount || 0)}
-                  </span>
-                </div>
+            <h3 className="text-lg font-semibold text-gray-900">Order Summary</h3>
+          </div>
+          <div className="bg-white rounded-lg border border-gray-100 overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-100">
+                  <th className="px-6 py-4 text-left text-gray-600 font-medium">Item</th>
+                  <th className="px-6 py-4 text-center text-gray-600 font-medium">Quantity</th>
+                  <th className="px-6 py-4 text-right text-gray-600 font-medium">Price</th>
+                  <th className="px-6 py-4 text-right text-gray-600 font-medium">Total</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {products.map((product: CheckoutProps['products'][0], index: number) => (
+                  <tr 
+                    key={index} 
+                    className="hover:bg-gray-50 transition-colors cursor-pointer" 
+                    onClick={() => handleProductClick(product)}
+                  >
+                    <td className="px-6 py-4">
+                      <div>
+                        <p className="font-medium text-gray-900">{product.title}</p>
+                        {product.is_service && (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mt-1">
+                            Service
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-center text-gray-900">{product.quantity}</td>
+                    <td className="px-6 py-4 text-right text-gray-900">{formatCurrency(product.price)}</td>
+                    <td className="px-6 py-4 text-right font-medium text-gray-900">
+                      {formatCurrency(product.price * product.quantity)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="mt-6 bg-white rounded-lg border border-gray-100 p-4">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-600">Subtotal</span>
+                <span className="font-medium text-gray-900">
+                  {formatCurrency(products.reduce((sum: number, p: CheckoutProps['products'][0]) => sum + p.price * p.quantity, 0))}
+                </span>
               </div>
-            ) : (
-              <div className="mt-4 bg-gray-50 p-4 rounded-lg">
+              {installationPrice > 0 && (
                 <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium text-gray-700">Full Payment Due Today</span>
-                  <span className="font-bold text-blue-600">{formatCurrency(total)}</span>
+                  <span className="text-gray-600">Installation</span>
+                  <span className="font-medium text-gray-900">{formatCurrency(installationPrice)}</span>
                 </div>
+              )}
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-600">Tax</span>
+                <span className="font-medium text-gray-900">{formatCurrency(productsTax)}</span>
               </div>
-            )}
+              <div className="pt-3 border-t border-gray-100">
+                <div className="flex items-center justify-between">
+                  <span className="text-lg font-semibold text-gray-900">Total</span>
+                  <span className="text-lg font-bold text-blue-600">{formatCurrency(total)}</span>
+                </div>
+                {formData.paymentPlan === 'installments' ? (
+                  <div className="mt-4 space-y-2 bg-gray-50 p-4 rounded-lg">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-medium text-gray-700">Due Today (Down Payment)</span>
+                      <span className="font-bold text-blue-600">{formatCurrency(formData.downPayment || 0)}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-medium text-gray-700">Remaining Balance</span>
+                      <span className="font-medium text-gray-900">{formatCurrency(formData.totalDueAfterFirst || 0)}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-medium text-gray-700">Payment Plan</span>
+                      <span className="font-medium text-gray-900">
+                        {formData.numberOfInstallments} payments of {formatCurrency(formData.installmentAmount || 0)}
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-4 bg-gray-50 p-4 rounded-lg">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-medium text-gray-700">Full Payment Due Today</span>
+                      <span className="font-bold text-blue-600">{formatCurrency(total)}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  </div>
-);
+
+      <ProductDetailsModal
+        product={selectedProduct}
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedProduct(null);
+        }}
+      />
+    </>
+  );
+};
 
 // Main Checkout component
 export default function Checkout({
