@@ -7,6 +7,9 @@ const transporter: Transporter = nodemailer.createTransport({
     user: process.env.GMAIL_USER,
     pass: process.env.GMAIL_APP_PASSWORD,
   },
+  tls: {
+    rejectUnauthorized: true
+  }
 })
 
 export const sendContractEmail = async ({
@@ -310,16 +313,25 @@ export const sendContractEmail = async ({
     `
 
     const mailOptions = {
-      from: process.env.GMAIL_USER,
+      from: {
+        name: 'Way of Glory Media',
+        address: process.env.GMAIL_USER || '',
+      },
       to: email,
       subject: `Your Way of Glory Order #${orderId} Confirmation`,
-      attachments: signatureBuffer ? [
+      attachments: [
         {
+          filename: 'icon.png',
+          path: 'public/images/logo/icon.png',
+          cid: 'company-logo',
+          contentDisposition: 'inline' as const
+        },
+        ...(signatureBuffer ? [{
           filename: 'signature.png',
           content: signatureBuffer,
           cid: 'signature@wayofglory.com'
-        }
-      ] : [],
+        }] : [])
+      ],
       html: emailContent,
     }
 

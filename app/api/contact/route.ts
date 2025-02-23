@@ -164,10 +164,19 @@ export async function POST(request: Request) {
     `;
 
     const mailOptions = {
-      from: `"Way of Glory Digital Services" <${gmailUser}>`,
+      from: {
+        name: 'Way of Glory',
+        address: gmailUser
+      },
       to: "help@wayofglory.com",
       replyTo: email,
       subject: emailSubject,
+      attachments: [{
+        filename: 'icon.png',
+        path: 'public/images/logo/icon.png',
+        cid: 'company-logo',
+        contentDisposition: 'inline' as const
+      }],
       html: formatEmailContent(adminEmailContent, emailVariables)
     }
 
@@ -176,9 +185,18 @@ export async function POST(request: Request) {
       
       // Send confirmation email to the user
       const confirmationMailOptions = {
-        from: `"Way of Glory Digital Services" <${gmailUser}>`,
+        from: {
+          name: 'Way of Glory Digital Services',
+          address: gmailUser
+        },
         to: email,
         subject: 'Thank You for Contacting Way of Glory Media',
+        attachments: [{
+          filename: 'icon.png',
+          path: 'public/images/logo/icon.png',
+          cid: 'company-logo',
+          contentDisposition: 'inline' as const
+        }],
         html: formatEmailContent(userEmailContent, emailVariables)
       }
       

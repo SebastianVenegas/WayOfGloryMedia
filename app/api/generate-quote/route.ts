@@ -114,9 +114,18 @@ export async function POST(request: Request) {
 
     // Send email
     await transporter.sendMail({
-      from: `"Way of Glory Media" <${process.env.GMAIL_USER}>`,
+      from: {
+        name: 'Way of Glory Media',
+        address: process.env.GMAIL_USER || ''
+      },
       to: email,
       subject: 'Your Way of Glory Media Quote',
+      attachments: [{
+        filename: 'icon.png',
+        path: 'public/images/logo/icon.png',
+        cid: 'company-logo',
+        contentDisposition: 'inline' as const
+      }],
       html: quoteHtml
     });
 
