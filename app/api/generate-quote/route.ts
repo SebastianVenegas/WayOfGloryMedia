@@ -112,27 +112,46 @@ export async function POST(request: Request) {
       }
     });
 
-    // Send email
-    await transporter.sendMail({
-      from: {
-        name: 'Way of Glory Media',
-        address: 'help@wayofglory.com'
-      },
-      to: email,
-      subject: 'Your Way of Glory Media Quote',
-      html: quoteHtml
-    });
+    // Verify transporter configuration
+    try {
+      await transporter.verify();
+    } catch (error) {
+      console.error('Email transporter verification failed:', error);
+      return NextResponse.json(
+        { error: 'Email service configuration error. Please check server logs.' },
+        { status: 500 }
+      );
+    }
 
-    return NextResponse.json({
-      success: true,
-      message: 'Quote sent successfully',
-      totals: {
-        productSubtotal,
-        tax,
-        installationPrice,
-        totalAmount
-      }
-    });
+    try {
+      // Send email
+      await transporter.sendMail({
+        from: {
+          name: 'Way of Glory Media',
+          address: 'help@wayofglory.com'
+        },
+        to: email,
+        subject: 'Your Way of Glory Media Quote',
+        html: quoteHtml
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: 'Quote sent successfully',
+        totals: {
+          productSubtotal,
+          tax,
+          installationPrice,
+          totalAmount
+        }
+      });
+    } catch (error) {
+      console.error('Error sending email:', error);
+      return NextResponse.json(
+        { error: 'Failed to send email. Please try again later.' },
+        { status: 500 }
+      );
+    }
   } catch (error) {
     console.error('Error generating quote:', error);
     return NextResponse.json(

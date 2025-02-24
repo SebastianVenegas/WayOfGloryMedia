@@ -281,6 +281,17 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
       }
     });
 
+    // Verify transporter configuration
+    try {
+      await transporter.verify();
+    } catch (error) {
+      console.error('Email transporter verification failed:', error);
+      return NextResponse.json(
+        { error: 'Email service configuration error. Please check server logs.' },
+        { status: 500 }
+      );
+    }
+
     // Get signature if available
     let signatureBuffer: Buffer | null = null;
     if (orderData.signature_url) {

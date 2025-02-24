@@ -58,14 +58,15 @@ export async function POST(request: Request) {
       }
     })
 
+    // Verify transporter configuration
     try {
-      await transporter.verify()
-    } catch (verifyError) {
-      console.error('Transporter verification failed:', verifyError)
+      await transporter.verify();
+    } catch (error) {
+      console.error('Email transporter verification failed:', error);
       return NextResponse.json(
-        { error: "Email service configuration error" },
+        { error: 'Email service configuration error. Please check server logs.' },
         { status: 500 }
-      )
+      );
     }
 
     const emailSubject = subject || `New ${type === 'quote_request' ? 'Quote' : 'Contact'} Request from ${churchName}`
@@ -199,16 +200,12 @@ export async function POST(request: Request) {
         message: "Message sent successfully",
         details: "We've received your message and sent you a confirmation email."
       }, { status: 200 })
-    } catch (sendError: any) {
-      console.error('Error sending email:', {
-        error: sendError.message,
-        code: sendError.code,
-        command: sendError.command
-      })
+    } catch (error) {
+      console.error('Error sending email:', error);
       return NextResponse.json(
-        { error: "Failed to send email. Please try again later." },
+        { error: 'Failed to send email. Please try again later.' },
         { status: 500 }
-      )
+      );
     }
   } catch (error) {
     console.error('Error processing contact form:', error);
