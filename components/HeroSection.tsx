@@ -52,7 +52,7 @@ export default function HeroSection() {
   }
 
   return (
-    <section className="relative min-h-[90vh] flex items-center pt-16 pb-24">
+    <section className="relative min-h-[90vh] flex items-center pt-12 sm:pt-16 pb-16 sm:pb-24">
       {/* Background Images with Overlay */}
       {backgroundImages.map((image, index) => (
         <div
@@ -69,30 +69,30 @@ export default function HeroSection() {
             priority={index === 0}
           />
           {/* Animated Gradient Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-r from-brand-blue/80 via-brand-blue/60 to-transparent"></div>
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(30,58,138,0.6),transparent_70%)]"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-brand-blue/90 via-brand-blue/70 to-transparent"></div>
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(30,58,138,0.7),transparent_70%)]"></div>
         </div>
       ))}
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="max-w-5xl">
-          <div className="space-y-8">
+          <div className="space-y-6 sm:space-y-8">
             {/* Animated Badge */}
-            <div className="inline-flex items-center rounded-full border border-white/20 bg-white/5 backdrop-blur-sm px-3 py-1.5 text-sm text-white">
+            <div className="inline-flex items-center rounded-full border border-white/20 bg-white/5 backdrop-blur-sm px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm text-white">
               <span className="flex items-center">
-                <Star className="w-4 h-4 text-white mr-2" />
-                Southern California's Trusted Church Technology Partner
+                <Star className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white mr-1.5 sm:mr-2" />
+                <span className="line-clamp-1">Southern California's Trusted Church Technology Partner</span>
               </span>
             </div>
 
             {/* Heading with Enhanced Animation */}
-            <div className="space-y-6">
-              <h1 className="text-[3.5rem] md:text-[5.5rem] font-bold text-white leading-[1.1] tracking-tight mb-8">
+            <div className="space-y-4 sm:space-y-6">
+              <h1 className="text-[2.5rem] sm:text-[3.5rem] md:text-[5rem] font-bold text-white leading-[1.1] tracking-tight mb-4 sm:mb-8">
                 Transform Your
-                <br />
-                Worship Experience
-                <br />
-                <span className="-mt-8 inline-block">with Crystal Clear{' '}
+                <br className="hidden sm:block" />
+                <span className="sm:inline">Worship Experience</span>
+                <br className="hidden sm:block" />
+                <span className="block sm:-mt-8 sm:inline-block">with Crystal Clear{' '}
                 <span className="relative inline-flex items-center min-h-[1.1em] min-w-[3em] translate-y-[0.20em]">
                   <AnimatePresence mode="wait">
                     <motion.span
@@ -115,27 +115,27 @@ export default function HeroSection() {
             </div>
 
             {/* Enhanced Subheading */}
-            <p className="text-xl text-gray-300 mt-6 mb-4">
+            <p className="text-lg sm:text-xl text-gray-300 mt-4 sm:mt-6 mb-2 sm:mb-4">
               Let&apos;s elevate your church&apos;s audio experience
             </p>
 
             {/* CTA Buttons with Enhanced Styling */}
-            <div className="flex flex-col sm:flex-row gap-4 pt-4">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-2 sm:pt-4">
               <button 
                 onClick={scrollToQuote}
-                className="group relative bg-white hover:bg-white/90 text-brand-blue px-8 py-4 rounded-xl text-lg font-semibold inline-flex items-center justify-center transition-all duration-300 hover:scale-105 hover:shadow-lg"
+                className="group relative bg-white hover:bg-white/90 text-brand-blue px-6 sm:px-8 py-3.5 sm:py-4 rounded-xl text-base sm:text-lg font-semibold inline-flex items-center justify-center transition-all duration-300 hover:scale-105 hover:shadow-lg w-full sm:w-auto"
               >
-                <MessageCircle className="mr-2 w-5 h-5" />
-                Schedule Free Consultation
-                <ArrowRight className="ml-2 w-5 h-5 transition-transform duration-200 group-hover:translate-x-1" />
+                <MessageCircle className="mr-2 w-4 h-4 sm:w-5 sm:h-5" />
+                <span className="whitespace-nowrap">Schedule Free Consultation</span>
+                <ArrowRight className="ml-2 w-4 h-4 sm:w-5 sm:h-5 transition-transform duration-200 group-hover:translate-x-1" />
               </button>
               <Link 
                 href="tel:+19514486409" 
-                className="group bg-white/10 backdrop-blur-sm hover:bg-white/20 border border-white/10 text-white px-8 py-4 rounded-xl text-lg font-semibold inline-flex items-center justify-center transition-all duration-300 hover:scale-105 hover:shadow-lg"
+                className="group bg-white/10 backdrop-blur-sm hover:bg-white/20 border border-white/10 text-white px-6 sm:px-8 py-3.5 sm:py-4 rounded-xl text-base sm:text-lg font-semibold inline-flex items-center justify-center transition-all duration-300 hover:scale-105 hover:shadow-lg w-full sm:w-auto"
               >
-                <Phone className="mr-2 w-5 h-5 group-hover:rotate-12 transition-transform duration-300" />
-                (951) 448-6409
-                <ArrowRight className="ml-2 w-5 h-5 opacity-0 transition-transform duration-200 group-hover:opacity-100 group-hover:translate-x-1" />
+                <Phone className="mr-2 w-4 h-4 sm:w-5 sm:h-5 group-hover:rotate-12 transition-transform duration-300" />
+                <span className="whitespace-nowrap">(951) 448-6409</span>
+                <ArrowRight className="ml-2 w-4 h-4 sm:w-5 sm:h-5 opacity-0 transition-transform duration-200 group-hover:opacity-100 group-hover:translate-x-1" />
               </Link>
             </div>
           </div>
@@ -143,24 +143,24 @@ export default function HeroSection() {
       </div>
 
       {/* Image Indicators */}
-      <div className="absolute right-8 top-1/2 -translate-y-1/2 flex flex-col space-y-3">
+      <div className="absolute right-4 sm:right-8 top-1/2 -translate-y-1/2 flex flex-col space-y-2 sm:space-y-3">
         {backgroundImages.map((_, index) => (
           <button
             key={index}
             onClick={() => setCurrentImageIndex(index)}
             className={`transition-all duration-300 ${
               index === currentImageIndex 
-                ? 'h-12 bg-white' 
-                : 'h-12 bg-white/30 hover:bg-white/50'
-            } w-1.5 rounded-full`}
+                ? 'h-8 sm:h-12 bg-white' 
+                : 'h-8 sm:h-12 bg-white/30 hover:bg-white/50'
+            } w-1 sm:w-1.5 rounded-full`}
             aria-label={`Go to slide ${index + 1}`}
           />
         ))}
       </div>
 
       {/* Enhanced Background Elements */}
-      <div className="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-black/50 to-transparent"></div>
-      <div className="absolute top-0 right-0 w-1/3 h-full bg-gradient-to-l from-black/30 to-transparent"></div>
+      <div className="absolute bottom-0 left-0 w-full h-24 sm:h-32 bg-gradient-to-t from-black/50 to-transparent"></div>
+      <div className="absolute top-0 right-0 w-1/4 sm:w-1/3 h-full bg-gradient-to-l from-black/30 to-transparent"></div>
     </section>
   )
 }
