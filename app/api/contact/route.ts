@@ -13,14 +13,18 @@ interface ContactFormData {
 
 export async function POST(request: Request) {
   // Check environment variables
-  const gmailPassword = process.env.GMAIL_APP_PASSWORD;
+  const gmailUser = process.env.GMAIL_USER
+  const gmailPassword = process.env.GMAIL_APP_PASSWORD
 
-  if (!gmailPassword) {
-    console.error('Missing email configuration: GMAIL_APP_PASSWORD not set');
+  if (!gmailUser || !gmailPassword) {
+    console.error('Missing email configuration:', { 
+      hasUser: !!gmailUser, 
+      hasPassword: !!gmailPassword 
+    })
     return NextResponse.json(
-      { error: "Server configuration error: Missing email credentials" },
+      { error: "Server configuration error" },
       { status: 500 }
-    );
+    )
   }
 
   try {
@@ -32,16 +36,16 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
-      );
+      )
     }
 
     // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(email)) {
       return NextResponse.json(
         { error: "Invalid email format" },
         { status: 400 }
-      );
+      )
     }
 
     const transporter = nodemailer.createTransport({
@@ -49,23 +53,22 @@ export async function POST(request: Request) {
       port: 465,
       secure: true,
       auth: {
-        user: 'help@wayofglory.com',
+        user: gmailUser,
         pass: gmailPassword
       }
-    });
+    })
 
-    // Verify transporter configuration
     try {
-      await transporter.verify();
-    } catch (error) {
-      console.error('Email transporter verification failed:', error);
+      await transporter.verify()
+    } catch (verifyError) {
+      console.error('Transporter verification failed:', verifyError)
       return NextResponse.json(
-        { error: 'Email service configuration error. Please check server logs.' },
+        { error: "Email service configuration error" },
         { status: 500 }
-      );
+      )
     }
 
-    const emailSubject = subject || `New ${type === 'quote_request' ? 'Quote' : 'Contact'} Request from ${churchName}`;
+    const emailSubject = subject || `New ${type === 'quote_request' ? 'Quote' : 'Contact'} Request from ${churchName}`
 
     // Common variables for email templates
     const emailVariables = {
@@ -112,55 +115,23 @@ export async function POST(request: Request) {
 
     // User confirmation email content
     const userEmailContent = `
-      <div class="content-wrapper">
-        <div class="header">
-        </div>
+      <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h2 style="color: #1e293b; font-size: 20px; margin-bottom: 16px;">Thank You for Contacting Way of Glory Media</h2>
         
-        <h2 style="color: #1e293b; font-size: 24px; font-weight: 600; margin-bottom: 20px;">Thank You for Contacting Way of Glory Media</h2>
+        <p style="color: #475569; margin-bottom: 12px;">Dear ${name},</p>
+        <p style="color: #475569; margin-bottom: 16px;">Thank you for reaching out to Way of Glory Media. We have received your message and our team will review it promptly.</p>
         
-        <p style="color: #475569; margin-bottom: 16px;">Dear ${name},</p>
-        <p style="color: #475569; margin-bottom: 24px;">Thank you for reaching out to Way of Glory Media. We have received your message and our team will review it promptly.</p>
-        
-        <div style="background-color: #f8fafc; border-radius: 12px; padding: 24px; margin: 32px 0;">
-          <h3 style="color: #1e293b; font-size: 18px; font-weight: 600; margin: 0 0 16px 0;">Your Contact Information</h3>
-          <div style="margin-bottom: 16px; color: #475569;">
-            <strong>Name:</strong> ${name}<br>
-            <strong>Email:</strong> ${email}<br>
-            <strong>Church:</strong> ${churchName}
-          </div>
-          <h3 style="color: #1e293b; font-size: 18px; font-weight: 600; margin: 0 0 16px 0;">What's Next?</h3>
-          <ul style="list-style-type: none; padding: 0; margin: 0;">
-            <li style="display: flex; align-items: center; margin-bottom: 16px; color: #475569;">
-              <div style="width: 24px; height: 24px; background-color: #2563eb; border-radius: 50%; margin-right: 12px; flex-shrink: 0;"></div>
-              <span>Our team will review your requirements within 1-2 business days</span>
-            </li>
-            <li style="display: flex; align-items: center; margin-bottom: 16px; color: #475569;">
-              <div style="width: 24px; height: 24px; background-color: #2563eb; border-radius: 50%; margin-right: 12px; flex-shrink: 0;"></div>
-              <span>We'll prepare a personalized response based on your needs</span>
-            </li>
-            <li style="display: flex; align-items: center; color: #475569;">
-              <div style="width: 24px; height: 24px; background-color: #2563eb; border-radius: 50%; margin-right: 12px; flex-shrink: 0;"></div>
-              <span>We may reach out for additional information if needed</span>
-            </li>
-          </ul>
+        <div style="background-color: #f8fafc; padding: 16px; margin: 16px 0; border-radius: 8px;">
+          <p style="color: #475569; margin-bottom: 8px;"><strong>Questions?</strong> Contact our support team:</p>
+          <p style="color: #2563eb; margin: 4px 0;">
+            Email: help@wayofglory.com<br>
+            Phone: (310) 872-9781
+          </p>
         </div>
 
-        <div style="background-color: #f8fafc; border-radius: 12px; padding: 24px; margin: 32px 0;">
-          <h3 style="color: #1e293b; font-size: 18px; font-weight: 600; margin: 0 0 16px 0;">Need Immediate Assistance?</h3>
-          <p style="color: #475569; margin-bottom: 16px;">Our support team is available to help:</p>
-          <div style="text-align: center;">
-            <a href="mailto:help@wayofglory.com" style="color: #2563eb; text-decoration: none; font-weight: 500; display: block; margin-bottom: 8px;">help@wayofglory.com</a>
-            <a href="tel:+13108729781" style="color: #2563eb; text-decoration: none; font-weight: 500; display: block;">(310) 872-9781</a>
-          </div>
-        </div>
-
-        <div class="footer" style="text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-          <p style="color: #6b7280; font-size: 14px; margin-bottom: 8px;">© ${new Date().getFullYear()} Way of Glory Media. All rights reserved.</p>
-          <div style="color: #6b7280; font-size: 14px;">
-            <a href="mailto:help@wayofglory.com" style="color: #2563eb; text-decoration: none;">help@wayofglory.com</a> |
-            <a href="tel:+13108729781" style="color: #2563eb; text-decoration: none;">(310) 872-9781</a> |
-            <a href="https://wayofglory.com" style="color: #2563eb; text-decoration: none;">wayofglory.com</a>
-          </div>
+        <div style="color: #6b7280; font-size: 14px; margin-top: 16px; text-align: center;">
+          <p style="margin: 4px 0;">© ${new Date().getFullYear()} Way of Glory Media</p>
+          <p style="margin: 4px 0;"><a href="https://wayofglory.com" style="color: #2563eb; text-decoration: none;">wayofglory.com</a></p>
         </div>
       </div>
     `;
@@ -168,7 +139,7 @@ export async function POST(request: Request) {
     const mailOptions = {
       from: {
         name: 'Way of Glory',
-        address: 'help@wayofglory.com'
+        address: gmailUser
       },
       to: "help@wayofglory.com",
       replyTo: email,
@@ -177,31 +148,37 @@ export async function POST(request: Request) {
     }
 
     try {
+      // First, send notification to admin
       await transporter.sendMail(mailOptions)
       
-      // Send confirmation email to the user
+      // Then, send confirmation to the user
       const confirmationMailOptions = {
         from: {
           name: 'Way of Glory',
-          address: 'help@wayofglory.com'
+          address: gmailUser
         },
         to: email,
         subject: 'Thank You for Contacting Way of Glory Media',
         html: formatEmailContent(userEmailContent, emailVariables)
       }
       
+      // Send confirmation email
       await transporter.sendMail(confirmationMailOptions)
       
       return NextResponse.json({ 
         message: "Message sent successfully",
         details: "We've received your message and sent you a confirmation email."
       }, { status: 200 })
-    } catch (error) {
-      console.error('Error sending email:', error);
+    } catch (sendError: any) {
+      console.error('Error sending email:', {
+        error: sendError.message,
+        code: sendError.code,
+        command: sendError.command
+      })
       return NextResponse.json(
-        { error: 'Failed to send email. Please try again later.' },
+        { error: "Failed to send email. Please try again later." },
         { status: 500 }
-      );
+      )
     }
   } catch (error) {
     console.error('Error processing contact form:', error);

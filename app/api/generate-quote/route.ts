@@ -107,51 +107,32 @@ export async function POST(request: Request) {
       port: 465,
       secure: true,
       auth: {
-        user: 'help@wayofglory.com',
+        user: process.env.GMAIL_USER,
         pass: process.env.GMAIL_APP_PASSWORD
       }
     });
 
-    // Verify transporter configuration
-    try {
-      await transporter.verify();
-    } catch (error) {
-      console.error('Email transporter verification failed:', error);
-      return NextResponse.json(
-        { error: 'Email service configuration error. Please check server logs.' },
-        { status: 500 }
-      );
-    }
+    // Send email
+    await transporter.sendMail({
+      from: {
+        name: 'Way of Glory Media',
+        address: process.env.GMAIL_USER || ''
+      },
+      to: email,
+      subject: 'Your Way of Glory Media Quote',
+      html: quoteHtml
+    });
 
-    try {
-      // Send email
-      await transporter.sendMail({
-        from: {
-          name: 'Way of Glory Media',
-          address: 'help@wayofglory.com'
-        },
-        to: email,
-        subject: 'Your Way of Glory Media Quote',
-        html: quoteHtml
-      });
-
-      return NextResponse.json({
-        success: true,
-        message: 'Quote sent successfully',
-        totals: {
-          productSubtotal,
-          tax,
-          installationPrice,
-          totalAmount
-        }
-      });
-    } catch (error) {
-      console.error('Error sending email:', error);
-      return NextResponse.json(
-        { error: 'Failed to send email. Please try again later.' },
-        { status: 500 }
-      );
-    }
+    return NextResponse.json({
+      success: true,
+      message: 'Quote sent successfully',
+      totals: {
+        productSubtotal,
+        tax,
+        installationPrice,
+        totalAmount
+      }
+    });
   } catch (error) {
     console.error('Error generating quote:', error);
     return NextResponse.json(

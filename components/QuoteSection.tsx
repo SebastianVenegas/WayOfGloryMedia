@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { Music2, Mail, Users, MessageSquare } from 'lucide-react'
 import { useToast } from "@/components/ui/use-toast"
 
@@ -8,7 +8,6 @@ export default function QuoteSection() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [status, setStatus] = useState('')
   const { toast } = useToast()
-  const formRef = useRef<HTMLFormElement>(null)
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -29,16 +28,21 @@ export default function QuoteSection() {
     setIsSubmitting(true)
     setStatus('')
 
+    const formData = new FormData(e.currentTarget)
+    const data = {
+      name: formData.get('name'),
+      email: formData.get('email'),
+      churchName: formData.get('churchName'),
+      message: formData.get('message'),
+    }
+
     try {
       const response = await fetch('/api/contact', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          ...formData,
-          type: 'quote_request'
-        }),
+        body: JSON.stringify(data),
       })
 
       const result = await response.json()
@@ -47,35 +51,30 @@ export default function QuoteSection() {
         throw new Error(result.error || 'Failed to send message')
       }
 
-      // Reset form state
+      // Clear the form using state
       setFormData({
         name: '',
         email: '',
         churchName: '',
         message: ''
       })
-      
-      // Reset form element
-      if (formRef.current) {
-        formRef.current.reset()
-      }
-      
       setStatus('Message sent successfully!')
       
       // Show success toast
       toast({
         title: "Message Sent Successfully! 🎉",
         description: "We'll get back to you shortly.",
-        className: "bg-green-50 border-green-200",
+        className: "bg-green-50 border-green-200 w-[400px]",
+        duration: 5000,
       })
 
     } catch (error) {
-      console.error('Form submission error:', error)
+      setStatus(error instanceof Error ? error.message : 'Failed to send message')
       
       // Show error toast
       toast({
-        title: "Error Sending Message",
-        description: error instanceof Error ? error.message : "Failed to send message. Please try again.",
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to send message",
         variant: "destructive",
       })
     } finally {
@@ -112,12 +111,7 @@ export default function QuoteSection() {
 
           {/* Form */}
           <div className="bg-white rounded-2xl shadow-xl shadow-gray-200/50 p-6 sm:p-8 relative">
-            <form 
-              ref={formRef}
-              onSubmit={handleSubmit} 
-              className="space-y-6"
-              noValidate
-            >
+            <form onSubmit={handleSubmit} className="space-y-6">
               {/* Input Grid */}
               <div className="grid md:grid-cols-2 gap-6">
                 {/* Name Input */}
