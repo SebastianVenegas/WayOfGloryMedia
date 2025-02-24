@@ -52,7 +52,7 @@ export default function HeroSection() {
   }
 
   return (
-    <section className="relative min-h-[90vh] flex items-center pt-24">
+    <section className="relative min-h-[90vh] flex items-center pt-16 pb-24">
       {/* Background Images with Overlay */}
       {backgroundImages.map((image, index) => (
         <div
@@ -86,13 +86,13 @@ export default function HeroSection() {
             </div>
 
             {/* Heading with Enhanced Animation */}
-            <div className="space-y-4">
-              <h1 className="text-[3.5rem] md:text-[5.5rem] font-bold text-white leading-[1.1] tracking-tight">
+            <div className="space-y-6">
+              <h1 className="text-[3.5rem] md:text-[5.5rem] font-bold text-white leading-[1.1] tracking-tight mb-8">
                 Transform Your
                 <br />
                 Worship Experience
                 <br />
-                with Crystal Clear{' '}
+                <span className="-mt-8 inline-block">with Crystal Clear{' '}
                 <span className="relative inline-flex items-center min-h-[1.1em] min-w-[3em] translate-y-[0.20em]">
                   <AnimatePresence mode="wait">
                     <motion.span
@@ -110,16 +110,17 @@ export default function HeroSection() {
                     </motion.span>
                   </AnimatePresence>
                 </span>
+              </span>
               </h1>
             </div>
 
             {/* Enhanced Subheading */}
-            <p className="text-gray-600 dark:text-gray-300">
+            <p className="text-xl text-gray-300 mt-6 mb-4">
               Let&apos;s elevate your church&apos;s audio experience
             </p>
 
             {/* CTA Buttons with Enhanced Styling */}
-            <div className="flex flex-col sm:flex-row gap-4 pt-8">
+            <div className="flex flex-col sm:flex-row gap-4 pt-4">
               <button 
                 onClick={scrollToQuote}
                 className="group relative bg-white hover:bg-white/90 text-brand-blue px-8 py-4 rounded-xl text-lg font-semibold inline-flex items-center justify-center transition-all duration-300 hover:scale-105 hover:shadow-lg"
