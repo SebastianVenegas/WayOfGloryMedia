@@ -13,18 +13,14 @@ interface ContactFormData {
 
 export async function POST(request: Request) {
   // Check environment variables
-  const gmailUser = process.env.GMAIL_USER
-  const gmailPassword = process.env.GMAIL_APP_PASSWORD
+  const gmailPassword = process.env.GMAIL_APP_PASSWORD;
 
-  if (!gmailUser || !gmailPassword) {
-    console.error('Missing email configuration:', { 
-      hasUser: !!gmailUser, 
-      hasPassword: !!gmailPassword 
-    })
+  if (!gmailPassword) {
+    console.error('Missing email configuration: GMAIL_APP_PASSWORD not set');
     return NextResponse.json(
-      { error: "Server configuration error" },
+      { error: "Server configuration error: Missing email credentials" },
       { status: 500 }
-    )
+    );
   }
 
   try {
@@ -36,16 +32,16 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
-      )
+      );
     }
 
     // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       return NextResponse.json(
         { error: "Invalid email format" },
         { status: 400 }
-      )
+      );
     }
 
     const transporter = nodemailer.createTransport({
@@ -54,9 +50,9 @@ export async function POST(request: Request) {
       secure: true,
       auth: {
         user: 'help@wayofglory.com',
-        pass: process.env.GMAIL_APP_PASSWORD
+        pass: gmailPassword
       }
-    })
+    });
 
     // Verify transporter configuration
     try {
@@ -69,7 +65,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const emailSubject = subject || `New ${type === 'quote_request' ? 'Quote' : 'Contact'} Request from ${churchName}`
+    const emailSubject = subject || `New ${type === 'quote_request' ? 'Quote' : 'Contact'} Request from ${churchName}`;
 
     // Common variables for email templates
     const emailVariables = {

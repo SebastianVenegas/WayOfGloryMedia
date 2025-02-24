@@ -35,7 +35,10 @@ export default function QuoteSection() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          type: 'quote_request'
+        }),
       })
 
       const result = await response.json()
@@ -67,12 +70,12 @@ export default function QuoteSection() {
       })
 
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : 'Failed to send message')
+      console.error('Form submission error:', error)
       
       // Show error toast
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to send message",
+        title: "Error Sending Message",
+        description: error instanceof Error ? error.message : "Failed to send message. Please try again.",
         variant: "destructive",
       })
     } finally {
