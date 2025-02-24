@@ -107,7 +107,7 @@ export async function POST(request: Request) {
       port: 465,
       secure: true,
       auth: {
-        user: process.env.GMAIL_USER,
+        user: 'help@wayofglory.com',
         pass: process.env.GMAIL_APP_PASSWORD
       }
     });
@@ -116,7 +116,7 @@ export async function POST(request: Request) {
     await transporter.sendMail({
       from: {
         name: 'Way of Glory Media',
-        address: process.env.GMAIL_USER || ''
+        address: 'help@wayofglory.com'
       },
       to: email,
       subject: 'Your Way of Glory Media Quote',

@@ -53,8 +53,8 @@ export async function POST(request: Request) {
       port: 465,
       secure: true,
       auth: {
-        user: gmailUser,
-        pass: gmailPassword
+        user: 'help@wayofglory.com',
+        pass: process.env.GMAIL_APP_PASSWORD
       }
     })
 
@@ -125,6 +125,12 @@ export async function POST(request: Request) {
         <p style="color: #475569; margin-bottom: 24px;">Thank you for reaching out to Way of Glory Media. We have received your message and our team will review it promptly.</p>
         
         <div style="background-color: #f8fafc; border-radius: 12px; padding: 24px; margin: 32px 0;">
+          <h3 style="color: #1e293b; font-size: 18px; font-weight: 600; margin: 0 0 16px 0;">Your Contact Information</h3>
+          <div style="margin-bottom: 16px; color: #475569;">
+            <strong>Name:</strong> ${name}<br>
+            <strong>Email:</strong> ${email}<br>
+            <strong>Church:</strong> ${churchName}
+          </div>
           <h3 style="color: #1e293b; font-size: 18px; font-weight: 600; margin: 0 0 16px 0;">What's Next?</h3>
           <ul style="list-style-type: none; padding: 0; margin: 0;">
             <li style="display: flex; align-items: center; margin-bottom: 16px; color: #475569;">
@@ -165,7 +171,7 @@ export async function POST(request: Request) {
     const mailOptions = {
       from: {
         name: 'Way of Glory',
-        address: gmailUser
+        address: 'help@wayofglory.com'
       },
       to: "help@wayofglory.com",
       replyTo: email,
@@ -180,7 +186,7 @@ export async function POST(request: Request) {
       const confirmationMailOptions = {
         from: {
           name: 'Way of Glory',
-          address: gmailUser
+          address: 'help@wayofglory.com'
         },
         to: email,
         subject: 'Thank You for Contacting Way of Glory Media',

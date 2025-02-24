@@ -6,6 +6,7 @@ import { formatEmailContent } from '@/lib/email-templates';
 import fs from 'fs/promises';
 import path from 'path';
 import { safeFetch } from '@/lib/safeFetch';
+import nodemailer from 'nodemailer';
 
 // Add price formatting helper
 const formatPrice = (price: number | string | null | undefined): string => {
@@ -269,6 +270,30 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
       includesInstallation: !!order.installation_date || (installationPrice > 0)
     };
 
+    // Set up email transporter
+    const transporter = nodemailer.createTransport({
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true,
+      auth: {
+        user: 'help@wayofglory.com',
+        pass: process.env.GMAIL_APP_PASSWORD
+      }
+    });
+
+    // Get signature if available
+    let signatureBuffer: Buffer | null = null;
+    if (orderData.signature_url) {
+      try {
+        const signatureResponse = await fetch(orderData.signature_url);
+        if (signatureResponse.ok) {
+          signatureBuffer = Buffer.from(await signatureResponse.arrayBuffer());
+        }
+      } catch (error) {
+        console.error('Error fetching signature:', error);
+      }
+    }
+
     if (customEmail?.html) {
       const subject = customEmail.subject || `Order Update - Way of Glory #${orderId}`;
       try {
@@ -300,22 +325,22 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
         `;
 
         // Send the email
-        const sendEmailUrl = `${baseUrl}/api/admin/send-email`;
-        const sendResult = await safeFetch(sendEmailUrl, {
-          method: 'POST',
-          body: JSON.stringify({
-            email: order.email,
-            subject,
-            html: emailContent,
-            text: customEmail.content,
-            isPWA
-          })
-        });
+        const mailOptions = {
+          from: {
+            name: 'Way of Glory Media',
+            address: 'help@wayofglory.com'
+          },
+          to: order.email,
+          subject: subject,
+          html: emailContent,
+          attachments: signatureBuffer ? [{
+            filename: 'signature.png',
+            content: signatureBuffer,
+            cid: 'signature@wayofglory.com'
+          }] : []
+        };
 
-        if (!sendResult.ok) {
-          console.error('Failed to send email:', sendResult.data);
-          throw new Error(sendResult.data?.error || sendResult.data?.details || 'Failed to send email');
-        }
+        await transporter.sendMail(mailOptions);
 
         return new NextResponse(JSON.stringify({
           success: true,
@@ -455,45 +480,22 @@ export async function POST(request: NextRequest, context: any): Promise<NextResp
           `;
 
           // Send the email with the pre-formatted HTML
-          const sendResult = await safeFetch(`${baseUrl}/api/admin/send-email`, {
-            method: 'POST',
-            headers: {
-              'Accept': 'application/json',
-              'Content-Type': 'application/json',
-              'Cache-Control': 'no-store'
+          const mailOptions = {
+            from: {
+              name: 'Way of Glory Media',
+              address: 'help@wayofglory.com'
             },
-            body: JSON.stringify({ 
-              email: order.email, 
-              subject: template.subject, 
-              html: emailContent,
-              content: emailText,
-              isPWA
-            }),
-            cache: 'no-store'
-          });
+            to: order.email,
+            subject: template.subject,
+            html: emailContent,
+            attachments: signatureBuffer ? [{
+              filename: 'signature.png',
+              content: signatureBuffer,
+              cid: 'signature@wayofglory.com'
+            }] : []
+          };
 
-          if (!sendResult.ok) {
-            console.error('Send email error:', {
-              status: sendResult.status,
-              data: sendResult.data,
-              error: sendResult.data?.error,
-              details: sendResult.data?.details
-            });
-            return new NextResponse(JSON.stringify({
-              error: sendResult.data?.error || 'Failed to send email',
-              details: sendResult.data?.details || 'Email sending failed',
-              success: false,
-              isPWA,
-              content: null,
-              html: null
-            }), {
-              status: sendResult.status || 500,
-              headers: {
-                'Content-Type': 'application/json',
-                'Cache-Control': 'no-store'
-              }
-            });
-          }
+          await transporter.sendMail(mailOptions);
 
           return new NextResponse(JSON.stringify({ 
             success: true,

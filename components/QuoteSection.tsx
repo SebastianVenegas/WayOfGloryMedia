@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Music2, Mail, Users, MessageSquare } from 'lucide-react'
 import { useToast } from "@/components/ui/use-toast"
 
@@ -8,6 +8,7 @@ export default function QuoteSection() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [status, setStatus] = useState('')
   const { toast } = useToast()
+  const formRef = useRef<HTMLFormElement>(null)
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -28,21 +29,13 @@ export default function QuoteSection() {
     setIsSubmitting(true)
     setStatus('')
 
-    const formData = new FormData(e.currentTarget)
-    const data = {
-      name: formData.get('name'),
-      email: formData.get('email'),
-      churchName: formData.get('churchName'),
-      message: formData.get('message'),
-    }
-
     try {
       const response = await fetch('/api/contact', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(formData),
       })
 
       const result = await response.json()
@@ -51,8 +44,19 @@ export default function QuoteSection() {
         throw new Error(result.error || 'Failed to send message')
       }
 
-      // Clear the form
-      e.currentTarget.reset()
+      // Reset form state
+      setFormData({
+        name: '',
+        email: '',
+        churchName: '',
+        message: ''
+      })
+      
+      // Reset form element
+      if (formRef.current) {
+        formRef.current.reset()
+      }
+      
       setStatus('Message sent successfully!')
       
       // Show success toast
@@ -105,7 +109,12 @@ export default function QuoteSection() {
 
           {/* Form */}
           <div className="bg-white rounded-2xl shadow-xl shadow-gray-200/50 p-6 sm:p-8 relative">
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form 
+              ref={formRef}
+              onSubmit={handleSubmit} 
+              className="space-y-6"
+              noValidate
+            >
               {/* Input Grid */}
               <div className="grid md:grid-cols-2 gap-6">
                 {/* Name Input */}

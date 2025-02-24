@@ -315,7 +315,7 @@ export const sendContractEmail = async ({
     const mailOptions = {
       from: {
         name: 'Way of Glory Media',
-        address: process.env.GMAIL_USER || '',
+        address: 'help@wayofglory.com'
       },
       to: email,
       subject: `Your Way of Glory Order #${orderId} Confirmation`,
