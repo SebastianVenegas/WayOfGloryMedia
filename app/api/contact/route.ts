@@ -115,24 +115,17 @@ export async function POST(request: Request) {
 
     // User confirmation email content
     const userEmailContent = `
-      <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h2 style="color: #1e293b; font-size: 20px; margin-bottom: 16px;">Thank You for Contacting Way of Glory Media</h2>
-        
-        <p style="color: #475569; margin-bottom: 12px;">Dear ${name},</p>
-        <p style="color: #475569; margin-bottom: 16px;">Thank you for reaching out to Way of Glory Media. We have received your message and our team will review it promptly.</p>
-        
-        <div style="background-color: #f8fafc; padding: 16px; margin: 16px 0; border-radius: 8px;">
-          <p style="color: #475569; margin-bottom: 8px;"><strong>Questions?</strong> Contact our support team:</p>
-          <p style="color: #2563eb; margin: 4px 0;">
-            Email: help@wayofglory.com<br>
-            Phone: (310) 872-9781
-          </p>
-        </div>
-
-        <div style="color: #6b7280; font-size: 14px; margin-top: 16px; text-align: center;">
-          <p style="margin: 4px 0;">© ${new Date().getFullYear()} Way of Glory Media</p>
-          <p style="margin: 4px 0;"><a href="https://wayofglory.com" style="color: #2563eb; text-decoration: none;">wayofglory.com</a></p>
-        </div>
+      <h2>Thank You for Contacting Way of Glory Media</h2>
+      
+      <p>Dear ${name},</p>
+      <p>Thank you for reaching out to Way of Glory Media. We have received your message and our team will review it promptly.</p>
+      
+      <div>
+        <p><strong>Questions?</strong> Contact our support team:</p>
+        <p>
+          Email: help@wayofglory.com<br>
+          Phone: (310) 872-9781
+        </p>
       </div>
     `;
 
